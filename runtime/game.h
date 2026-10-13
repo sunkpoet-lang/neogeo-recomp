@@ -67,6 +67,9 @@ struct Game {
     void (*beforeFrame)(Machine &machine) = nullptr; // with the players' input set, before the game runs a frame
     void (*frame)(Machine &machine) = nullptr;       // after every frame the game ran
     void (*state)(Archive &ar) = nullptr;            // the game sources' own state, for save states
+    // For a game whose sources can ask for a wider picture (video.h, Video::wide): how many columns the
+    // widest will have with the player's choices as they are, so that the window starts in its shape
+    int (*widestPicture)() = nullptr;
 };
 Game &TheGame();
 // The game's sources fill it in (games/<id>/src; runtime/no_game.cpp when a game has none)
