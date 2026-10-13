@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // From the launcher of wiiparty-recomp by arelkair (https://github.com/arelkair/wiiparty-recomp,
-// launcher/src/ui.h), which is licensed GPL-3.0-or-later; as it was there.
+// launcher/src/ui.h), which is licensed GPL-3.0-or-later; as it was there but for the four functions about
+// the arrow keys and a gamepad.
 // Part of recomp-common (https://github.com/tmcleroy/recomp-common); see THIRD_PARTY_NOTICES.md.
 #pragma once
 
@@ -68,10 +69,19 @@ void text(const char* value, Font font, float size, ImU32 color, float wrap = 0.
 ImVec2 text_size(const char* value, Font font, float size, float wrap = 0.0f);
 void gap(float value);
 
+// The arrow keys and a gamepad (as well as the mouse): the last item drawn becomes the one they are on;
+// the ring round that one is shown; whether it is shown; whether it is a gamepad that moves it.
+void focus_item();
+void focus_next_item();  // the next one drawn in this frame that they can be on
+void show_focus();
+bool focus_shown();
+bool gamepad_in_use();
+
 bool button(const char* label, Kind kind, float width = 0.0f, bool enabled = true, float height = 36.0f);
 bool toggle(const char* id, bool value);
 bool dropdown(const char* id, const std::vector<std::string>& labels, int& index, float width);
-bool nav_item(const char* label, bool active, float width);
+// (`reachable`: false keeps the arrow keys and a gamepad off it)
+bool nav_item(const char* label, bool active, float width, bool reachable = true);
 bool list_item(const char* label, bool active, float width);
 bool key_chip(const char* id, const char* label, bool capturing, float width, ImRect& rect);
 float keycap(const char* key);

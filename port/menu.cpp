@@ -42,6 +42,7 @@ void Menu::Open(bool withStates) {
     config.groups.push_back({
         {recomp::MenuRow::Pages},
         {recomp::MenuRow::Speed},
+        {recomp::MenuRow::Mute},
         {recomp::MenuRow::Action, kCoin, "Insert coin", "Puts a coin in the first slot."},
         {recomp::MenuRow::Action, kStart2, "Player 2 joins",
          "Presses player 2's Start: with a coin in (or free play), a second player to practise against."},
@@ -62,7 +63,9 @@ void Menu::Open(bool withStates) {
     config.speeds.assign(std::begin(kSpeedNames), std::end(kSpeedNames));
     config.speedDescription = "Left/Right: slow motion. While playing, P (or a click of the right stick) stops the game and starts it "
                               "again; O (or, once stopped, the left trigger) goes on by one frame; - and = change the speed.";
-    config.confirmName = "a button";
+    config.muted = [this] { return muted; };
+    config.setMuted = [this](bool to) { muted = to; };
+    config.confirmName = "Enter or A";
     config.closeName = "Esc";
     m_menu.Configure(std::move(config));
     m_menu.Open();
@@ -94,6 +97,10 @@ Menu::Action Menu::Buttons(uint16_t pressed) {
     if (pressed && !buttons && m_menu.IsOpen()) {
         m_menu.Note("");
     }
+    return Press(buttons);
+}
+
+Menu::Action Menu::Press(unsigned buttons) {
     const recomp::Menu::Chosen chosen = m_menu.Buttons(buttons);
     switch (chosen.kind) {
     case recomp::Menu::Chosen::Save: return Action::Save;

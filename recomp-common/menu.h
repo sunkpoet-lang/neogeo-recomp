@@ -27,7 +27,7 @@ enum : unsigned {
     kMenuLeft = 4,
     kMenuRight = 8,
     kMenuConfirm = 16, // chooses a row, changes it, goes into a page
-    kMenuBack = 32,    // closes the menu
+    kMenuBack = 32,    // leaves a page for the one it was reached from; on the first page, closes the menu
 };
 
 // A row of the first page.
@@ -42,6 +42,7 @@ struct MenuRow {
         Action, // the host's own: Chosen::Action with its id
         Quit,   // "Quit game": Chosen::Quit
         Resume, // closes the menu
+        Mute,   // "Sound": on or muted, through MenuConfig::muted and setMuted (left out without them)
     };
     Kind kind;
     int id;                  // Action: handed back when chosen
@@ -90,6 +91,9 @@ struct MenuConfig {
     // The Speed row: the speeds' names, the first being full speed, and what the row's description says
     std::vector<std::string> speeds;
     std::string speedDescription;
+    // The Mute row: whether the game's sound is off now, and switching it off and on
+    std::function<bool()> muted;
+    std::function<void(bool muted)> setMuted;
     // What the menu's buttons are called on this system, for the hint line: kMenuConfirm ("a button",
     // "A, B or C") and what closes the menu ("Esc", "Esc or Select")
     std::string confirmName = "a button";
@@ -114,8 +118,8 @@ public:
         return m_open;
     }
     // Buttons newly pressed (kMenu... bits): Up/Down choose, Confirm changes a row or goes into a page,
-    // Left/Right change a row with several values, Left leaves a page (for the one it was reached from),
-    // Back closes.
+    // Left/Right change a row with several values, Left and Back leave a page (for the one it was reached
+    // from), Back on the first page closes.
     // Returns what the host is to do (with Slot() for Save and Load); the host closes the menu if that
     // went well. Resume and Back close it themselves.
     Chosen Buttons(unsigned pressed);

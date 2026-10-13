@@ -21,7 +21,7 @@ enum {
   RMENU_LEFT = 4,
   RMENU_RIGHT = 8,
   RMENU_CONFIRM = 16,  // chooses a row, changes it, goes into a page
-  RMENU_BACK = 32,     // closes the menu
+  RMENU_BACK = 32,     // leaves a page; on the first page, closes the menu
 };
 
 typedef enum {
@@ -33,6 +33,7 @@ typedef enum {
   RMENU_ROW_ACTION,  // the host's own: RMENU_ACTION with its id
   RMENU_ROW_QUIT,    // "Quit game": RMENU_QUIT
   RMENU_ROW_RESUME,  // closes the menu
+  RMENU_ROW_MUTE,    // "Sound": on or muted, through the config's muted and setMuted (left out without them)
 } RMenuRowKind;
 
 // A row of the first page. Rows with the same `group` are together; a line is drawn where it changes.
@@ -76,6 +77,9 @@ typedef struct {
   // what the menu's buttons are called on this system, for the hint line (NULL: "a button", "Esc")
   const char* confirmName;
   const char* closeName;
+  // the Mute row: whether the game's sound is off now (not 0), and switching it off and on
+  int (*muted)(void* user);
+  void (*setMuted)(void* user, int muted);
 } RMenuConfig;
 
 typedef enum { RMENU_NONE, RMENU_SAVE, RMENU_LOAD, RMENU_QUIT, RMENU_ACTION, RMENU_COMMAND } RMenuChosen;
