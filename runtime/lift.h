@@ -51,6 +51,9 @@ enum : uint32_t {
     kFreeA0 = 1u << 8, kFreeA1 = 1u << 9, kFreeA2 = 1u << 10, kFreeA3 = 1u << 11,
     kFreeA4 = 1u << 12, kFreeA5 = 1u << 13, kFreeA6 = 1u << 14,
     kFreeFlags = 1u << 16,
+    // Not a register: the rewrite writes video RAM (a scroll screen's map, the row scroll table), and the
+    // check is to compare that too (it is slower: all of video RAM is kept three times a call)
+    kChecksVideo = 1u << 17,
 };
 void AddRewrite(uint32_t address, const char *name, RewriteFn fn, uint32_t free = 0, uint32_t cycles = 0);
 // A rewrite that stands aside in some cases: `when` is asked before each call of the rewrite at `address`,

@@ -130,7 +130,8 @@ launcher: port
 	  -DROM_SET="$(shell $(CFG) rom_set $(GAME))" -DROM_PARENT="$(shell $(CFG) rom_parent $(GAME))" \
 	  -DROM_NAME="$(shell $(CFG) rom_name $(GAME))" -DROM_PROGRAM="$(shell $(CFG) program $(GAME))" \
 	  -DROM_GRAPHICS="$(shell $(CFG) graphics $(GAME))" -DROM_SOUND_PROGRAM="$(shell $(CFG) sound_program $(GAME))" \
-	  -DROM_SAMPLES="$(shell $(CFG) samples $(GAME))" -DROM_KEY="$(shell $(CFG) key $(GAME))" > /dev/null
+	  -DROM_SAMPLES="$(shell $(CFG) samples $(GAME))" -DROM_KEY="$(shell $(CFG) key $(GAME))" \
+	  -DDISPLAY_SWITCHES="$(shell $(CFG) display $(GAME))" > /dev/null
 	@cmake --build $(B)/launcher
 	@echo "built $(B)/$(GAME)-launcher"
 

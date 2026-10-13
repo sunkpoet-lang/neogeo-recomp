@@ -10,7 +10,14 @@
 #include "../../machine/romset.h"
 #include "../../port/bindings.h"
 
+#include <algorithm>
 #include <filesystem>
+#include <string>
+#include <vector>
+
+#ifndef LAUNCHER_DISPLAY_SWITCHES
+#define LAUNCHER_DISPLAY_SWITCHES ""
+#endif
 #include <system_error>
 
 namespace {
@@ -57,12 +64,50 @@ std::string rom_set_nearby(const std::filesystem::path& program_folder) {
     return {};
 }
 
+// The game's features whose switch is on the first page, under "Full screen" (game.cfg's `display`, which
+// the build hands over as LAUNCHER_DISPLAY_SWITCHES: name|Title|What it says, with || between two of them;
+// the game leaves these out of the list it gives for the Features page: runtime/game.h, kFeatureFirstPage)
+struct FeatureSwitch {
+    std::string name, title, detail;
+};
+const std::vector<FeatureSwitch>& feature_switches() {
+    static const std::vector<FeatureSwitch> switches = [] {
+        std::vector<FeatureSwitch> list;
+        const std::string all = LAUNCHER_DISPLAY_SWITCHES;
+        for (size_t at = 0; at < all.size();) {
+            const size_t end = std::min(all.find("||", at), all.size());
+            const std::string one = all.substr(at, end - at);
+            const size_t first = one.find('|'), second = first == std::string::npos ? first : one.find('|', first + 1);
+            auto trim = [](std::string text) {
+                text.erase(0, text.find_first_not_of(' '));
+                text.erase(text.find_last_not_of(' ') + 1);
+                return text;
+            };
+            if (second != std::string::npos && !trim(one.substr(0, first)).empty()) {
+                list.push_back({trim(one.substr(0, first)), trim(one.substr(first + 1, second - first - 1)), trim(one.substr(second + 1))});
+            }
+            at = end + 2;
+        }
+        return list;
+    }();
+    return switches;
+}
+
 // What the game is started with: the player's ROM set (read only) and their saves folder.
 std::vector<std::string> arguments(const launcher::Launch& launch) {
     std::vector<std::string> args = {"--rom", launch.file, "--eeprom", (launch.folder / "saves" / "eeprom.bin").string(),
                                      "--settings", (launch.folder / "settings.ini").string()};
     if (launch.on("fullscreen")) {
         args.push_back("--fullscreen");
+    }
+    // (each first-page feature on or off as its switch is: said every time, so that the switch decides)
+    std::string features;
+    for (const FeatureSwitch& one : feature_switches()) {
+        features += (features.empty() ? "" : ",") + std::string(launch.on(one.name.c_str()) ? "" : "-") + one.name;
+    }
+    if (!features.empty()) {
+        args.push_back("--features");
+        args.push_back(features);
     }
     return args;
 }
@@ -84,6 +129,9 @@ const launcher::Description& launcher::describe() {
         d.arguments = arguments;
         d.saves_folder = true;
         d.display = {{"fullscreen", "Full screen", "F11 switches while playing.", false, nullptr}};  // (a window unless asked)
+        for (const FeatureSwitch& one : feature_switches()) {
+            d.display.push_back({one.name.c_str(), one.title.c_str(), one.detail.c_str(), false, nullptr});
+        }
         d.bindings = port::BindingTable();
         d.controls_heading = "WHILE PLAYING";
         d.controls = {{"Keys", "Esc, F1, the left stick's click, or Start and Select together: menu (training mode, save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   Backspace: start over (training)   F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)"}};

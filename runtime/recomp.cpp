@@ -151,6 +151,11 @@ namespace {
         c.pc = hook.address;
         const Regs before = save();
         memcpy(ramBefore.data(), c.ram, 0x10000);
+        static std::vector<uint8_t> videoBefore, videoRewrite;
+        const bool video = (hook.free & kChecksVideo) && c.video;
+        if (video) {
+            videoBefore.assign(c.video, c.video + c.videoSize);
+        }
         g_inRewrite++;
         hook.rewrite(c);
         c.cycles += hook.cycles ? hook.cycles : kRewriteCycles;
@@ -164,6 +169,10 @@ namespace {
         memcpy(ramRewrite.data(), c.ram, 0x10000);
         load(before);
         memcpy(c.ram, ramBefore.data(), 0x10000);
+        if (video) {
+            videoRewrite.assign(c.video, c.video + c.videoSize);
+            memcpy(c.video, videoBefore.data(), c.videoSize);
+        }
         g_inOriginal++;
         c.RunToReturn();
         g_inOriginal--;
@@ -206,6 +215,13 @@ namespace {
                              c.ram[at], ramBefore[at]);
                     report += text;
                 }
+            }
+        }
+        for (uint32_t at = 0; video && at < c.videoSize; at++) {
+            if (c.video[at] != videoRewrite[at] && listed++ < 8) {
+                snprintf(text, sizeof(text), " [%06X] %02X (the game's: %02X, was %02X)", 0x900000 + at, videoRewrite[at], c.video[at],
+                         videoBefore[at]);
+                report += text;
             }
         }
         hook.calls++;

@@ -92,6 +92,8 @@ public:
     // What translated code reaches without going through the bus (set by the machine)
     M68KBus &bus;
     uint8_t *ram = nullptr;          // FF0000-FFFFFF
+    uint8_t *video = nullptr;        // 900000 and up: video RAM (for the check of rewrites that write it)
+    uint32_t videoSize = 0;
     const uint8_t *rom = nullptr;    // the program as data
     const uint8_t *opcodes = nullptr; // the program as program
     uint32_t romSize = 0;
