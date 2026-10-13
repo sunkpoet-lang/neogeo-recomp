@@ -33,7 +33,14 @@ public:
     // Buttons newly pressed (cps2recomp::Button bits): Up/Down choose, any punch, kick or Start changes or
     // goes into a page, Left/Right change a row with several values.
     // Returns what the frontend is to do (with Slot()); it closes the menu if that went well.
+    // (The tests' way in. A player's presses come through Press.)
     Action Buttons(uint16_t pressed);
+    // The menu's own buttons newly pressed (recomp::kMenu... bits), which the frontend makes from keys and
+    // gamepad buttons that are the same whatever the game's are set to: the arrows, the d-pad and the left
+    // stick; Space, Enter and A choose; Backspace and B go back.
+    Action Press(unsigned buttons);
+    // The "Sound" row: the frontend plays nothing while this is set (--mute starts with it set)
+    bool muted = false;
     int Slot() const {
         return m_menu.Slot();
     }

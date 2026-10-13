@@ -6,12 +6,18 @@
 // The launcher the recomp ports share (SDL3 + Dear ImGui; the look from ui.cpp).
 //   <id>-launcher [--screenshot PREFIX [--size WxH]]   (PREFIX0.png.. one picture per page, then quit; no
 //                                                       window is shown)
+//   <id>-launcher --screenshot PREFIX --press KEYS     (one picture, PREFIX.png, after KEYS are pressed one
+//                                                       by one: u d l r arrow keys, e Enter, s Space, x Esc;
+//                                                       of a gamepad made for the test: U D L R the d-pad,
+//                                                       A B the buttons, [ ] the shoulders; 0-9 that page;
+//                                                       . a wait)
 //   <id>-launcher --play                               (straight into the game set up earlier)
 // <ID>_HOME=folder (LAUNCHER_HOME_ENV) uses that folder instead of the player's (settings, launcher.ini).
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -47,10 +53,66 @@ bool system_dark() {
     return SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK;
 }
 
+// --press: keys as the window would get them, and the buttons of a gamepad that exists only in the program.
+struct Presser {
+    SDL_Window* window = nullptr;
+    SDL_Joystick* pad = nullptr;
+
+    void start(const std::string& keys) {
+        if (keys.find_first_of("UDLRAB[]") == std::string::npos) {
+            return;
+        }
+        // (a window that is not shown is never the one in front, and a gamepad is otherwise heard only there)
+        SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+        SDL_VirtualJoystickDesc desc;
+        SDL_INIT_INTERFACE(&desc);
+        desc.type = SDL_JOYSTICK_TYPE_GAMEPAD;
+        desc.vendor_id = 0x0001;
+        desc.product_id = 0x0001;
+        desc.naxes = SDL_GAMEPAD_AXIS_COUNT;
+        desc.nbuttons = SDL_GAMEPAD_BUTTON_COUNT;
+        desc.name = "Test gamepad";
+        pad = SDL_OpenJoystick(SDL_AttachVirtualJoystick(&desc));
+    }
+    void set(char key, bool down) {
+        static const struct {
+            char key;
+            SDL_Scancode scancode;
+            SDL_Keycode keycode;
+        } kKeys[] = {{'u', SDL_SCANCODE_UP, SDLK_UP},         {'d', SDL_SCANCODE_DOWN, SDLK_DOWN},   {'l', SDL_SCANCODE_LEFT, SDLK_LEFT},
+                     {'r', SDL_SCANCODE_RIGHT, SDLK_RIGHT},   {'e', SDL_SCANCODE_RETURN, SDLK_RETURN}, {'s', SDL_SCANCODE_SPACE, SDLK_SPACE},
+                     {'x', SDL_SCANCODE_ESCAPE, SDLK_ESCAPE}};
+        static const struct {
+            char key;
+            SDL_GamepadButton button;
+        } kButtons[] = {{'U', SDL_GAMEPAD_BUTTON_DPAD_UP},   {'D', SDL_GAMEPAD_BUTTON_DPAD_DOWN},    {'L', SDL_GAMEPAD_BUTTON_DPAD_LEFT},
+                        {'R', SDL_GAMEPAD_BUTTON_DPAD_RIGHT}, {'A', SDL_GAMEPAD_BUTTON_SOUTH},        {'B', SDL_GAMEPAD_BUTTON_EAST},
+                        {'[', SDL_GAMEPAD_BUTTON_LEFT_SHOULDER}, {']', SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER}};
+        for (const auto& known : kKeys) {
+            if (known.key == key) {
+                SDL_Event event{};
+                event.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+                event.key.windowID = SDL_GetWindowID(window);
+                event.key.scancode = known.scancode;
+                event.key.key = known.keycode;
+                event.key.down = down;
+                SDL_PushEvent(&event);
+            }
+        }
+        for (const auto& known : kButtons) {
+            if (known.key == key && pad) {
+                SDL_SetJoystickVirtualButton(pad, known.button, down);
+            }
+        }
+    }
+};
+
 }  // namespace
 
 int main(int argc, char** argv) {
     std::string screenshot_prefix;
+    std::string press;
+    bool pressing = false;
     bool play = false;
     int width = 980, height = 660;
     for (int i = 1; i < argc; i++) {
@@ -60,6 +122,9 @@ int main(int argc, char** argv) {
             if (std::sscanf(argv[++i], "%dx%d", &width, &height) != 2 || width < 320 || height < 240) {
                 width = 980, height = 660;
             }
+        } else if (std::strcmp(argv[i], "--press") == 0 && i + 1 < argc) {
+            press = argv[++i];
+            pressing = true;
         } else if (std::strcmp(argv[i], "--play") == 0) {
             play = true;
         }
@@ -95,17 +160,29 @@ int main(int argc, char** argv) {
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;
     io.LogFilename = nullptr;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    // The arrow keys with Space or Enter, and a gamepad (any that is connected), as well as the mouse
+    const ImGuiConfigFlags navigation = ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
+    io.ConfigFlags |= navigation;
+    io.ConfigNavEscapeClearFocusItem = false;  // (Back goes to the sidebar: app.cpp)
+    ImGui::GetCurrentContext()->ConfigNavWindowingWithGamepad = false;  // (one window: no list of windows)
+    ImGui::GetCurrentContext()->ConfigNavWindowingKeyNext = 0;
+    ImGui::GetCurrentContext()->ConfigNavWindowingKeyPrev = 0;
     ui::load_fonts();
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
+    ImGui_ImplSDL3_SetGamepadMode(ImGui_ImplSDL3_GamepadMode_AutoAll);
 
     ui::set_dark(system_dark());
     ui::apply_style(SDL_GetWindowDisplayScale(window));
     App app(window);
     if (screenshot_prefix.empty()) {  // (pictures are taken with nothing put on the screen)
         SDL_ShowWindow(window);
+        app.set_interactive();
     }
+    Presser presser;
+    presser.window = window;
+    presser.start(press);
+    size_t press_at = 0;
 
     Uint64 previous = SDL_GetTicksNS();
     int shot_page = 0;
@@ -138,21 +215,40 @@ int main(int argc, char** argv) {
             SDL_Delay(50);
             continue;
         }
+        // (while a key or a button is being chosen for an action, it is not also a press of what the ring is on)
+        io.ConfigFlags = app.navigation_paused() ? io.ConfigFlags & ~navigation : io.ConfigFlags | navigation;
         Uint64 now = SDL_GetTicksNS();
         ui::begin_frame(static_cast<float>(now - previous) / 1e9f);
         previous = now;
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
-        if (!screenshot_prefix.empty() && shot_frames == 0) {
-            app.set_page(static_cast<Page>(shot_page));
+        if (!screenshot_prefix.empty() && shot_frames == 0 && !pressing) {
+            app.set_page(shot_page);
+        }
+        if (pressing && shot_frames >= 10 && press_at < press.size() && !app.busy()) {
+            // One key every eight frames: down for four of them
+            int step = (shot_frames - 10) % 8;
+            char key = press[press_at];
+            if (step == 0 && key >= '0' && key <= '9') {
+                app.set_page(std::min(key - '0', app.page_count() - 1));
+            } else if (step == 0) {
+                presser.set(key, true);
+            } else if (step == 4) {
+                presser.set(key, false);
+            } else if (step == 7 && ++press_at == press.size()) {
+                shot_frames = -1;  // (and then the picture, as for a page)
+                press.clear();
+            }
         }
         app.frame();
         render(renderer);
-        if (!screenshot_prefix.empty() && ++shot_frames >= 45 && !app.busy()) {
-            save_picture(renderer, screenshot_prefix + std::to_string(shot_page) + ".png");
+        if (pressing && !press.empty()) {
+            shot_frames++;
+        } else if (!screenshot_prefix.empty() && ++shot_frames >= 45 && !app.busy()) {
+            save_picture(renderer, screenshot_prefix + (pressing ? std::string() : std::to_string(shot_page)) + ".png");
             shot_frames = 0;
-            if (++shot_page == static_cast<int>(Page::Count)) {
+            if (pressing || ++shot_page == app.page_count()) {
                 running = false;
             }
         }

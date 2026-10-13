@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "bindings.h"
+#include "settings.h"
 
 namespace launcher {
 
@@ -54,7 +55,46 @@ struct InfoRow {
     const char *text;
 };
 
+// What a page of the port's own is drawn with (ui.h and layout.h are the launcher's look)
+struct PageContext {
+    float width;                                 // of the page's column
+    SDL_Window *window;                          // for file dialogs
+    recomp::Ini &prefs;                          // launcher.ini
+    recomp::Ini &settings;                       // settings.ini, which the game reads too
+    const std::filesystem::path &folder;         // the player's folder
+    const std::filesystem::path &program_folder; // where the launcher (and the game program) is
+    bool playing;                                // the game is running
+    int exit_code;                               // of its last run
+    const std::string &play_error;               // why it did not start, or ""
+    std::function<void()> play;                  // starts the game with the port's `arguments`
+};
+
+// A page of the port's own, in the sidebar before the launcher's pages
+struct CustomPage {
+    const char *name;
+    void (*draw)(PageContext &page) = nullptr;
+    // Optional: a file dropped on the window (to the page shown if it takes files, else to the first that does)
+    void (*drop)(PageContext &page, const char *path) = nullptr;
+    // Optional: true while the page has work on another thread, so that the window keeps being drawn
+    bool (*busy)() = nullptr;
+};
+
 struct Description {
+    // Under the game's name in the sidebar
+    const char *subtitle = "native port";
+
+    // The port's own pages (none: the launcher's three)
+    std::vector<CustomPage> pages;
+    // false: no Game page (and no game file, check or Display card): the port's pages have Play
+    bool game_page = true;
+
+    // The Features page: its name, its first lines (nullptr: the usual ones about Pure and Enhanced), and
+    // whether the player chooses a preset (without: the features alone; the launcher still makes
+    // "enhanced" the preset of a new settings file, so kFeatureEnhanced features start on)
+    const char *features_name = "Features";
+    const char *features_intro = nullptr;
+    bool presets = true;
+
     // Where the original ran, as the Features page says it: "in the arcade", "on the console"
     const char *original = "";
 
@@ -73,6 +113,11 @@ struct Description {
     // The game's arguments
     std::vector<std::string> (*arguments)(const Launch &launch) = nullptr;
     bool saves_folder = false;                // make <folder>/saves before starting
+
+    // The Game page's Sound card has one switch, "Muted" (off unless the player switches it on; kept in
+    // launcher.ini under [audio]). When it is on the game is started with this argument after the port's
+    // own. nullptr: no card (a game with no sound to switch off).
+    const char *mute_argument = "--mute";
 
     bool preset_summary = false;              // a line over Play saying which preset is chosen
     std::vector<Toggle> display;              // the Display card's switches (none: no card)

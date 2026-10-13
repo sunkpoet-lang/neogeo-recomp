@@ -14,7 +14,7 @@ using namespace text;
 
 namespace {
     // (after MenuRow's kinds, which the first page's rows keep)
-    enum { kRowSave, kRowLoad, kRowSlot, kRowSpeed, kRowAction, kRowQuit, kRowResume, kRowCommand, kRowPage, kRowFeature, kRowBack };
+    enum { kRowSave, kRowLoad, kRowSlot, kRowSpeed, kRowAction, kRowQuit, kRowResume, kRowCommand, kRowPage, kRowFeature, kRowBack, kRowMute };
 } // namespace
 
 void Menu::Configure(MenuConfig config) {
@@ -110,6 +110,11 @@ void Menu::Fill() {
                 case MenuRow::Action: add({kRowAction, index, ""}); break;
                 case MenuRow::Quit: add({kRowQuit, index, ""}); break;
                 case MenuRow::Resume: add({kRowResume, index, ""}); break;
+                case MenuRow::Mute:
+                    if (m_config.muted && m_config.setMuted) {
+                        add({kRowMute, index, ""});
+                    }
+                    break;
                 case MenuRow::Page:
                     if (!row.title.empty() && Exists(row.title)) {
                         add({kRowPage, index, row.title});
@@ -183,7 +188,11 @@ Menu::Chosen Menu::Buttons(unsigned pressed) {
     }
     m_note.clear();
     if (pressed & kMenuBack) {
-        m_open = false;
+        if (m_page.empty()) {
+            m_open = false;
+        } else {
+            Leave();
+        }
         return {};
     }
     const int count = static_cast<int>(m_rows.size());
@@ -199,6 +208,10 @@ Menu::Chosen Menu::Buttons(unsigned pressed) {
     const int step = (pressed & kMenuLeft) ? -1 : (press || (pressed & kMenuRight)) ? 1 : 0;
     if (row.kind == kRowSlot && step) { // 1-9, around
         SetSlot(m_slot + step);
+        return {};
+    }
+    if (row.kind == kRowMute && step) {
+        m_config.setMuted(!m_config.muted());
         return {};
     }
     if (row.kind == kRowSpeed && step) {
@@ -318,6 +331,12 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
             value = m_config.speeds[static_cast<size_t>(m_speed)];
             valueColor = m_speed == 0 ? dim : on;
             rowDescription = m_config.speedDescription;
+            break;
+        case kRowMute:
+            title = "Sound";
+            value = m_config.muted() ? "Muted" : "On";
+            valueColor = m_config.muted() ? on : dim;
+            rowDescription = "Switches the game's sound off and on.";
             break;
         case kRowAction:
             title = m_first[row.index].title;

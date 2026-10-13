@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // From the launcher of wiiparty-recomp by arelkair (https://github.com/arelkair/wiiparty-recomp,
-// launcher/src/ui.cpp), which is licensed GPL-3.0-or-later; as it was there but for a few lines.
+// launcher/src/ui.cpp), which is licensed GPL-3.0-or-later; as it was there but for the ring round what the
+// arrow keys or a gamepad are on, and a few lines.
 // Part of recomp-common (https://github.com/tmcleroy/recomp-common); see THIRD_PARTY_NOTICES.md.
 #include "ui.h"
 
@@ -34,6 +35,7 @@ bool g_dark = false;
 float g_scale = 1.0f;
 float g_delta = 0.0f;
 bool g_animating = false;
+bool g_focus_next = false;
 int g_frames = 0;
 ImFont* g_fonts[2] = {};
 std::unordered_map<ImGuiID, float> g_values;
@@ -55,12 +57,37 @@ void add_font(int index, const char* name) {
     g_fonts[index] = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(const_cast<char*>(data.data()), static_cast<int>(data.size()), size::kBody, &config);
 }
 
-bool behavior(const ImRect& rect, ImGuiID id, bool enabled, bool& hovered, bool& held) {
+// The ring round whatever the arrow keys or a gamepad are on (nothing while the mouse is in use); `rounding`
+// is the shape's. Called straight after the widget's behavior() and its drawing.
+void focus_ring(const ImRect& rect, ImGuiID id, float rounding, bool inside = false) {
+    ImGuiContext& g = *GImGui;
+    if (g.NavId != id || !g.NavCursorVisible || (g.LastItemData.ItemFlags & ImGuiItemFlags_NoNav)) {
+        return;
+    }
+    float thickness = std::max(2.0f, px(2.5f));
+    float out = inside ? -thickness * 0.5f : px(3) + thickness * 0.5f;
+    ImRect ring(rect.Min - ImVec2(out, out), rect.Max + ImVec2(out, out));
+    ImDrawList* list = g.CurrentWindow->DrawList;
+    ImVec2 edge(thickness, thickness);
+    list->PushClipRect(ring.Min - edge, ring.Max + edge, true);
+    list->AddRect(ring.Min, ring.Max, palette().accent, std::max(0.0f, rounding + out), thickness);
+    list->PopClipRect();
+}
+
+// `reachable`: false keeps the arrow keys and a gamepad off it. (A widget draws itself, then focus_ring.)
+bool behavior(const ImRect& rect, ImGuiID id, bool enabled, bool& hovered, bool& held, bool reachable = true) {
     ImGui::ItemSize(rect);
-    if (!ImGui::ItemAdd(rect, id)) {
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNav, !reachable);
+    bool added = ImGui::ItemAdd(rect, id);
+    ImGui::PopItemFlag();
+    if (!added) {
         hovered = false;
         held = false;
         return false;
+    }
+    if (g_focus_next && reachable) {
+        g_focus_next = false;
+        focus_item();
     }
     bool pressed = ImGui::ButtonBehavior(rect, id, &hovered, &held, enabled ? 0 : ImGuiButtonFlags_None);
     if (!enabled) {
@@ -68,10 +95,9 @@ bool behavior(const ImRect& rect, ImGuiID id, bool enabled, bool& hovered, bool&
         held = false;
         pressed = false;
     }
-    if (hovered) {
+    if (hovered && !ImGui::GetCurrentContext()->NavHighlightItemUnderNav) {
         ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     }
-    ImGui::RenderNavCursor(rect, id);
     return pressed;
 }
 
@@ -146,6 +172,7 @@ void load_fonts() {
 
 void begin_frame(float delta) {
     g_delta = std::min(delta, 0.1f);
+    g_focus_next = false;
     g_animating = g_frames > 0;
     if (g_frames > 0) {
         g_frames--;
@@ -226,6 +253,29 @@ ImVec2 text_size(const char* value, Font font, float value_size, float wrap) {
     return result;
 }
 
+void focus_item() {
+    ImGuiContext& g = *GImGui;
+    ImGui::SetFocusID(g.LastItemData.ID, g.CurrentWindow);
+    g.NavCursorVisible = true;
+}
+
+void focus_next_item() {
+    g_focus_next = true;
+}
+
+void show_focus() {
+    ImGui::GetCurrentContext()->NavCursorVisible = true;
+}
+
+bool focus_shown() {
+    return ImGui::GetCurrentContext()->NavCursorVisible;
+}
+
+bool gamepad_in_use() {
+    ImGuiContext& g = *GImGui;
+    return g.NavCursorVisible && g.NavInputSource == ImGuiInputSource_Gamepad;
+}
+
 void gap(float value) {
     ImGui::Dummy(ImVec2(0, px(value)));
 }
@@ -241,7 +291,7 @@ bool button(const char* label, Kind kind, float width, bool enabled, float heigh
     ImRect rect(window->DC.CursorPos, window->DC.CursorPos + box);
     bool hovered = false;
     bool held = false;
-    bool pressed = behavior(rect, id, enabled, hovered, held);
+    bool pressed = behavior(rect, id, enabled, hovered, held, enabled);
     const Palette& p = palette();
     float hover = animate(id + 1, hovered ? 1.0f : 0.0f, 22.0f);
     float press = animate(id + 2, held ? 1.0f : 0.0f, 30.0f);
@@ -265,6 +315,7 @@ bool button(const char* label, Kind kind, float width, bool enabled, float heigh
     ImVec2 at(std::round(rect.Min.x + (box.x - label_size.x) * 0.5f), std::round(rect.Min.y + (box.y - label_size.y) * 0.5f));
     window->DrawList->AddText(at, fade(ink, alpha), label, end);
     pop_font();
+    focus_ring(rect, id, box.y * 0.5f);
     return pressed;
 }
 
@@ -287,6 +338,7 @@ bool toggle(const char* id_text, bool value) {
     ImU32 knob_off = g_dark ? p.text : IM_COL32(255, 255, 255, 255);
     window->DrawList->AddCircleFilled(center + ImVec2(0, px(1)), radius, IM_COL32(0, 0, 0, 30), 32);
     window->DrawList->AddCircleFilled(center, radius, mix(knob_off, p.background, on), 32);
+    focus_ring(rect, id, box.y * 0.5f);
     return pressed;
 }
 
@@ -321,6 +373,7 @@ bool dropdown(const char* id_text, const std::vector<std::string>& labels, int& 
     window->DrawList->AddText(ImVec2(rect.Min.x + px(14), std::round(rect.Min.y + (box.y - line) * 0.5f)), p.text, current);
     pop_font();
     chevron(ImVec2(rect.Max.x - px(18), rect.Min.y + box.y * 0.5f), px(8), p.secondary, true);
+    focus_ring(rect, id, px(10));
     if (pressed) {
         ImGui::OpenPopupEx(popup);
         g_values[popup + 1] = 0.0f;
@@ -338,6 +391,9 @@ bool dropdown(const char* id_text, const std::vector<std::string>& labels, int& 
                 changed = true;
                 ImGui::CloseCurrentPopup();
             }
+            if (static_cast<int>(i) == index) {
+                ImGui::SetItemDefaultFocus();  // (the arrow keys and a gamepad start from the one chosen)
+            }
             ImGui::PopID();
         }
         if (shown < 1.0f) {
@@ -351,14 +407,14 @@ bool dropdown(const char* id_text, const std::vector<std::string>& labels, int& 
     return changed;
 }
 
-bool nav_item(const char* label, bool active, float width) {
+bool nav_item(const char* label, bool active, float width, bool reachable) {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImGuiID id = window->GetID(label);
     ImVec2 box(px(width), px(36));
     ImRect rect(window->DC.CursorPos, window->DC.CursorPos + box);
     bool hovered = false;
     bool held = false;
-    bool pressed = behavior(rect, id, true, hovered, held);
+    bool pressed = behavior(rect, id, true, hovered, held, reachable);
     const Palette& p = palette();
     float hover = animate(id + 1, hovered && !active ? 1.0f : 0.0f, 22.0f);
     float on = animate(id + 2, active ? 1.0f : 0.0f, 18.0f);
@@ -367,6 +423,7 @@ bool nav_item(const char* label, bool active, float width) {
     float line = ImGui::GetFontSize();
     window->DrawList->AddText(ImVec2(rect.Min.x + px(14), std::round(rect.Min.y + (box.y - line) * 0.5f)), mix(p.secondary, p.text, on), label);
     pop_font();
+    focus_ring(rect, id, px(10), true);
     return pressed;
 }
 
@@ -386,6 +443,7 @@ bool list_item(const char* label, bool active, float width) {
     float line = ImGui::GetFontSize();
     window->DrawList->AddText(ImVec2(rect.Min.x + px(12), std::round(rect.Min.y + (box.y - line) * 0.5f)), p.text, label);
     pop_font();
+    focus_ring(rect, id, px(8), true);
     return pressed;
 }
 
@@ -410,6 +468,7 @@ bool key_chip(const char* id_text, const char* label, bool capturing, float widt
     ImVec4 clip(rect.Min.x, rect.Min.y, rect.Max.x - px(8), rect.Max.y);
     window->DrawList->AddText(nullptr, 0.0f, at, capturing ? p.accent : p.text, label, nullptr, 0.0f, &clip);
     pop_font();
+    focus_ring(rect, id, px(10));
     return pressed;
 }
 
