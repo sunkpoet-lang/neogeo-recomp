@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Tommy McLeroy. Part of recomp-common: https://github.com/tmcleroy/recomp-common
-// (Card, row and inset_separator are from the launcher of wiiparty-recomp by arelkair, GPL-3.0-or-later:
-// https://github.com/arelkair/wiiparty-recomp, launcher/src/layout.h; see THIRD_PARTY_NOTICES.md.)
 #include "app.h"
 
 #include <algorithm>
@@ -16,10 +14,14 @@
 #include <mach-o/dyld.h>
 #endif
 
+#include "layout.h"
 #include "steam.h"
 #include "ui.h"
 
 using launcher::FileCheck;
+using layout::Card;
+using layout::inset_separator;
+using layout::row;
 using ui::Font;
 using ui::Kind;
 using ui::px;
@@ -30,56 +32,6 @@ constexpr float kSidebarWidth = 220.0f;
 constexpr float kPagePaddingX = 44.0f;
 constexpr float kPagePaddingTop = 40.0f;
 constexpr float kContentMaxWidth = 720.0f;
-
-// A rounded panel behind its contents.
-class Card {
-public:
-    explicit Card(float width) : list_(ImGui::GetWindowDrawList()), start_(ImGui::GetCursorScreenPos()), width_(width) {
-        list_->ChannelsSplit(2);
-        list_->ChannelsSetCurrent(1);
-    }
-    void end() {
-        float bottom = ImGui::GetCursorScreenPos().y;
-        list_->ChannelsSetCurrent(0);
-        list_->AddRectFilled(start_, ImVec2(start_.x + width_, bottom), ui::palette().surface, px(14));
-        list_->ChannelsMerge();
-    }
-
-private:
-    ImDrawList* list_;
-    ImVec2 start_;
-    float width_;
-};
-
-// A card row: label and detail on the left, a control on the right.
-template <typename Control>
-void row(float width, const char* label, const char* detail, float control_width, float control_height, Control control) {
-    const ui::Palette& p = ui::palette();
-    ImVec2 top = ImGui::GetCursorScreenPos();
-    float pad = px(18);
-    ImGui::SetCursorScreenPos(top + ImVec2(pad, px(14)));
-    ImGui::BeginGroup();
-    float text_width = width - pad * 2 - px(control_width) - px(24);
-    ui::text(label, Font::Regular, ui::size::kBody, p.text, text_width);
-    if (detail && *detail) {
-        ui::gap(3);
-        ui::text(detail, Font::Regular, ui::size::kDetail, p.secondary, text_width);
-    }
-    ImGui::EndGroup();
-    float bottom = ImGui::GetItemRectMax().y + px(14);
-    float height = bottom - top.y;
-    ImGui::SetCursorScreenPos(ImVec2(top.x + width - pad - px(control_width), top.y + std::round((height - px(control_height)) * 0.5f)));
-    control();
-    ImGui::SetCursorScreenPos(ImVec2(top.x, bottom));
-    ImGui::Dummy(ImVec2(width, 0));
-}
-
-void inset_separator(float width) {
-    ImVec2 at = ImGui::GetCursorScreenPos();
-    float thickness = std::max(1.0f, std::floor(ui::scale()));
-    ImGui::GetWindowDrawList()->AddRectFilled(at + ImVec2(px(18), 0), at + ImVec2(width - px(18), thickness), ui::palette().separator);
-    ImGui::Dummy(ImVec2(width, thickness));
-}
 
 // The folder the launcher program is in (the game program is beside it).
 std::filesystem::path base_path() {
@@ -152,7 +104,11 @@ std::vector<std::string> arguments_for(const recomp::Ini& prefs, const std::file
         }
         return false;
     };
-    return about.arguments(launch);
+    std::vector<std::string> arguments = about.arguments(launch);
+    if (about.mute_argument && prefs.get("audio", "muted") == "1") {
+        arguments.push_back(about.mute_argument);
+    }
+    return arguments;
 }
 
 }  // namespace
@@ -163,7 +119,7 @@ int play_directly() {
     std::filesystem::path folder = player_folder();
     recomp::Ini prefs(folder / "launcher.ini");
     prefs.load();
-    if (!about.check(prefs.get("game", about.file_key)).usable()) {
+    if (about.game_page && !about.check(prefs.get("game", about.file_key)).usable()) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, LAUNCHER_GAME_NAME, about.file_not_set_up, nullptr);
         return 1;
     }
@@ -185,7 +141,12 @@ int play_directly() {
 }
 
 App::App(SDL_Window* window)
-    : about_(launcher::describe()), window_(window), prefs_(data_folder() / "launcher.ini"), settings_(data_folder() / "settings.ini") {
+    : about_(launcher::describe()),
+      window_(window),
+      prefs_(data_folder() / "launcher.ini"),
+      settings_(data_folder() / "settings.ini"),
+      folder_(data_folder()),
+      program_folder_(base_path()) {
     prefs_.load();
     settings_.load();
     // The launcher's default is the Enhanced preset (the game alone, with no settings, runs Pure).
@@ -199,11 +160,11 @@ App::App(SDL_Window* window)
     }
     load_features();
     bindings_ = recomp::LoadBindings(settings_.path().string(), about_.bindings);
-    std::string remembered = prefs_.get("game", about_.file_key);
+    std::string remembered = about_.game_page ? prefs_.get("game", about_.file_key) : std::string();
     if (!remembered.empty()) {
         use_game_file(remembered);
     }
-    if (about_.find_nearby && !checking_ && !file_.usable()) {
+    if (about_.game_page && about_.find_nearby && !checking_ && !file_.usable()) {
         // Nothing usable remembered: the port may know of one near the program
         std::string nearby = about_.find_nearby(base_path());
         if (!nearby.empty()) {
@@ -219,7 +180,31 @@ App::~App() {
 }
 
 bool App::busy() const {
+    for (const launcher::CustomPage& page : about_.pages) {
+        if (page.busy && page.busy()) {
+            return true;
+        }
+    }
     return checking_ || game_.running();
+}
+
+int App::page_count() const {
+    return static_cast<int>(about_.pages.size()) + (about_.game_page ? 3 : 2);
+}
+
+// The launcher's own page at a place in the sidebar (the port's pages come first), or Page::Count
+Page App::own_page(int index) const {
+    int own = index - static_cast<int>(about_.pages.size());
+    if (own < 0) {
+        return Page::Count;
+    }
+    return static_cast<Page>(about_.game_page ? own : own + 1);
+}
+
+launcher::PageContext App::context(float width) {
+    launcher::PageContext context{width, window_, prefs_, settings_, folder_, program_folder_, game_.running(), game_.exit_code(), play_error_, {}};
+    context.play = [this] { play(); };
+    return context;
 }
 
 std::filesystem::path App::game_program() const {
@@ -337,9 +322,26 @@ bool App::consume(const SDL_Event& event) {
     if (capture_action_ >= 0 && capture(event)) {
         return true;
     }
+    if (event.type == SDL_EVENT_GAMEPAD_ADDED && interactive_ && SDL_GetTicks() < 2000) {
+        show_focus_ = true;  // (a gamepad that was there when the launcher started)
+    }
     if (event.type == SDL_EVENT_DROP_FILE && event.drop.data) {
-        use_game_file(event.drop.data);
-        page_ = Page::Game;
+        // To the port's page that is shown if it takes files, else to the first of its pages that does,
+        // else it is the game file
+        int count = static_cast<int>(about_.pages.size());
+        for (int i = -1; i < count; i++) {
+            int index = i < 0 ? page_ : i;
+            if (index < count && about_.pages[index].drop) {
+                launcher::PageContext dropped = context(0.0f);
+                about_.pages[index].drop(dropped, event.drop.data);
+                page_ = index;
+                return true;
+            }
+        }
+        if (about_.game_page) {
+            use_game_file(event.drop.data);
+            page_ = count;
+        }
         return true;
     }
     return false;
@@ -354,6 +356,13 @@ void App::frame() {
     if (!picked.empty()) {
         use_game_file(picked);
     }
+    // The game may have changed settings.ini (its menu's features): what it left is what is shown and kept
+    if (was_running_ && !game_.running()) {
+        settings_.load();
+        show_focus_ = interactive_ && SDL_HasGamepad();  // (back from the game with a gamepad in hand)
+    }
+    was_running_ = game_.running();
+    navigation();
     const ui::Palette& p = ui::palette();
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);
@@ -369,6 +378,66 @@ void App::frame() {
     ImGui::SetCursorScreenPos(viewport->Pos + ImVec2(px(kSidebarWidth), 0));
     page(viewport->Size.x - px(kSidebarWidth), height);
     ImGui::End();
+    popup_was_open_ = ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
+}
+
+void App::set_interactive() {
+    interactive_ = true;
+    show_focus_ = SDL_HasGamepad();
+}
+
+// What the arrow keys and a gamepad do beyond moving the ring and pressing what it is on (which is ImGui's).
+void App::navigation() {
+    bool held = false;
+    for (int key = ImGuiKey_GamepadStart; key <= ImGuiKey_GamepadRStickDown; key++) {
+        held = held || ImGui::IsKeyDown(static_cast<ImGuiKey>(key));
+    }
+    if (held) {
+        ui::request_frames(2);  // (a held button repeats, and a held stick scrolls, only while frames are drawn)
+    }
+    if (capture_action_ < 0 && !held && nav_hold_) {
+        nav_hold_ = false;
+        ui::show_focus();  // (the ring is where it was)
+    }
+    if (show_focus_ && ImGui::GetFocusID() != 0) {
+        ui::show_focus();
+        show_focus_ = false;
+        start_focus_ = starting_ ? ImGui::GetFocusID() : 0;
+        starting_ = false;
+    }
+    // Left with nothing to the left of the ring in the page: to the sidebar
+    ImGuiID focused = ImGui::GetFocusID();
+    bool left_failed = left_from_ != 0 && left_from_ == focused && !in_sidebar_;
+    left_from_ = 0;
+    // Right in the sidebar: into the page, at its top (ImGui's own search only looks level with the row)
+    focus_page_ = right_from_sidebar_ && in_sidebar_;
+    right_from_sidebar_ = false;
+    if (navigation_paused() || popup_was_open_) {
+        focus_page_ = false;
+        return;
+    }
+    if (in_sidebar_ && ui::focus_shown() &&
+        (ImGui::IsKeyPressed(ImGuiKey_RightArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadRight) || ImGui::IsKeyPressed(ImGuiKey_GamepadLStickRight))) {
+        right_from_sidebar_ = true;
+        ui::request_frames(3);
+    }
+    if (left_failed) {
+        focus_sidebar_ = true;
+    }
+    if (ui::focus_shown() && (ImGui::IsKeyPressed(ImGuiKey_LeftArrow) || ImGui::IsKeyPressed(ImGuiKey_GamepadDpadLeft) || ImGui::IsKeyPressed(ImGuiKey_GamepadLStickLeft))) {
+        left_from_ = focused;
+        ui::request_frames(3);
+    }
+    // The shoulder buttons: the page before, the page after
+    int turn = (ImGui::IsKeyPressed(ImGuiKey_GamepadR1, false) ? 1 : 0) - (ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false) ? 1 : 0);
+    if (turn != 0) {
+        page_ = std::clamp(page_ + turn, 0, page_count() - 1);
+        focus_sidebar_ = true;
+    }
+    // Back (Esc, or a gamepad's B): from a page to the sidebar
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape, false) || ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)) {
+        focus_sidebar_ = true;
+    }
 }
 
 void App::sidebar(float height) {
@@ -378,22 +447,41 @@ void App::sidebar(float height) {
     ImGui::SetCursorScreenPos(origin + ImVec2(px(24), px(28)));
     ui::text(LAUNCHER_GAME_NAME, Font::Semibold, 17.0f, p.text);
     ImGui::SetCursorScreenPos(origin + ImVec2(px(24), px(50)));
-    ui::text("native port", Font::Regular, ui::size::kDetail, p.secondary);
-    const char* names[] = {"Game", "Features", "Controllers"};
+    ui::text(about_.subtitle, Font::Regular, ui::size::kDetail, p.secondary);
+    const char* own[] = {"Game", about_.features_name, "Controllers"};
     float top = px(100);
     float step = px(38);
     ImGuiID indicator = ImHashStr("nav-indicator");
     float at = ui::animate(indicator, static_cast<float>(page_), 18.0f);
+    int custom = static_cast<int>(about_.pages.size());
     ImVec2 pill = origin + ImVec2(px(20), top + at * step);
     ImGui::GetWindowDrawList()->AddRectFilled(pill, pill + ImVec2(px(inner), px(36)), p.control_hover, px(10));
-    for (int i = 0; i < static_cast<int>(Page::Count); i++) {
+    // With the arrow keys or a gamepad: from a page, left goes to the row of the page shown and to no
+    // other; once there, up and down change the page; right goes into it.
+    ImGuiID focused = ImGui::GetFocusID();
+    int shown = page_;
+    bool in_sidebar = false;
+    for (int i = 0; i < page_count(); i++) {
         ImGui::SetCursorScreenPos(origin + ImVec2(px(20), top + step * static_cast<float>(i)));
         ImGui::PushID(i);
-        if (ui::nav_item(names[i], static_cast<int>(page_) == i, inner)) {
-            page_ = static_cast<Page>(i);
+        const char* name = i < custom ? about_.pages[i].name : own[static_cast<int>(own_page(i))];
+        if (ui::nav_item(name, shown == i, inner, in_sidebar_ || shown == i)) {
+            page_ = i;
+        }
+        if (focused == ImGui::GetItemID()) {
+            in_sidebar = true;
+            if (focused != focus_seen_ && in_sidebar_ && ui::focus_shown()) {
+                page_ = i;
+            }
+        }
+        if (focus_sidebar_ && shown == i) {
+            ui::focus_item();
+            focus_sidebar_ = false;
         }
         ImGui::PopID();
     }
+    in_sidebar_ = in_sidebar;
+    focus_seen_ = focused;
     ImGui::SetCursorScreenPos(origin + ImVec2(px(24), height - px(36)));
     ui::text(LAUNCHER_DISCLAIMER, Font::Regular, ui::size::kSmall, p.tertiary, px(inner));
 }
@@ -401,9 +489,28 @@ void App::sidebar(float height) {
 void App::page(float width, float height) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(px(kPagePaddingX), px(kPagePaddingTop)));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ui::palette().background);
-    ImGui::BeginChild(static_cast<int>(page_) + 100, ImVec2(width, height), ImGuiChildFlags_AlwaysUseWindowPadding);
+    // (the page as a whole is not something the ring goes on; what is in it is)
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
+    ImGui::BeginChild(page_ + 100, ImVec2(width, height), ImGuiChildFlags_AlwaysUseWindowPadding);
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNav, false);
+    // (The sidebar and the page are apart for the arrow keys and a gamepad: ImGui's own search would go from
+    // a sidebar row to whatever in the page is nearest. Left, Right and Back go between them: navigation().)
+    // A gamepad's right stick scrolls the page (what is only text is not somewhere the ring goes)
+    float stick = ImGui::GetKeyData(ImGuiKey_GamepadRStickDown)->AnalogValue - ImGui::GetKeyData(ImGuiKey_GamepadRStickUp)->AnalogValue;
+    if (focus_page_) {
+        ImGui::SetScrollY(0.0f);
+        ui::focus_next_item();
+        focus_page_ = false;
+    }
+    if (stick != 0.0f && !popup_was_open_) {
+        ImGui::SetScrollY(std::clamp(ImGui::GetScrollY() + stick * px(1100) * ImGui::GetIO().DeltaTime, 0.0f, ImGui::GetScrollMaxY()));
+    }
     float content = std::min(width - px(kPagePaddingX) * 2, px(kContentMaxWidth));
-    switch (page_) {
+    if (page_ < static_cast<int>(about_.pages.size())) {
+        launcher::PageContext shown = context(content);
+        about_.pages[page_].draw(shown);
+    }
+    switch (own_page(page_)) {
     case Page::Game:
         game_page(content);
         break;
@@ -417,26 +524,18 @@ void App::page(float width, float height) {
         break;
     }
     ui::gap(40);
+    ImGui::PopItemFlag();
     ImGui::EndChild();
+    ImGui::PopItemFlag();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
-}
-
-void App::heading(const char* title, const char* intro, float width) {
-    const ui::Palette& p = ui::palette();
-    ui::text(title, Font::Semibold, ui::size::kHeading, p.text);
-    if (intro) {
-        ui::gap(8);
-        ui::text(intro, Font::Regular, ui::size::kLead, p.secondary, std::min(width, px(620)));
-    }
-    ui::gap(26);
 }
 
 // ---- Game --------------------------------------------------------------------------------
 
 void App::game_page(float width) {
     const ui::Palette& p = ui::palette();
-    heading(LAUNCHER_GAME_NAME, about_.file_intro, width);
+    layout::heading(LAUNCHER_GAME_NAME, about_.file_intro, width);
 
     FileCheck file;
     {
@@ -457,9 +556,15 @@ void App::game_page(float width) {
     ImVec2 row_top = ImGui::GetCursorScreenPos();
     row(width, shown.c_str(), status.c_str(), 130.0f, 36.0f, [&] {
         if (ui::button("Choose…", Kind::Secondary, 130.0f, !checking_)) {
-            choose_game_file();
+            // (the system's file dialog wants a mouse or a keyboard)
+            if (ui::gamepad_in_use()) {
+                open_browser();
+            } else {
+                choose_game_file();
+            }
         }
     });
+    browser();
     if (!file_path_.empty() && !checking_) {
         // A mark at the card's left edge: good file, usable file, or not usable.
         ImVec2 center(row_top.x - px(14), row_top.y + px(24));
@@ -494,6 +599,20 @@ void App::game_page(float width) {
         }
         display.end();
     }
+    if (about_.mute_argument) {
+        ui::gap(24);
+        ui::text("SOUND", Font::Semibold, ui::size::kDetail, p.secondary);
+        ui::gap(10);
+        Card sound(width);
+        bool muted = prefs_.get("audio", "muted") == "1";
+        row(width, "Muted", "Start the game with no sound. The game's menu switches it back on.", 42.0f, 24.0f, [&] {
+            if (ui::toggle("##muted", muted)) {
+                prefs_.set("audio", "muted", muted ? "0" : "1");
+                prefs_.save();
+            }
+        });
+        sound.end();
+    }
     ui::gap(28);
 
     bool file_ok = !checking_ && file.usable();
@@ -508,8 +627,15 @@ void App::game_page(float width) {
         ui::text(summary.c_str(), Font::Regular, ui::size::kDetail, p.secondary);
         ui::gap(12);
     }
-    if (ui::button(game_.running() ? "Playing…" : "Play", Kind::Primary, 200.0f, ready, 48.0f)) {
+    if (ui::button(game_.running() ? "Playing…###play" : "Play###play", Kind::Primary, 200.0f, ready, 48.0f)) {
         play();
+    }
+    // With a gamepad in hand the ring starts on Play, once there is a game to play
+    if (start_focus_ != 0 && ImGui::GetFocusID() != start_focus_) {
+        start_focus_ = 0;
+    } else if (start_focus_ != 0 && ready) {
+        ui::focus_item();
+        start_focus_ = 0;
     }
     if (!have_program) {
         ui::gap(10);
@@ -541,25 +667,157 @@ void App::game_page(float width) {
     }
 }
 
+// ---- the game file, chosen with a gamepad --------------------------------------------------
+
+void App::open_browser() {
+    std::error_code error;
+    std::filesystem::path start = file_path_.empty() ? std::filesystem::path() : std::filesystem::u8path(file_path_).parent_path();
+    if (start.empty() || !std::filesystem::is_directory(start, error)) {
+        const char* home = SDL_GetUserFolder(SDL_FOLDER_HOME);
+        start = home ? std::filesystem::u8path(home) : std::filesystem::current_path(error);
+    }
+    list_folder(start);
+    browse_open_ = true;
+}
+
+// The folders in a folder and the files the port's filter takes ("*", or endings: "zip;bin"), folders first.
+void App::list_folder(const std::filesystem::path& folder) {
+    std::vector<std::string> endings;
+    std::string pattern = about_.file_filter.pattern ? about_.file_filter.pattern : "*";
+    std::transform(pattern.begin(), pattern.end(), pattern.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::stringstream parts(pattern);
+    for (std::string ending; std::getline(parts, ending, ';');) {
+        endings.push_back(ending);
+    }
+    bool any = std::find(endings.begin(), endings.end(), "*") != endings.end();
+    browse_folder_ = folder.lexically_normal();
+    if (!browse_folder_.has_filename() && browse_folder_.has_parent_path() && browse_folder_ != browse_folder_.root_path()) {
+        browse_folder_ = browse_folder_.parent_path();  // ("a/b/" is "a/b")
+    }
+    browse_entries_.clear();
+    std::error_code error;
+    std::filesystem::directory_iterator each(browse_folder_, std::filesystem::directory_options::skip_permission_denied, error);
+    for (; !error && each != std::filesystem::directory_iterator(); each.increment(error)) {
+        std::string name = each->path().filename().u8string();
+        if (name.empty() || name[0] == '.') {
+            continue;
+        }
+        std::error_code unreadable;
+        bool is_folder = each->is_directory(unreadable);
+        if (!is_folder && !any) {
+            std::string ending = each->path().extension().u8string();
+            std::transform(ending.begin(), ending.end(), ending.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (ending.empty() || std::find(endings.begin(), endings.end(), ending.substr(1)) == endings.end()) {
+                continue;
+            }
+        }
+        browse_entries_.push_back({name, is_folder});
+    }
+    auto lower = [](std::string text) {
+        std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return text;
+    };
+    std::sort(browse_entries_.begin(), browse_entries_.end(), [&](const BrowseEntry& a, const BrowseEntry& b) {
+        return a.folder != b.folder ? a.folder : lower(a.name) < lower(b.name);
+    });
+    browse_moved_ = true;
+}
+
+void App::browser() {
+    const ui::Palette& p = ui::palette();
+    if (browse_open_) {
+        ImGui::OpenPopup("##browse");
+        browse_open_ = false;
+    }
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImVec2 size(std::min(px(640), viewport->Size.x - px(48)), std::min(px(520), viewport->Size.y - px(48)));
+    float inner = size.x - px(36);
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(size);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(px(18), px(18)));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, px(14));
+    if (ImGui::BeginPopupModal("##browse", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
+        ui::text("Choose the file", Font::Semibold, 17.0f, p.text);
+        ui::gap(4);
+        std::string where = ui::fit_start(browse_folder_.u8string(), Font::Regular, ui::size::kDetail, inner);
+        ui::text(where.c_str(), Font::Regular, ui::size::kDetail, p.secondary);
+        ui::gap(12);
+        bool up = browse_folder_.has_parent_path() && browse_folder_.parent_path() != browse_folder_;
+        int chosen = -2;  // -1: the folder above
+        ImGui::BeginChild("##list", ImVec2(inner, ImGui::GetContentRegionAvail().y - px(36 + 12)), ImGuiChildFlags_NavFlattened);
+        bool moved = browse_moved_;
+        browse_moved_ = false;
+        if (moved) {
+            ImGui::SetScrollY(0.0f);
+        }
+        float row = inner - px(14);
+        if (up) {
+            if (ui::list_item("..", false, row)) {
+                chosen = -1;
+            }
+            if (moved) {
+                ui::focus_item();
+            }
+        }
+        for (size_t i = 0; i < browse_entries_.size(); i++) {
+            const BrowseEntry& entry = browse_entries_[i];
+            ImGui::PushID(static_cast<int>(i));
+            std::string label = ui::fit_start(entry.folder ? entry.name + "/" : entry.name, Font::Regular, ui::size::kBody, row - px(24));
+            if (ui::list_item(label.c_str(), false, row)) {
+                chosen = static_cast<int>(i);
+            }
+            if (moved && !up && i == 0) {
+                ui::focus_item();
+            }
+            ImGui::PopID();
+        }
+        if (browse_entries_.empty()) {
+            ui::gap(8);
+            ui::text("Nothing here to choose.", Font::Regular, ui::size::kBody, p.secondary);
+        }
+        ImGui::EndChild();
+        ui::gap(12);
+        bool close = ui::button("Cancel", Kind::Secondary, 110.0f) || ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
+                     ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false);
+        if (chosen == -1) {
+            list_folder(browse_folder_.parent_path());
+        } else if (chosen >= 0 && browse_entries_[static_cast<size_t>(chosen)].folder) {
+            list_folder(browse_folder_ / std::filesystem::u8path(browse_entries_[static_cast<size_t>(chosen)].name));
+        } else if (chosen >= 0) {
+            use_game_file((browse_folder_ / std::filesystem::u8path(browse_entries_[static_cast<size_t>(chosen)].name)).u8string());
+            close = true;
+        }
+        if (close) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::PopStyleVar(2);
+}
+
 // ---- Features ----------------------------------------------------------------------------
 
 void App::features_page(float width) {
     const ui::Palette& p = ui::palette();
-    std::string intro = std::string("Pure plays the game exactly as it was ") + about_.original + ". Enhanced turns on the improvements; or pick your own.";
-    heading("Features", intro.c_str(), width);
+    std::string intro = about_.features_intro
+                            ? std::string(about_.features_intro)
+                            : std::string("Pure plays the game exactly as it was ") + about_.original + ". Enhanced turns on the improvements; or pick your own.";
+    layout::heading(about_.features_name, intro.c_str(), width);
 
-    std::vector<std::string> labels = {std::string("Pure: as ") + about_.original, "Enhanced: recommended", "Custom"};
-    std::string preset = recomp::Preset(settings_);
-    int index = 0;
-    for (int i = 0; i < 3; i++) {
-        if (preset == kPresetNames[i]) {
-            index = i;
+    if (about_.presets) {
+        std::vector<std::string> labels = {std::string("Pure: as ") + about_.original, "Enhanced: recommended", "Custom"};
+        std::string preset = recomp::Preset(settings_);
+        int index = 0;
+        for (int i = 0; i < 3; i++) {
+            if (preset == kPresetNames[i]) {
+                index = i;
+            }
         }
+        if (ui::dropdown("##preset", labels, index, 280.0f)) {
+            set_preset(kPresetNames[index]);
+        }
+        ui::gap(26);
     }
-    if (ui::dropdown("##preset", labels, index, 280.0f)) {
-        set_preset(kPresetNames[index]);
-    }
-    ui::gap(26);
 
     if (!features_error_.empty()) {
         ui::text(features_error_.c_str(), Font::Regular, ui::size::kBody, p.danger, width);
@@ -689,6 +947,9 @@ void App::bind(int player, bool gamepad, int action, SDL_Scancode key, recomp::P
 bool App::capture(const SDL_Event& event) {
     if (event.type == SDL_EVENT_KEY_DOWN) {
         SDL_Scancode key = event.key.scancode;
+        if (event.key.repeat) {
+            return true;  // (the key that pressed the button here, still held: not the key for it)
+        }
         if (key == SDL_SCANCODE_BACKSPACE || key == SDL_SCANCODE_DELETE) {
             bind(bind_player_, capture_gamepad_, capture_action_, SDL_SCANCODE_UNKNOWN, {});
         } else if (key != SDL_SCANCODE_ESCAPE && !capture_gamepad_) {
@@ -699,21 +960,22 @@ bool App::capture(const SDL_Event& event) {
         capture_action_ = -1;
         return true;
     }
-    if (event.type == SDL_EVENT_KEY_UP) {
-        return true;
-    }
-    if (!capture_gamepad_) {
-        return false;
-    }
+    // (a key let go is ImGui's to hear: it may be the Enter or Space that pressed the button here)
     if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
-        bind(bind_player_, true, capture_action_, SDL_SCANCODE_UNKNOWN, {event.gbutton.button, -1});
+        // The button for the action; or, while a key is waited for, any button leaves things as they were
+        // (a player with only a gamepad has no Esc). Until it is let go it does nothing else.
+        if (capture_gamepad_) {
+            bind(bind_player_, true, capture_action_, SDL_SCANCODE_UNKNOWN, {event.gbutton.button, -1});
+        }
         capture_action_ = -1;
+        nav_hold_ = true;
         return true;
     }
-    if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION && event.gaxis.value > 16000 &&
+    if (capture_gamepad_ && event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION && event.gaxis.value > 16000 &&
         (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER || event.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)) {
         bind(bind_player_, true, capture_action_, SDL_SCANCODE_UNKNOWN, {-1, event.gaxis.axis});
         capture_action_ = -1;
+        nav_hold_ = true;
         return true;
     }
     return false;
@@ -721,7 +983,7 @@ bool App::capture(const SDL_Event& event) {
 
 void App::controllers_page(float width) {
     const ui::Palette& p = ui::palette();
-    heading("Controllers", "The keyboard always works. Gamepads show up here when connected; press buttons and move the sticks to check they work.",
+    layout::heading("Controllers", "The keyboard always works. Gamepads show up here when connected; press buttons and move the sticks to check they work.",
             width);
 
     int count = 0;

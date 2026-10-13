@@ -35,6 +35,7 @@ void rmenu_configure(RMenu *menu, const RMenuConfig *c) {
         static const recomp::MenuRow::Kind kKinds[] = {
             recomp::MenuRow::Save, recomp::MenuRow::Load, recomp::MenuRow::Slot, recomp::MenuRow::Speed,
             recomp::MenuRow::Pages, recomp::MenuRow::Action, recomp::MenuRow::Quit, recomp::MenuRow::Resume,
+            recomp::MenuRow::Mute,
         };
         config.groups.back().push_back({kKinds[row.kind], row.id, Str(row.title), Str(row.description)});
     }
@@ -64,6 +65,10 @@ void rmenu_configure(RMenu *menu, const RMenuConfig *c) {
     }
     if (c->closeName) {
         config.closeName = c->closeName;
+    }
+    if (c->muted && c->setMuted) {
+        config.muted = [muted = c->muted, user = c->user] { return muted(user) != 0; };
+        config.setMuted = [setMuted = c->setMuted, user = c->user](bool muted) { setMuted(user, muted ? 1 : 0); };
     }
     menu->menu.Configure(std::move(config));
 }
