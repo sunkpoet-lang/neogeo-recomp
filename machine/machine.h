@@ -60,6 +60,11 @@ public:
     const uint32_t *Picture() const {
         return m_picture.data();
     }
+    // How many pixels a line of it has: Video::kWidth, or more when the game's sources asked for a wider
+    // picture (Video::wide) before the frame
+    int PictureWidth() const {
+        return m_pictureWidth;
+    }
     // For a game's own sources that put the picture together themselves (two stages side by side, say): the
     // picture the frame made, to change before it is shown
     uint32_t *Picture() {
@@ -94,6 +99,11 @@ public:
     std::vector<uint8_t> ram;       // FF0000-FFFFFF
     std::vector<uint8_t> videoRam;  // 900000-92FFFF
     std::vector<uint8_t> objectRam; // two banks of 0x2000
+    // The object list the next frame's picture will be made from (the board takes it at the start of the
+    // frame): 1024 entries of four big-endian words, as Video::LatchObjects reads them
+    const uint8_t *ObjectsToCome() const {
+        return &objectRam[m_objectBank ? 0x2000 : 0];
+    }
     std::vector<uint8_t> extraRam;  // 660000-663FFF
     uint8_t soundRam[0x1000] = {};  // shared with the Z80 (its C000-CFFF)
     uint8_t soundRam2[0x1000] = {}; // the Z80's own (F000-FFFF)
@@ -125,6 +135,7 @@ public:
 private:
     const RomSet &m_roms;
     std::vector<uint32_t> m_picture;
+    int m_pictureWidth = Video::kWidth;
     int m_line = 0;
     uint64_t m_lineStart = 0;  // the CPU's cycle count at which the next line starts
     bool m_blankInterrupt = false, m_rasterInterrupt = false;
