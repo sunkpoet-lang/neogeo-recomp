@@ -114,6 +114,8 @@ private:
     // The arrow keys and a gamepad.
     bool interactive_ = false;
     bool show_focus_ = false;      // show the ring as soon as there is something for it to be round
+    bool starting_ = true;         // (the first time that is done)
+    unsigned start_focus_ = 0;     // what the ring was first on, while it is still there: it goes to Play when Play can be pressed
     bool nav_hold_ = false;        // a button was just chosen for an action: nothing moves until it is let go
     bool focus_sidebar_ = false;   // put the ring on the sidebar's row for the page shown
     bool in_sidebar_ = false;      // the ring was in the sidebar in the last frame

@@ -402,6 +402,8 @@ void App::navigation() {
     if (show_focus_ && ImGui::GetFocusID() != 0) {
         ui::show_focus();
         show_focus_ = false;
+        start_focus_ = starting_ ? ImGui::GetFocusID() : 0;
+        starting_ = false;
     }
     // Left with nothing to the left of the ring in the page: to the sidebar
     ImGuiID focused = ImGui::GetFocusID();
@@ -487,7 +489,12 @@ void App::sidebar(float height) {
 void App::page(float width, float height) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(px(kPagePaddingX), px(kPagePaddingTop)));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ui::palette().background);
-    ImGui::BeginChild(page_ + 100, ImVec2(width, height), ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_NavFlattened);
+    // (the page as a whole is not something the ring goes on; what is in it is)
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
+    ImGui::BeginChild(page_ + 100, ImVec2(width, height), ImGuiChildFlags_AlwaysUseWindowPadding);
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNav, false);
+    // (The sidebar and the page are apart for the arrow keys and a gamepad: ImGui's own search would go from
+    // a sidebar row to whatever in the page is nearest. Left, Right and Back go between them: navigation().)
     // A gamepad's right stick scrolls the page (what is only text is not somewhere the ring goes)
     float stick = ImGui::GetKeyData(ImGuiKey_GamepadRStickDown)->AnalogValue - ImGui::GetKeyData(ImGuiKey_GamepadRStickUp)->AnalogValue;
     if (focus_page_) {
@@ -517,7 +524,9 @@ void App::page(float width, float height) {
         break;
     }
     ui::gap(40);
+    ImGui::PopItemFlag();
     ImGui::EndChild();
+    ImGui::PopItemFlag();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
 }
@@ -621,8 +630,12 @@ void App::game_page(float width) {
     if (ui::button(game_.running() ? "Playing…###play" : "Play###play", Kind::Primary, 200.0f, ready, 48.0f)) {
         play();
     }
-    if (ready) {
-        ImGui::SetItemDefaultFocus();  // (where the arrow keys and a gamepad start from)
+    // With a gamepad in hand the ring starts on Play, once there is a game to play
+    if (start_focus_ != 0 && ImGui::GetFocusID() != start_focus_) {
+        start_focus_ = 0;
+    } else if (start_focus_ != 0 && ready) {
+        ui::focus_item();
+        start_focus_ = 0;
     }
     if (!have_program) {
         ui::gap(10);
