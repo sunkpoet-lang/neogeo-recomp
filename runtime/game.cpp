@@ -50,6 +50,10 @@ std::vector<recomp::FeatureInfo> FeatureList() {
     return list;
 }
 
+const std::string &SettingsPath() {
+    return g_settingsPath;
+}
+
 void LoadFeatures(const std::string &settingsPath, const std::string &list) {
     g_settingsPath = settingsPath;
     g_on.clear();

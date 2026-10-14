@@ -86,6 +86,8 @@ std::vector<recomp::FeatureInfo> FeatureList();
 // The player's choices: from settings.ini ([features]: preset = pure | enhanced | custom, then name = 0 | 1),
 // then `list` (comma-separated names, each on; "-name": off). Call after RegisterGame.
 void LoadFeatures(const std::string &settingsPath, const std::string &list);
+// Where settings.ini is (empty: none): a game's sources keep files of their own beside it
+const std::string &SettingsPath();
 bool FeatureOn(const char *name);
 // Changes one and writes settings.ini as the launcher would (recomp::SetFeature: preset = custom, the rest of
 // the file as it was)
