@@ -84,12 +84,17 @@ public:
         const int16_t *rows = nullptr;
         int (*object)(uint32_t tile, uint16_t attributes, int entry) = nullptr;
         bool (*tile)(int which, int column, int row, int at, uint16_t &code, uint16_t &attributes) = nullptr;
+        // (a stage painted narrower than the wide picture in places leaves holes where nothing is drawn and
+        // the backdrop shows, in the added columns or where a scroll screen is drawn moved: with this set, a
+        // run of such pixels no wider than `side` is the line's own picture mirrored at the nearest drawn pixel)
+        bool fillHoles = false;
     } wide;
     int Width() const {
         return kWidth + 2 * wide.side;
     }
 
 private:
+    void FillHoles(uint16_t *pens, int width) const;
     Sources m_src;
     uint32_t m_palette[0xC00] = {};
     uint16_t m_objects[0x1000] = {}; // the latched object list: 1024 entries of four words
