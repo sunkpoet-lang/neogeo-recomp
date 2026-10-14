@@ -74,6 +74,9 @@ struct Game {
     // For a game whose sources can ask for a wider picture (video.h, Video::wide): how many columns the
     // widest will have with the player's choices as they are, so that the window starts in its shape
     int (*widestPicture)() = nullptr;
+    // Not to run ahead now (the port's run-ahead): a mode whose own workings a save state does not wholly hold,
+    // so that frames run and taken back would change it. Not given: run-ahead whenever it is on.
+    bool (*noRunAhead)() = nullptr;
 };
 Game &TheGame();
 // The game's sources fill it in (games/<id>/src; runtime/no_game.cpp when a game has none)
@@ -102,6 +105,10 @@ void EndSessionFeatures();
 // they are working the controls for, say); the window does that while this is set
 void SetFastForward(bool on);
 bool FastForward();
+// Run-ahead (the port's "run_ahead" feature) is running frames that will be taken back: the game's sources skip
+// what must happen once (writing a file, say). Also set while the frame before them is put back.
+bool RunningAhead();
+void SetRunningAhead(bool on);
 // ... and for it to run slowly: a frame of the game in every `by` pictures of the screen (1: as it is). The
 // slower of this and the speed the player chose in the menu is the speed the game runs at.
 void SetSlowMotion(int by);

@@ -32,6 +32,7 @@ uint8_t *Ram(uint32_t address) {
 namespace {
     std::map<std::string, int> g_on;
     bool g_fastForward = false;
+    bool g_runningAhead = false;
     int g_slowMotion = 1;
     std::string g_settingsPath;
 
@@ -104,6 +105,13 @@ void SetFastForward(bool on) {
 }
 bool FastForward() {
     return g_fastForward;
+}
+
+bool RunningAhead() {
+    return g_runningAhead;
+}
+void SetRunningAhead(bool on) {
+    g_runningAhead = on;
 }
 
 void SetSlowMotion(int by) {

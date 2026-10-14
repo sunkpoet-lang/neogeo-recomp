@@ -840,11 +840,7 @@ void M68K::Execute(uint16_t op) {
 }
 
 void M68K::Serialize(Archive &ar) {
-    if (waitCycles) {
-        // (a wait is not kept in a saved state: it is taken as over)
-        cycles += waitCycles;
-        FinishWait();
-    }
+    // (a wait is kept as it is, so that keeping a state changes nothing: run-ahead keeps one every frame)
     ar.Mark(0x4D36384B);
     ar.Pod(d);
     ar.Pod(a);
@@ -861,6 +857,11 @@ void M68K::Serialize(Archive &ar) {
     ar.Pod(stopped);
     ar.Pod(m_interruptLevel);
     ar.Pod(cycles);
+    ar.Pod(waitCycles);
+    ar.Pod(waitResume);
+    ar.Pod(waitStack);
+    ar.Pod(waitClears);
+    ar.Pod(waitArmed);
 }
 
 } // namespace cps2recomp
