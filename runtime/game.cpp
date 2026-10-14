@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <set>
 #include <sstream>
 
 namespace cps2recomp {
@@ -31,6 +32,7 @@ uint8_t *Ram(uint32_t address) {
 
 namespace {
     std::map<std::string, int> g_on;
+    std::set<std::string> g_aids; // the features marked kFeatureTraining (LoadFeatures)
     bool g_fastForward = false;
     bool g_runningAhead = false;
     int g_slowMotion = 1;
@@ -59,6 +61,12 @@ const std::string &SettingsPath() {
 void LoadFeatures(const std::string &settingsPath, const std::string &list) {
     g_settingsPath = settingsPath;
     g_on.clear();
+    g_aids.clear();
+    for (const Feature &feature : TheGame().features) {
+        if (feature.flags & kFeatureTraining) {
+            g_aids.insert(feature.name);
+        }
+    }
     // (the rules the launcher follows too: recomp-common/settings.h)
     recomp::Ini settings(settingsPath);
     settings.load();
@@ -87,9 +95,31 @@ bool FeatureOn(const char *name) {
     return FeatureValue(name) != 0;
 }
 
-int FeatureValue(const char *name) {
+int FeatureSetting(const char *name) {
     const auto it = g_on.find(name);
     return it == g_on.end() ? 0 : it->second;
+}
+
+int FeatureValue(const char *name) {
+    const auto it = g_on.find(name);
+    if (it == g_on.end() || it->second == 0) {
+        return 0;
+    }
+    // (a training aid, outside a training session: off)
+    if (TheGame().inTraining && g_aids.count(it->first) && !TheGame().inTraining()) {
+        return 0;
+    }
+    return it->second;
+}
+
+void TrainingAids(std::initializer_list<const char *> names) {
+    for (const char *name : names) {
+        for (Feature &feature : TheGame().features) {
+            if (!strcmp(feature.name, name)) {
+                feature.flags |= kFeatureTraining;
+            }
+        }
+    }
 }
 
 void EndSessionFeatures() {

@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,9 @@ enum : unsigned {
     // `display`), and not on the Features page: the launcher says at every start whether it is on
     // (--features NAME or -NAME), which goes before what settings.ini has. The in-game menu still has it.
     kFeatureFirstPage = 16,
+    // A training aid (hit boxes, frame data, the dummy...): it works only while a training session is on
+    // (Game::inTraining); elsewhere it reads as off (FeatureValue), though the menu and settings.ini keep it
+    kFeatureTraining = 32,
 };
 
 // Something the game's sources can do when the player asks (a row of the in-game menu, and a key if it has
@@ -77,6 +81,9 @@ struct Game {
     // Not to run ahead now (the port's run-ahead): a mode whose own workings a save state does not wholly hold,
     // so that frames run and taken back would change it. Not given: run-ahead whenever it is on.
     bool (*noRunAhead)() = nullptr;
+    // A training session is on (the game's own idea of one): the training aids (kFeatureTraining) work only then.
+    // Not given: they work everywhere.
+    bool (*inTraining)() = nullptr;
 };
 Game &TheGame();
 // The game's sources fill it in (games/<id>/src; runtime/no_game.cpp when a game has none)
@@ -98,6 +105,11 @@ void SetFeature(const char *name, bool on);
 // For a feature with choices: which is chosen (0: the first, which is off), and choosing
 int FeatureValue(const char *name);
 void SetFeatureValue(const char *name, int value);
+// What the player has chosen for a feature, whether it works now or not (the menu shows this; FeatureValue gives
+// 0 for a training aid outside a training session)
+int FeatureSetting(const char *name);
+// The game's sources mark features of theirs as training aids (kFeatureTraining), by name
+void TrainingAids(std::initializer_list<const char *> names);
 // The board is being reset from the menu: the features that last a session go off
 void EndSessionFeatures();
 

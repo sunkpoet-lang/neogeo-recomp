@@ -59,7 +59,7 @@ void Menu::Open(bool withStates) {
     for (const cps2recomp::Command &command : game.commands) {
         config.commands.push_back({command.category, command.title, command.description});
     }
-    config.value = [](size_t feature) { return cps2recomp::FeatureValue(cps2recomp::TheGame().features[feature].name); };
+    config.value = [](size_t feature) { return cps2recomp::FeatureSetting(cps2recomp::TheGame().features[feature].name); };
     config.setValue = [](size_t feature, int value) { cps2recomp::SetFeatureValue(cps2recomp::TheGame().features[feature].name, value); };
     config.speeds.assign(std::begin(kSpeedNames), std::end(kSpeedNames));
     config.speedDescription = "Left/Right: slow motion. While playing, P (or a click of the right stick) stops the game and starts it "
