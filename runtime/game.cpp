@@ -31,6 +31,21 @@ uint8_t *Ram(uint32_t address) {
 }
 
 namespace {
+    uint8_t *g_program = nullptr;
+    uint32_t g_programSize = 0;
+} // namespace
+void SetProgram(uint8_t *program, uint32_t size) {
+    g_program = program;
+    g_programSize = size;
+}
+uint32_t ProgramSize() {
+    return g_programSize;
+}
+uint8_t *Program(uint32_t address) {
+    return g_program + address;
+}
+
+namespace {
     std::map<std::string, int> g_on;
     std::set<std::string> g_aids; // the features marked kFeatureTraining (LoadFeatures)
     bool g_fastForward = false;

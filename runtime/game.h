@@ -150,6 +150,13 @@ struct HudBox {
 void SetBoxes(std::vector<HudBox> boxes);
 const std::vector<HudBox> &Boxes();
 
+// The 68000's ROM as a data read sees it (RomSet::program), for game sources that change the data the game
+// reads from it (its colours, say) before or while it runs. Never its code: the translated code is made from
+// the deciphered program and does not see this.
+void SetProgram(uint8_t *program, uint32_t size);
+uint32_t ProgramSize();
+uint8_t *Program(uint32_t address);
+
 // Work RAM as the game's sources see it: by the 68000's address (FF0000-FFFFFF). Values are big-endian.
 void SetRam(uint8_t *ram);
 uint8_t *Ram(uint32_t address);
