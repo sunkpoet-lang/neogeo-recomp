@@ -31,6 +31,7 @@ uint8_t *Ram(uint32_t address) {
 namespace {
     std::map<std::string, int> g_on;
     bool g_fastForward = false;
+    int g_slowMotion = 1;
     std::string g_settingsPath;
 
     std::string Trim(const std::string &s) {
@@ -98,6 +99,13 @@ void SetFastForward(bool on) {
 }
 bool FastForward() {
     return g_fastForward;
+}
+
+void SetSlowMotion(int by) {
+    g_slowMotion = by < 1 ? 1 : by;
+}
+int SlowMotion() {
+    return g_slowMotion;
 }
 
 void SetFeature(const char *name, bool on) {

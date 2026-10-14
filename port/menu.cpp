@@ -7,6 +7,7 @@
 #include "../machine/machine.h"
 #include "../runtime/game.h"
 
+#include <algorithm>
 #include <iterator>
 
 namespace port {
@@ -72,7 +73,8 @@ void Menu::Open(bool withStates) {
 }
 
 int Menu::SlowBy() const {
-    return kSlowBy[m_menu.Speed() < static_cast<int>(std::size(kSlowBy)) ? m_menu.Speed() : 0];
+    // (the slower of the player's choice and what the game's sources ask for: runtime/game.h)
+    return std::max(kSlowBy[m_menu.Speed() < static_cast<int>(std::size(kSlowBy)) ? m_menu.Speed() : 0], cps2recomp::SlowMotion());
 }
 
 void Menu::SetSlowBy(int by) {

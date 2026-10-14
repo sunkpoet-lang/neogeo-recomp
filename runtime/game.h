@@ -100,6 +100,10 @@ void EndSessionFeatures();
 // they are working the controls for, say); the window does that while this is set
 void SetFastForward(bool on);
 bool FastForward();
+// ... and for it to run slowly: a frame of the game in every `by` pictures of the screen (1: as it is). The
+// slower of this and the speed the player chose in the menu is the speed the game runs at.
+void SetSlowMotion(int by);
+int SlowMotion();
 
 // The readout: lines of text the game's sources want shown over the picture while it plays (a training
 // display and the like). The port draws each as a small panel.
