@@ -119,7 +119,7 @@ const launcher::Description& launcher::describe() {
         Description d;
         d.original = "in the arcade";
         d.file_heading = "ROM SET";
-        d.file_intro = "Choose your own copy of the game: the arcade ROM set " LAUNCHER_ROM_SET " (" LAUNCHER_ROM_NAME "), with its key file. Only this version works. It stays where it is: the launcher only reads it.";
+        d.file_intro = "Choose your own copy of the game: the arcade ROM set " LAUNCHER_ROM_SET " (" LAUNCHER_ROM_NAME "), with its key file. Only this version works. It stays where it is: the launcher only reads it.\n\nWhile playing, Esc or F1 on the keyboard, or the left stick's click (or Start and Select together) on a gamepad, opens the in-game menu: training mode and the other modes, save states, speed, and every feature.";
         d.file_empty = "None chosen. Drop " LAUNCHER_ROM_SET ".zip or its folder here, or choose the zip.";
         d.file_not_set_up = "The game isn't set up yet. Open the launcher (without --play) once to choose your ROM set.";
         d.file_filter = {"ROM set (zip)", "zip"};
@@ -134,7 +134,7 @@ const launcher::Description& launcher::describe() {
         }
         d.bindings = port::BindingTable();
         d.controls_heading = "WHILE PLAYING";
-        d.controls = {{"Keys", "Esc, F1, the left stick's click, or Start and Select together: menu (training mode, save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   Backspace: start over (training)   F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)"}};
+        d.controls = {{"Keys", "Esc, F1, the left stick's click, or Start and Select together: the in-game menu (training mode and the other modes, save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   Backspace: start over (training)   F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)"}};
         return d;
     }();
     return about;
