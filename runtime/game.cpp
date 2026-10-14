@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -141,6 +142,19 @@ void SetFeatureValue(const char *name, int value) {
             settings.load();
             recomp::SetFeature(settings, features, i, value);
             settings.save();
+        }
+    }
+    // (a feature whose switch is on the launcher's first page: that switch too, in launcher.ini beside
+    // settings.ini, or the launcher would turn it back the next time the game is started)
+    for (const Feature &feature : TheGame().features) {
+        if ((feature.flags & kFeatureFirstPage) && !strcmp(feature.name, name)) {
+            const std::string launcherIni = (std::filesystem::path(g_settingsPath).parent_path() / "launcher.ini").string();
+            if (std::filesystem::exists(launcherIni)) {
+                recomp::Ini prefs(launcherIni);
+                prefs.load();
+                prefs.set("video", name, on ? "1" : "0");
+                prefs.save();
+            }
         }
     }
 }
