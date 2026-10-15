@@ -405,6 +405,14 @@ void App::navigation() {
         start_focus_ = starting_ ? ImGui::GetFocusID() : 0;
         starting_ = false;
     }
+    // While something is being typed (in the Features page's search box), the arrow keys and Esc are the
+    // box's: Esc empties it, a second Esc leaves it
+    if (ImGui::GetIO().WantTextInput) {
+        left_from_ = 0;
+        right_from_sidebar_ = false;
+        focus_page_ = false;
+        return;
+    }
     // Left with nothing to the left of the ring in the page: to the sidebar
     ImGuiID focused = ImGui::GetFocusID();
     bool left_failed = left_from_ != 0 && left_from_ == focused && !in_sidebar_;
@@ -827,10 +835,52 @@ void App::features_page(float width) {
         ui::text("No optional features yet.", Font::Regular, ui::size::kBody, p.secondary, width);
         return;
     }
+    // The search box: only the features whose name, description, category or choices have every word typed
+    // (Ctrl+F or Cmd+F goes into it)
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_F) || ImGui::IsKeyChordPressed(ImGuiMod_Super | ImGuiKey_F)) {
+        focus_search_ = true;
+    }
+    if (focus_search_) {
+        ImGui::SetKeyboardFocusHere();
+        focus_search_ = false;
+    }
+    ui::search_box("##search", feature_search_, sizeof(feature_search_), "Search features", width);
+    auto lower = [](std::string text) {
+        std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return text;
+    };
+    std::vector<std::string> words;
+    {
+        std::istringstream typed(lower(feature_search_));
+        for (std::string word; typed >> word;) {
+            words.push_back(word);
+        }
+    }
+    std::vector<bool> shown(features_.size(), true);
+    size_t matches = features_.size();
+    if (!words.empty()) {
+        matches = 0;
+        for (size_t i = 0; i < features_.size(); i++) {
+            const recomp::FeatureInfo& feature = features_[i];
+            std::string text = feature.title + "\n" + feature.description + "\n" + feature.category + "\n" + feature.name;
+            for (const std::string& choice : feature.choices) {
+                text += "\n" + choice;
+            }
+            text = lower(text);
+            shown[i] = std::all_of(words.begin(), words.end(), [&](const std::string& word) { return text.find(word) != std::string::npos; });
+            matches += shown[i];
+        }
+        ui::gap(8);
+        std::string count = matches == 0 ? std::string("No features match.")
+                                         : std::to_string(matches) + " of " + std::to_string(features_.size()) + " features";
+        ui::text(count.c_str(), Font::Regular, ui::size::kDetail, p.secondary);
+    }
+    ui::gap(20);
     std::vector<std::string> categories;
-    for (const recomp::FeatureInfo& feature : features_) {
-        if (std::find(categories.begin(), categories.end(), feature.category) == categories.end()) {
-            categories.push_back(feature.category);
+    for (size_t i = 0; i < features_.size(); i++) {
+        const std::string& category = features_[i].category;
+        if (shown[i] && std::find(categories.begin(), categories.end(), category) == categories.end()) {
+            categories.push_back(category);
         }
     }
     std::vector<int> values = recomp::FeatureValues(settings_, features_);
@@ -843,7 +893,7 @@ void App::features_page(float width) {
         bool first = true;
         for (size_t i = 0; i < features_.size(); i++) {
             const recomp::FeatureInfo& feature = features_[i];
-            if (feature.category != category) {
+            if (feature.category != category || !shown[i]) {
                 continue;
             }
             if (!first) {

@@ -26,7 +26,7 @@ enum : unsigned {
     kMenuDown = 2,
     kMenuLeft = 4,
     kMenuRight = 8,
-    kMenuConfirm = 16, // chooses a row, changes it, goes into a page
+    kMenuConfirm = 16, // chooses a row, changes it, goes into a page (as Right does)
     kMenuBack = 32,    // leaves a page for the one it was reached from; on the first page, closes the menu
 };
 
@@ -118,8 +118,8 @@ public:
         return m_open;
     }
     // Buttons newly pressed (kMenu... bits): Up/Down choose, Confirm changes a row or goes into a page,
-    // Left/Right change a row with several values, Left and Back leave a page (for the one it was reached
-    // from), Back on the first page closes.
+    // Left/Right change a row with several values, Right on a page's row goes into that page, Left and Back
+    // leave a page (for the one it was reached from), Back on the first page closes.
     // Returns what the host is to do (with Slot() for Save and Load); the host closes the menu if that
     // went well. Resume and Back close it themselves.
     Chosen Buttons(unsigned pressed);
@@ -152,6 +152,7 @@ private:
     const MenuPage *PageOf(const std::string &name) const;
     std::string Parent(const std::string &page) const;
     bool Exists(const std::string &page) const;
+    void Enter(const std::string &page);
     void Leave();
     MenuConfig m_config;
     std::vector<MenuRow> m_first; // the first page's rows as given, groups one after another

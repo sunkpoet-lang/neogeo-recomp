@@ -77,6 +77,14 @@ void Menu::Leave() {
     Fill();
 }
 
+// Into a page from the one shown, at its top
+void Menu::Enter(const std::string &page) {
+    m_left.push_back(m_selected);
+    m_page = page;
+    m_selected = 0;
+    Fill();
+}
+
 // The rows of the page being shown
 void Menu::Fill() {
     m_rows.clear();
@@ -236,9 +244,11 @@ Menu::Chosen Menu::Buttons(unsigned pressed) {
         return {};
     }
     if (!press) {
-        // (Left on a page's other rows: back to the page it was reached from)
+        // (Left on a page's other rows: back to the page it was reached from; Right on a page's row: into it)
         if ((pressed & kMenuLeft) && !m_page.empty()) {
             Leave();
+        } else if ((pressed & kMenuRight) && row.kind == kRowPage) {
+            Enter(row.page);
         }
         return {};
     }
@@ -249,12 +259,7 @@ Menu::Chosen Menu::Buttons(unsigned pressed) {
     case kRowQuit: return {Chosen::Quit, 0};
     case kRowResume: m_open = false; break;
     case kRowCommand: return {Chosen::Command, static_cast<int>(row.index)};
-    case kRowPage:
-        m_left.push_back(m_selected);
-        m_page = row.page;
-        m_selected = 0;
-        Fill();
-        break;
+    case kRowPage: Enter(row.page); break;
     case kRowBack: Leave(); break;
     default: break;
     }

@@ -10,7 +10,7 @@
 //                                                       by one: u d l r arrow keys, e Enter, s Space, x Esc;
 //                                                       of a gamepad made for the test: U D L R the d-pad,
 //                                                       A B the buttons, [ ] the shoulders; 0-9 that page;
-//                                                       . a wait)
+//                                                       . a wait; f Ctrl+F; "text" typed)
 //   <id>-launcher --play                               (straight into the game set up earlier)
 // <ID>_HOME=folder (LAUNCHER_HOME_ENV) uses that folder instead of the player's (settings, launcher.ini).
 
@@ -74,6 +74,17 @@ struct Presser {
         desc.name = "Test gamepad";
         pad = SDL_OpenJoystick(SDL_AttachVirtualJoystick(&desc));
     }
+    // A character typed, as a window gets it when its text is being typed in
+    void type(char character) {
+        static char text[256][2];
+        unsigned char c = static_cast<unsigned char>(character);
+        text[c][0] = character;
+        SDL_Event event{};
+        event.type = SDL_EVENT_TEXT_INPUT;
+        event.text.windowID = SDL_GetWindowID(window);
+        event.text.text = text[c];
+        SDL_PushEvent(&event);
+    }
     void set(char key, bool down) {
         static const struct {
             char key;
@@ -81,7 +92,7 @@ struct Presser {
             SDL_Keycode keycode;
         } kKeys[] = {{'u', SDL_SCANCODE_UP, SDLK_UP},         {'d', SDL_SCANCODE_DOWN, SDLK_DOWN},   {'l', SDL_SCANCODE_LEFT, SDLK_LEFT},
                      {'r', SDL_SCANCODE_RIGHT, SDLK_RIGHT},   {'e', SDL_SCANCODE_RETURN, SDLK_RETURN}, {'s', SDL_SCANCODE_SPACE, SDLK_SPACE},
-                     {'x', SDL_SCANCODE_ESCAPE, SDLK_ESCAPE}};
+                     {'x', SDL_SCANCODE_ESCAPE, SDLK_ESCAPE}, {'f', SDL_SCANCODE_F, SDLK_F}};
         static const struct {
             char key;
             SDL_GamepadButton button;
@@ -96,6 +107,7 @@ struct Presser {
                 event.key.scancode = known.scancode;
                 event.key.key = known.keycode;
                 event.key.down = down;
+                event.key.mod = key == 'f' ? SDL_KMOD_LCTRL : SDL_KMOD_NONE;  // (f: Ctrl+F)
                 SDL_PushEvent(&event);
             }
         }
@@ -183,6 +195,7 @@ int main(int argc, char** argv) {
     presser.window = window;
     presser.start(press);
     size_t press_at = 0;
+    bool typing = false;  // (between quotes in --press)
 
     Uint64 previous = SDL_GetTicksNS();
     int shot_page = 0;
@@ -230,13 +243,20 @@ int main(int argc, char** argv) {
             // One key every eight frames: down for four of them
             int step = (shot_frames - 10) % 8;
             char key = press[press_at];
-            if (step == 0 && key >= '0' && key <= '9') {
+            if (key == '"' || typing) {
+                if (step == 0 && key == '"') {
+                    typing = !typing;
+                } else if (step == 0) {
+                    presser.type(key);
+                }
+            } else if (step == 0 && key >= '0' && key <= '9') {
                 app.set_page(std::min(key - '0', app.page_count() - 1));
             } else if (step == 0) {
                 presser.set(key, true);
             } else if (step == 4) {
                 presser.set(key, false);
-            } else if (step == 7 && ++press_at == press.size()) {
+            }
+            if (step == 7 && ++press_at == press.size()) {
                 shot_frames = -1;  // (and then the picture, as for a page)
                 press.clear();
             }

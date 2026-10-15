@@ -407,6 +407,62 @@ bool dropdown(const char* id_text, const std::vector<std::string>& labels, int& 
     return changed;
 }
 
+bool search_box(const char* id_text, char* buffer, size_t size, const char* hint, float width) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const Palette& p = palette();
+    ImVec2 origin = window->DC.CursorPos;
+    ImVec2 box(px(width), px(36));
+    ImRect rect(origin, origin + box);
+    ImGuiID id = window->GetID(id_text);
+    bool active = ImGui::GetActiveID() == id;
+    float hover = animate(id + 1, active || ImGui::IsMouseHoveringRect(rect.Min, rect.Max) ? 1.0f : 0.0f, 22.0f);
+    window->DrawList->AddRectFilled(rect.Min, rect.Max, mix(p.control, p.control_hover, hover), px(10));
+    // (a magnifying glass at the left, the field after it, and a cross that empties it at the right)
+    ImVec2 glass(rect.Min.x + px(19), rect.Min.y + box.y * 0.5f - px(1));
+    window->DrawList->AddCircle(glass, px(5), p.secondary, 0, px(1.6f));
+    window->DrawList->AddLine(glass + ImVec2(px(3.6f), px(3.6f)), glass + ImVec2(px(7.5f), px(7.5f)), p.secondary, px(1.8f));
+    push_font(Font::Regular, size::kBody);
+    float line = ImGui::GetFontSize();
+    ImGui::SetCursorScreenPos(ImVec2(rect.Min.x + px(34), std::round(rect.Min.y + (box.y - line) * 0.5f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled, p.tertiary);
+    ImGui::PushStyleColor(ImGuiCol_Text, p.text);
+    ImGui::PushStyleColor(ImGuiCol_NavCursor, IM_COL32(0, 0, 0, 0));  // (the ring is ours, round the whole box)
+    // (a gamepad's B leaves the box with what was typed kept; Esc, from a keyboard, empties it first)
+    if (active && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)) {
+        ImGui::ClearActiveID();
+    }
+    ImGui::SetNextItemWidth(box.x - px(34 + 36));
+    bool changed = ImGui::InputTextWithHint(id_text, hint, buffer, size, ImGuiInputTextFlags_EscapeClearsAll);
+    if (g_focus_next) {
+        g_focus_next = false;
+        focus_item();
+    }
+    ImGui::PopStyleColor(4);
+    pop_font();
+    focus_ring(rect, id, px(10));
+    if (buffer[0] != '\0') {
+        ImRect clear(ImVec2(rect.Max.x - px(34), rect.Min.y), rect.Max);
+        ImGuiID clear_id = id + 2;
+        ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
+        ImGui::ItemAdd(clear, clear_id);
+        ImGui::PopItemFlag();
+        bool hovered = false;
+        bool held = false;
+        if (ImGui::ButtonBehavior(clear, clear_id, &hovered, &held)) {
+            buffer[0] = '\0';
+            changed = true;
+        }
+        if (hovered) {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        }
+        cross_mark(clear.GetCenter(), px(10), hovered ? p.text : p.secondary);
+    }
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::ItemSize(rect);
+    return changed;
+}
+
 bool nav_item(const char* label, bool active, float width, bool reachable) {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImGuiID id = window->GetID(label);

@@ -99,6 +99,8 @@ private:
 
     std::vector<recomp::FeatureInfo> features_;
     std::string features_error_;
+    char feature_search_[128] = {};  // what the Features page is narrowed to ("": all of them)
+    bool focus_search_ = false;      // Ctrl+F (or Cmd+F): into the search box
 
     GameProcess game_;
     bool was_running_ = false;
