@@ -54,6 +54,11 @@ add_executable(${GAME} ${PORT_SOURCES} ${MACHINE_SOURCES} ${GEN_SOURCES} ${GEN_Z
 # and compared (runtime/recomp.cpp)
 add_executable(${GAME}-check EXCLUDE_FROM_ALL ${PORT_SOURCES} ${MACHINE_SOURCES} ${GEN_SOURCES} ${GEN_Z80_SOURCES})
 target_compile_definitions(${GAME}-check PRIVATE CPS2RECOMP_CHECK)
+# (on Windows the game is a windowed program: no console window opens beside it, whether the launcher starts it
+# or a double click does)
+if (WIN32)
+    set_target_properties(${GAME} PROPERTIES WIN32_EXECUTABLE ON)
+endif ()
 foreach (target ${GAME} ${GAME}-check)
     target_include_directories(${target} PRIVATE runtime port machine fight "${WORK_DIR}/gen")
     target_link_libraries(${target} PRIVATE SDL3::SDL3 ZLIB::ZLIB)

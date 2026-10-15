@@ -1,5 +1,5 @@
 # A copy of recomp-common's src/ and launcher/, made by tools/sync-common.sh. Do not change it here.
-commit 364322d9046eb243deb852883659d34df43d7ffc
+commit 394d61302db5e99607a0f51270e47f965909d77f
 3cdcd5d022ca8dc02d9c212dfc04784879a24107fdbf977c0a81f8b8ac00b516  launcher/embed_fonts.cmake
 e88c88a13ee251a3a820bca1d57c5deabb922302da176c62d1fff469e197397b  launcher/example/CMakeLists.txt
 d46fc703fd348d6a9acb65196377176314c4565245fbe376c5d53c8f965b99a0  launcher/example/description.cpp
@@ -18,7 +18,7 @@ c6157a267e7fe35e84c2ff731fc7573b6e3318f2c7856c30f6e805b54cad6ed1  launcher/src/l
 a6ac9d2cba5b247299a1928252d43dd59648a7b39ea69d46b78c0ce00023cc60  launcher/src/steam.h
 7f61b4c98666500de3eb35d0bb1bb1e16bf20a8ab21c9ed945ed2a953fe538fd  launcher/src/ui.cpp
 e750ba2151bb480190d0e250ddaf01dff535b5d42b2d05682e7c93d37bafe779  launcher/src/ui.h
-cb2ff9c6f50eb8cfd96aaef634f92292e2950f570380d1b8fbce7bb72f341eee  menu.cpp
+c1d84a9af9b231b204728f1da6a2545cf0ea177db1e97570ef63dff68515d43d  menu.cpp
 b77bdecc6813f645c4714394a14990525c71fdb2b2d5213a7046f16f086155bd  menu.h
 90bef36f4a2ae8939d22eee6aa7f54f4190791c848e017c67950208b80ae5752  menu_c.cpp
 c6d9cf3d5a2e0741c0e8cd0e7580c3abb5dd20fa41f7998efce8946dc7d2a2eb  menu_c.h
