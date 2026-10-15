@@ -20,7 +20,7 @@ namespace port {
 
 class Menu {
 public:
-    enum class Action { None, Save, Load, Coin, Start2, Reset, Command, Quit };
+    enum class Action { None, Save, Load, Coin, Start2, Test, Reset, Command, Quit };
 
     // withStates: show the save state rows
     void Open(bool withStates);

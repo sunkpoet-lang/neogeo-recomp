@@ -14,7 +14,7 @@ namespace port {
 
 namespace {
     // The first page's own rows
-    enum { kCoin = 1, kStart2, kReset };
+    enum { kCoin = 1, kStart2, kReset, kTest };
 
     // The speeds: the game runs one frame in this many of the screen's
     const int kSlowBy[] = {1, 2, 4, 8};
@@ -47,6 +47,9 @@ void Menu::Open(bool withStates) {
         {recomp::MenuRow::Action, kCoin, "Insert coin", "Puts a coin in the first slot."},
         {recomp::MenuRow::Action, kStart2, "Player 2 joins",
          "Presses player 2's Start: with a coin in (or free play), a second player to practise against."},
+        {recomp::MenuRow::Action, kTest, "Test menu",
+         "The game's own operator menu (the board's test switch, F2): its settings, such as difficulty and rounds. "
+         "Its Exit row goes back."},
     });
     config.groups.push_back({
         {recomp::MenuRow::Action, kReset, "Reset", "Starts the board again, as if switched off and on."},
@@ -111,7 +114,8 @@ Menu::Action Menu::Press(unsigned buttons) {
     case recomp::Menu::Chosen::Command:
         m_command = static_cast<size_t>(chosen.id);
         return Action::Command;
-    case recomp::Menu::Chosen::Action: return chosen.id == kCoin ? Action::Coin : chosen.id == kStart2 ? Action::Start2 : Action::Reset;
+    case recomp::Menu::Chosen::Action:
+        return chosen.id == kCoin ? Action::Coin : chosen.id == kStart2 ? Action::Start2 : chosen.id == kTest ? Action::Test : Action::Reset;
     default: return Action::None;
     }
 }
