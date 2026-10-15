@@ -37,6 +37,39 @@ namespace {
     };
 } // namespace
 
+float PictureShape(int columns, int rows, Shape shape, float window) {
+    switch (shape) {
+    case Shape::SquarePixels: return static_cast<float>(columns) / rows;
+    case Shape::Fill: return window;
+    case Shape::Arcade: break;
+    }
+    // (4:3 for the board's 384 columns, and as much wider as a wider picture has more of them: 16:9 for 512)
+    return 4.0f / 3.0f * columns / 384.0f;
+}
+
+SDL_FRect FitPicture(int width, int height, int columns, int rows, Shape shape, Scaling scaling) {
+    const float ratio = PictureShape(columns, rows, shape, height > 0 ? static_cast<float>(width) / height : 1.0f);
+    SDL_FRect where;
+    if (scaling == Scaling::WholePixels) {
+        // As many of the window's rows to one of the picture's as fits with the picture's width too (a
+        // picture as wide as the window across, if it fills it); with none that fits, as large as fits
+        for (int by = height / rows; by >= 1; by--) {
+            where.h = static_cast<float>(by * rows);
+            where.w = shape == Shape::Fill ? static_cast<float>(width) : std::round(where.h * ratio);
+            if (where.w <= width) {
+                where.x = std::floor((width - where.w) / 2);
+                where.y = std::floor((height - where.h) / 2);
+                return where;
+            }
+        }
+    }
+    where.w = std::min<float>(static_cast<float>(width), height * ratio);
+    where.h = shape == Shape::Fill ? static_cast<float>(height) : where.w / ratio;
+    where.x = (width - where.w) / 2;
+    where.y = (height - where.h) / 2;
+    return where;
+}
+
 Presenter::~Presenter() {
     Close();
 }
@@ -227,8 +260,11 @@ void Presenter::Draw(SDL_GPUCommandBuffer *commands, SDL_GPUTexture *target, con
     SDL_SetGPUViewport(pass, &viewport);
     const SDL_GPUTextureSamplerBinding binding = {m_picture, m_sampler};
     SDL_BindGPUFragmentSamplers(pass, 0, &binding, 1);
+    // (blended all over: as if each of the picture's pixels took one of the screen's, which the shader blends
+    // from edge to edge)
+    const bool smooth = m_scaling == Scaling::Smooth;
     const Sizes sizes = {{static_cast<float>(m_width), static_cast<float>(m_height)},
-                         {std::floor(where.w / m_width + 0.999f), std::floor(where.h / m_height + 0.999f)}};
+                         {smooth ? 1.0f : std::floor(where.w / m_width + 0.999f), smooth ? 1.0f : std::floor(where.h / m_height + 0.999f)}};
     SDL_PushGPUFragmentUniformData(commands, 0, &sizes, sizeof(sizes));
     SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(pass);
@@ -259,6 +295,16 @@ void Presenter::Show(const uint32_t *pixels, int width, int height, const SDL_FR
         m_enlargedBy = 0;
     }
     SDL_UpdateTexture(m_texture, nullptr, pixels, width * static_cast<int>(sizeof(uint32_t)));
+    if (m_scaling == Scaling::Smooth) {
+        // (blended all over: the picture as it is, fitted smoothly)
+        SDL_SetTextureScaleMode(m_texture, SDL_SCALEMODE_LINEAR);
+        SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
+        SDL_RenderClear(m_renderer);
+        SDL_RenderTexture(m_renderer, m_texture, nullptr, &where);
+        SDL_RenderPresent(m_renderer);
+        return;
+    }
+    SDL_SetTextureScaleMode(m_texture, SDL_SCALEMODE_NEAREST);
     // The picture's pixels are not square, so it never fits the window a whole number of times across. To keep
     // the pixels crisp and even it is first enlarged a whole number of times (each pixel a sharp block), and
     // that is then fitted to the window smoothly.
@@ -284,9 +330,10 @@ void Presenter::Show(const uint32_t *pixels, int width, int height, const SDL_FR
     SDL_RenderPresent(m_renderer);
 }
 
-bool Presenter::Render(const uint32_t *pixels, int width, int height, int outWidth, int outHeight, std::vector<uint32_t> &out,
-                       std::string &error) {
+bool Presenter::Render(const uint32_t *pixels, int width, int height, int outWidth, int outHeight, const SDL_FRect &where,
+                       Scaling scaling, std::vector<uint32_t> &out, std::string &error) {
     Presenter p;
+    p.m_scaling = scaling;
     if (!p.OpenGpu(nullptr, error)) {
         return false;
     }
@@ -307,7 +354,7 @@ bool Presenter::Render(const uint32_t *pixels, int width, int height, int outWid
     SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(device);
     bool ok = target && download && commands && p.Upload(commands, pixels, width, height);
     if (ok) {
-        p.Draw(commands, target, {0, 0, static_cast<float>(outWidth), static_cast<float>(outHeight)});
+        p.Draw(commands, target, where);
         SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(commands);
         SDL_GPUTextureRegion region = {};
         region.texture = target;
