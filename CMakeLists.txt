@@ -46,7 +46,7 @@ if (NOT GAME_SOURCES)
     set(GAME_SOURCES runtime/no_game.cpp)
 endif ()
 # (recomp-common/: the code the recomp ports share, a copy of recomp-common's; tools/sync-common.sh)
-set(PORT_SOURCES port/main.cpp port/frontend_sdl.cpp port/present.cpp port/menu.cpp port/hud.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/board.cpp runtime/spare.cpp fight/frames.cpp fight/training.cpp ${GAME_SOURCES})
+set(PORT_SOURCES port/main.cpp port/frontend_sdl.cpp port/present.cpp port/menu.cpp port/hud.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/board.cpp runtime/spare.cpp fight/frames.cpp fight/training.cpp fight/colours.cpp fight/colour_editor.cpp ${GAME_SOURCES})
 
 # The game, on cps2recomp's own machine (machine/). No emulator is compiled or linked into it.
 add_executable(${GAME} ${PORT_SOURCES} ${MACHINE_SOURCES} ${GEN_SOURCES} ${GEN_Z80_SOURCES})
