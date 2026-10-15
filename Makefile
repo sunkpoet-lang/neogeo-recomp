@@ -18,7 +18,7 @@ check-common:
 	@tools/sync-common.sh --check
 
 example:
-	@$(MAKE) --no-print-directory -C example
+	@$(MAKE) --no-print-directory -C example NO_APP=1
 	@$(MAKE) --no-print-directory -C example launcher
 
 smoke: example

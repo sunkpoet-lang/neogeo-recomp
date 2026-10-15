@@ -3,7 +3,8 @@
 #
 # cps2recomp build rules. Included by the top-level Makefile with GAME set.
 #
-#   make            translate the game's code to C++ and build the game (build/$(GAME)/$(GAME))
+#   make            translate the game's code to C++ and build the game (build/$(GAME)/$(GAME)); on macOS also
+#                   the launcher and the app bundle, so that the bundle is never older than the game (NO_APP=1: not)
 #   make run        run it (windowed)
 #   make explore    find the game's code by made-up play, in rounds (a fresh tree needs this once)
 #   make record     run it and add the places it reaches by computed jumps to the entries file
@@ -43,7 +44,13 @@ PROGRAM := $(WORK)/program.bin
 ENTRIES := $(WORK)/entries.txt
 
 .PHONY: all configure port gen run record explore check check-blocks check-sound check-rewrites check-common check-toolkit launcher app clean
+# (on macOS the app bundle too, which is what the player opens: a bundle left from an older build hides what
+# changed since)
+ifeq ($(shell uname -s)$(NO_APP),Darwin)
+all: port app
+else
 all: port
+endif
 
 # Generated code: the game's program as C++ (tools/recomp.py). It is made from the deciphered program, which
 # the port itself writes; so the first build of a fresh tree is an interpreter-only one, and is done twice.
