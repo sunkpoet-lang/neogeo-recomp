@@ -50,6 +50,16 @@ struct Launch {
     std::function<bool(const char *)> on;    // a Display switch's state, by its key
 };
 
+// A folder the player may choose for the game (a custom soundtrack's music files, say): a row of the Sound card with
+// Choose… and Clear, kept in launcher.ini beside the game's file, given to the game as `argument FOLDER` while one
+// is chosen (after the port's own arguments). The folder is only ever read by the launcher.
+struct FolderChoice {
+    const char *key;      // in launcher.ini, under the game's section
+    const char *title;
+    const char *detail;   // what it is for (shown while none is chosen)
+    const char *argument; // "--soundtrack"
+};
+
 struct InfoRow {
     const char *label;
     const char *text;
@@ -121,6 +131,8 @@ struct Description {
     // launcher.ini under [audio]). When it is on the game is started with this argument after the port's
     // own. nullptr: no card (a game with no sound to switch off).
     const char *mute_argument = "--mute";
+    // ... and below it, folders the player may choose (none: only the switch)
+    std::vector<FolderChoice> folders;
 
     bool preset_summary = false;              // a line over Play saying which preset is chosen
     std::vector<Toggle> display;              // the Display card's switches (none: no card)

@@ -111,6 +111,9 @@ private:
     // whichever game takes it
     void find_in(const std::string& path);
     void choose_folder();
+    // A folder of the Sound card's (Description::folders): chosen with the system's dialog or the launcher's browser
+    void choose_folder_for(size_t which, int choice);
+    void set_folder_choice(size_t which, int choice, const std::string& path);
 
     // Display switches (launcher.ini, [video]).
     bool toggle_on(const Slot& slot, const launcher::Toggle& toggle) const;
@@ -166,6 +169,7 @@ private:
     std::string picked_;  // from the file dialog (another thread)
     size_t picked_for_ = 0;
     bool picked_folder_ = false;
+    int picked_choice_ = -1;  // (under mutex_) the Sound card's folder the dialog was for (-1: none)
     std::atomic<bool> finding_{false};  // looking in a folder for the games' files
     std::thread finder_;
     std::vector<std::pair<size_t, std::string>> found_;  // (under mutex_) what it found: (game, file)
@@ -205,6 +209,7 @@ private:
     bool browse_moved_ = false;    // another folder is listed: back to its top
     bool browse_folders_ = false;  // a folder is being chosen (a collection's, to look in), not a file
     size_t browse_for_ = 0;        // the game a file is being chosen for
+    int browse_choice_ = -1;       // ... or the Sound card's folder (Description::folders) being chosen
     std::filesystem::path browse_folder_;
     std::vector<BrowseEntry> browse_entries_;
 };
