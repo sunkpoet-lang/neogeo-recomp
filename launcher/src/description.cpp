@@ -153,6 +153,11 @@ launcher::Description describe_game(const GameInfo& game) {
         return args;
     };
     d.saves_folder = true;
+    // (the custom soundtrack's files: port/soundtrack.h)
+    d.folders = {{"soundtrack", "Custom soundtrack",
+                  "Your own music files, played in place of the board's music while the Custom soundtrack feature is on. None chosen: "
+                  "the soundtrack folder in the game's own folder. The songs.txt the game writes there names the files.",
+                  "--soundtrack"}};
     d.display = {{"fullscreen", "Full screen", "F11 switches while playing.", false, nullptr}};  // (a window unless asked)
     for (const FeatureSwitch& one : switches) {
         d.display.push_back({keep(one.name), keep(one.title), keep(one.detail), false, nullptr});

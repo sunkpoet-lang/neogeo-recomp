@@ -66,6 +66,20 @@ follow it. recomp-common's own `THIRD_PARTY_NOTICES.md` has the table, file by f
 The 5x7 dot-matrix font of the menu (`recomp-common/text.h`) is the generic character set of LCD
 and LED displays, typed in for recomp-common.
 
+### Sound file decoders (public domain, or MIT / MIT-0)
+
+The custom soundtrack (`port/soundtrack.cpp`) reads the player's music files with four single-file decoders,
+kept unchanged in `third_party/` and compiled by `port/decoders.cpp`. Each is offered under either of two
+licences, the first being the public domain; the licence statements are at the end of each file, and the release
+archives carry them in `licenses/sound-decoders.txt`.
+
+| File | Project | Licence |
+| --- | --- | --- |
+| `third_party/stb_vorbis.c` | [stb](https://github.com/nothings/stb) `stb_vorbis` 1.22 (commit 2c980bb), by Sean Barrett | Public domain, or MIT |
+| `third_party/dr_flac.h` | [dr_libs](https://github.com/mackron/dr_libs) `dr_flac` 0.13.4 (commit dfe8377), by David Reid | Public domain, or MIT No Attribution |
+| `third_party/dr_mp3.h` | dr_libs `dr_mp3` 0.7.4 (the same commit), by David Reid, after minimp3 by lieff | Public domain, or MIT No Attribution |
+| `third_party/dr_wav.h` | dr_libs `dr_wav` 0.14.6 (the same commit), by David Reid | Public domain, or MIT No Attribution |
+
 ## Downloaded at build time
 
 None of these is stored in this repository.

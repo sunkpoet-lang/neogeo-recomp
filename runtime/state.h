@@ -22,6 +22,10 @@ public:
         : m_data(data)
         , m_saving(saving) {}
 
+    // The version of the save state being read, where the port knows it (0: as this build writes): a part added
+    // since is read only from states that have it
+    uint32_t version = 0;
+
     bool Saving() const {
         return m_saving;
     }

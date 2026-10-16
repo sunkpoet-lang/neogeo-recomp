@@ -165,6 +165,13 @@ std::vector<std::string> arguments_for(const recomp::Ini& prefs, const Target& t
     if (about.mute_argument && prefs.get("audio", "muted") == "1") {
         arguments.push_back(about.mute_argument);
     }
+    for (const launcher::FolderChoice& folder : about.folders) {
+        std::string chosen = prefs.get(target.file_section, folder.key);
+        if (!chosen.empty()) {
+            arguments.push_back(folder.argument);
+            arguments.push_back(chosen);
+        }
+    }
     return arguments;
 }
 
@@ -444,6 +451,35 @@ void App::choose_folder() {
         this, window_, nullptr, false);
 }
 
+void App::choose_folder_for(size_t which, int choice) {
+    const Slot& one = *slots_[which];
+    std::string start = prefs_.get(one.file_section, one.about->folders[static_cast<size_t>(choice)].key);
+    picked_for_ = which;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        picked_choice_ = choice;
+    }
+    SDL_ShowOpenFolderDialog(
+        [](void* self, const char* const* files, int) {
+            App* app = static_cast<App*>(self);
+            std::lock_guard<std::mutex> lock(app->mutex_);
+            if (files && files[0]) {
+                app->picked_ = files[0];
+                app->picked_folder_ = true;
+            } else {
+                app->picked_choice_ = -1;
+            }
+            wake();
+        },
+        this, window_, start.empty() ? nullptr : start.c_str(), false);
+}
+
+void App::set_folder_choice(size_t which, int choice, const std::string& path) {
+    Slot& one = *slots_[which];
+    prefs_.set(one.file_section, one.about->folders[static_cast<size_t>(choice)].key, path);
+    prefs_.save();
+}
+
 void App::use_game_file(size_t which, const std::string& path) {
     Slot& one = *slots_[which];
     if (one.checking) {
@@ -706,17 +742,24 @@ bool App::consume(const SDL_Event& event) {
 void App::frame() {
     std::string picked;
     bool picked_folder = false;
+    int picked_choice = -1;
     std::vector<std::pair<size_t, std::string>> found;
     bool found_ready = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         picked.swap(picked_);
         picked_folder = picked_folder_;
+        if (!picked.empty()) {
+            picked_choice = picked_choice_;
+            picked_choice_ = -1;
+        }
         found.swap(found_);
         found_ready = found_ready_;
         found_ready_ = false;
     }
-    if (!picked.empty()) {
+    if (!picked.empty() && picked_choice >= 0) {
+        set_folder_choice(picked_for_, picked_choice, picked);
+    } else if (!picked.empty()) {
         if (picked_folder || picked_for_ == kAnyGame) {
             find_in(picked);
         } else {
@@ -1021,20 +1064,55 @@ void App::display_cards(size_t which, float width) {
         }
         display.end();
     }
-    if (one.about->mute_argument) {
+    if (one.about->mute_argument || !one.about->folders.empty()) {
         ui::gap(24);
         ui::text("SOUND", Font::Semibold, ui::size::kDetail, p.secondary);
         ui::gap(10);
         Card sound(width);
-        bool muted = prefs_.get("audio", "muted") == "1";
-        row(width, "Muted",
-            collection_ ? "Start the games with no sound. A game's menu switches it back on." : "Start the game with no sound. The game's menu switches it back on.",
-            42.0f, 24.0f, [&] {
-                if (ui::toggle("##muted", muted)) {
-                    prefs_.set("audio", "muted", muted ? "0" : "1");
-                    prefs_.save();
+        bool first = true;
+        if (one.about->mute_argument) {
+            first = false;
+            bool muted = prefs_.get("audio", "muted") == "1";
+            row(width, "Muted",
+                collection_ ? "Start the games with no sound. A game's menu switches it back on." : "Start the game with no sound. The game's menu switches it back on.",
+                42.0f, 24.0f, [&] {
+                    if (ui::toggle("##muted", muted)) {
+                        prefs_.set("audio", "muted", muted ? "0" : "1");
+                        prefs_.save();
+                    }
+                });
+        }
+        for (size_t n = 0; n < one.about->folders.size(); n++) {
+            const launcher::FolderChoice& folder = one.about->folders[n];
+            if (!first) {
+                inset_separator(width);
+            }
+            first = false;
+            std::string chosen = prefs_.get(one.file_section, folder.key);
+            std::string detail = chosen.empty() ? std::string(folder.detail) : ui::fit_start(chosen, Font::Regular, ui::size::kDetail, width - px(300));
+            ImGui::PushID(static_cast<int>(n));
+            row(width, folder.title, detail.c_str(), chosen.empty() ? 130.0f : 230.0f, 36.0f, [&] {
+                if (!chosen.empty()) {
+                    if (ui::button("Clear", Kind::Secondary, 90.0f)) {
+                        set_folder_choice(which, static_cast<int>(n), "");
+                    }
+                    ImGui::SameLine(0.0f, px(10));
+                }
+                if (ui::button("Choose…", Kind::Secondary, 130.0f)) {
+                    // (the system's folder dialog wants a mouse or a keyboard)
+                    if (ui::gamepad_in_use()) {
+                        open_browser(which, true);
+                        browse_choice_ = static_cast<int>(n);
+                        if (!chosen.empty()) {
+                            list_folder(std::filesystem::u8path(chosen));
+                        }
+                    } else {
+                        choose_folder_for(which, static_cast<int>(n));
+                    }
                 }
             });
+            ImGui::PopID();
+        }
         sound.end();
     }
 }
@@ -1230,6 +1308,7 @@ void App::title_page(size_t which, float width) {
 void App::open_browser(size_t which, bool folders) {
     browse_for_ = which;
     browse_folders_ = folders;
+    browse_choice_ = -1;
     std::error_code error;
     std::string from = which < slots_.size() ? slots_[which]->file_path : std::string();
     if (from.empty()) {  // (a collection's: where another game's file is)
@@ -1304,7 +1383,10 @@ void App::browser() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(px(18), px(18)));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, px(14));
     if (ImGui::BeginPopupModal("##browse", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings)) {
-        ui::text(browse_folders_ ? "Choose the folder your games are in" : "Choose the file", Font::Semibold, 17.0f, p.text);
+        ui::text(browse_choice_ >= 0  ? "Choose the folder"
+                 : browse_folders_    ? "Choose the folder your games are in"
+                                      : "Choose the file",
+                 Font::Semibold, 17.0f, p.text);
         ui::gap(4);
         std::string where = ui::fit_start(browse_folder_.u8string(), Font::Regular, ui::size::kDetail, inner);
         ui::text(where.c_str(), Font::Regular, ui::size::kDetail, p.secondary);
@@ -1349,7 +1431,11 @@ void App::browser() {
         if (browse_folders_) {
             ImGui::SameLine(0.0f, px(10));
             if (ui::button("Use this folder", Kind::Primary, 160.0f)) {
-                find_in(browse_folder_.u8string());
+                if (browse_choice_ >= 0) {
+                    set_folder_choice(browse_for_, browse_choice_, browse_folder_.u8string());
+                } else {
+                    find_in(browse_folder_.u8string());
+                }
                 close = true;
             }
         }
@@ -1357,7 +1443,7 @@ void App::browser() {
             list_folder(browse_folder_.parent_path());
         } else if (chosen >= 0 && browse_entries_[static_cast<size_t>(chosen)].folder) {
             list_folder(browse_folder_ / std::filesystem::u8path(browse_entries_[static_cast<size_t>(chosen)].name));
-        } else if (chosen >= 0) {
+        } else if (chosen >= 0 && browse_choice_ < 0) {  // (a file: not what a folder of the Sound card's takes)
             std::string path = (browse_folder_ / std::filesystem::u8path(browse_entries_[static_cast<size_t>(chosen)].name)).u8string();
             if (browse_for_ < slots_.size()) {
                 use_game_file(browse_for_, path);

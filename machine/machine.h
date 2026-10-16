@@ -17,6 +17,7 @@
 #include "eeprom.h"
 #include "m68k.h"
 #include "romset.h"
+#include "soundtrack.h"
 
 #include <cstdint>
 #include <map>
@@ -85,6 +86,8 @@ public:
     uint64_t soundWritesChecked = 0;
     void ReportSoundTimes() const;
     bool monoForTest = false; // (--sound-test) the Z80 reads the game's stereo setting as mono
+    // The game's music from the player's files (machine/soundtrack.h): sees the game's sound requests
+    Soundtrack soundtrack;
 
     uint16_t players[2] = {}; // Button bits
     bool serviceButton = false, testSwitch = false;

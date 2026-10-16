@@ -71,6 +71,15 @@ struct Page {
     bool top = false;        // on the first page: before everything else, not among the other pages
 };
 
+// A piece of the game's music, for a custom soundtrack (port/soundtrack.h): the player's file for it is named
+// `name` (or the number, in hexadecimal)
+struct Song {
+    uint16_t number;     // as the game asks for it
+    const char *name;    // ryu_stage
+    const char *title;   // what it is, for the list the player reads
+    bool once = false;   // the board plays it once (a fanfare): so is the file, unless the player says otherwise
+};
+
 struct Game {
     std::vector<Feature> features;
     std::vector<Command> commands;
@@ -87,6 +96,10 @@ struct Game {
     // A training session is on (the game's own idea of one): the training aids (kFeatureTraining) work only then.
     // Not given: they work everywhere.
     bool (*inTraining)() = nullptr;
+    // For a custom soundtrack (machine/soundtrack.h): where the sound program's table of songs has song 0's entry,
+    // and how many entries it has (0: no custom soundtrack); and the names of the music, where they are known
+    uint32_t songTable = 0, songCount = 0;
+    std::vector<Song> songs;
 };
 Game &TheGame();
 // The game's sources fill it in (games/<id>/src; runtime/no_game.cpp when a game has none)
