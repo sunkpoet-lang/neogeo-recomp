@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
         if (!screenshot_prefix.empty() && shot_frames == 0 && !pressing && page_id.empty()) {
             app.set_page(shot_page);
         }
-        if (pressing && shot_frames >= 10 && press_at < press.size() && !app.busy()) {
+        if (pressing && shot_frames >= 10 && press_at < press.size() && app.ready_for_keys()) {
             // One key every eight frames: down for four of them
             int step = (shot_frames - 10) % 8;
             char key = press[press_at];
