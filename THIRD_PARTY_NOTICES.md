@@ -77,9 +77,12 @@ None of these is stored in this repository.
 | [Inter](https://rsms.me/inter/) 4.1 | SIL Open Font License 1.1. Copyright (c) 2016 The Inter Project Authors | The launcher's font, compiled into the launcher |
 | [zlib](https://zlib.net) | zlib. Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler | Reading a ROM set's archive, screenshots (PNG); the system's |
 
-Each download is checked against its published SHA-256. A game that gives out built programs must
-carry the license texts of SDL 3, Dear ImGui and Inter with them (the font is inside the launcher),
-MAME's notice above, and the GPL-3.0 with the offer of source that goes with it.
+Each download is checked against its published SHA-256. The release archives (`tools/release/`) carry the
+license texts of SDL 3, Dear ImGui and Inter (the font is inside the launcher), MAME's notice above, and the
+GPL-3.0 with the offer of source that goes with it (`SOURCE.txt`: the tag's source on GitHub). In release builds
+SDL 3 (3.4.16) is linked into every program; `zlib1.dll` is in the Windows archive, and there the MinGW-w64
+runtime (libstdc++, libgcc, winpthreads) is linked in: GPL-3.0 with the GCC Runtime Library Exception, and the
+MinGW-w64 runtime licence, whose texts the Windows archive carries too.
 
 ## Tools used to build (not included in builds)
 
@@ -89,7 +92,10 @@ Python, CMake, Ninja, a C++ compiler; glslangValidator and SPIRV-Cross to regene
 ## What is not included
 
 Nothing from any game or board is in this repository: no ROM or part of one, no graphics, sound or
-text, no key, and nothing made from a game's ROMs. Code translated from a game by the recompiler is
+text, no key, and nothing made from a game's ROMs. The games' folders (`games/<id>/`) hold this project's own
+code and notes about each game (addresses and record layouts found by the author, the ROM set's file names and
+checksums), input movies (text: which buttons were held on which frame), and the README's pictures of the games
+in `docs/screenshots/`, made by the programs from the author's own ROM sets. Code translated from a game by the recompiler is
 made on the machine of someone who has the game's ROM set, and is never part of this repository.
 
 `sound/driver.cpp` is the one file here written from a program of Capcom's: it does in C++ what

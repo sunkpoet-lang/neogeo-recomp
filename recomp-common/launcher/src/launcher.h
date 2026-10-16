@@ -105,13 +105,16 @@ struct Description {
     const char *file_not_set_up = "";         // what --play says when none is chosen
     SDL_DialogFileFilter file_filter = {"Game file", "*"};
     const char *file_key = "file";            // its key in launcher.ini, under [game]
-    FileCheck (*check)(const std::string &path) = nullptr;
+    std::function<FileCheck(const std::string &path)> check;
     bool check_on_thread = false;             // for a check that reads a large file
     // Optional: a game file near the program (a build inside the source tree), or ""
-    std::string (*find_nearby)(const std::filesystem::path &program_folder) = nullptr;
+    std::function<std::string(const std::filesystem::path &program_folder)> find_nearby;
+    // Optional, for a collection: where in a folder the player chose this game's file may be (the names a
+    // collection of such files gives it), tried in turn with `check`
+    std::function<std::vector<std::filesystem::path>(const std::filesystem::path &folder)> candidates;
 
     // The game's arguments
-    std::vector<std::string> (*arguments)(const Launch &launch) = nullptr;
+    std::function<std::vector<std::string>(const Launch &launch)> arguments;
     bool saves_folder = false;                // make <folder>/saves before starting
 
     // The Game page's Sound card has one switch, "Muted" (off unless the player switches it on; kept in
@@ -130,5 +133,39 @@ struct Description {
 
 // The port's own file defines this.
 const Description &describe();
+
+// ---- A collection: one launcher for several games -------------------------------------------------------
+//
+// A launcher built with LAUNCHER_COLLECTION defined starts any of several games, each a program of its own
+// beside it (the ports of one toolkit, say); its file defines describe_collection() instead of describe(). The
+// LAUNCHER_* definitions then name the collection (its name, program, folder, test variable, disclaimer).
+//
+// Its pages: Games (each game's file, which the launcher can find in a folder the player chooses, or which is
+// dropped on the window; Play), Features (those that more than one of the games has, set for all of them at
+// once, and the preset), Controllers (the same keys and buttons for all of them), and then a page for each game
+// whose file has been chosen: Play, its Display switches and the features that are that game's alone.
+//
+// Each game keeps its settings and saves in its own folder (named by its name, as a launcher of its own keeps
+// them), and its settings.ini has everything in it: the game started by itself, or from a Steam shortcut, plays
+// as the collection set it. A feature changed in a game's own menu is set for the other games too when the game
+// ends, if they have it.
+struct CollectionGame {
+    const char *id;          // short name: --play ID, --page ID, and its sections of the launcher.ini
+    const char *name;        // as the player reads it; its folder too (as LAUNCHER_GAME_NAME is a port's)
+    const char *exe;         // its program, beside the launcher (as LAUNCHER_GAME_EXE)
+    const char *home_env;    // a variable naming a folder to use instead of its own, for tests (LAUNCHER_HOME_ENV)
+    Description description; // what a launcher of its own is told (its pages, if any, are not shown)
+};
+
+struct Collection {
+    const char *subtitle = "";
+    const char *intro = "";       // the Games page's first lines
+    const char *find_title = "";  // the row that looks in a folder for every game's file, and what it says
+    const char *find_detail = "";
+    std::vector<CollectionGame> games;
+};
+
+// A collection's own file defines this (and not describe()).
+const Collection &describe_collection();
 
 } // namespace launcher

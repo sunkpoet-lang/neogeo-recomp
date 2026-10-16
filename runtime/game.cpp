@@ -137,6 +137,16 @@ void TrainingAids(std::initializer_list<const char *> names) {
     }
 }
 
+void OwnFeatures(std::initializer_list<const char *> names) {
+    for (const char *name : names) {
+        for (Feature &feature : TheGame().features) {
+            if (!strcmp(feature.name, name)) {
+                feature.flags |= kFeatureOwn;
+            }
+        }
+    }
+}
+
 void EndSessionFeatures() {
     for (const Feature &feature : TheGame().features) {
         if (feature.flags & kFeatureSession) {

@@ -2,3 +2,10 @@ __pycache__/
 .DS_Store
 build/
 work/
+# never commit game data or anything derived from it
+rom/
+*.zip
+*.key
+*.state
+state*.bin
+frame_data.csv
