@@ -327,7 +327,29 @@ bool App::busy() const {
             return true;
         }
     }
-    return finding_ || game_.running();
+    return finding_ || any_running();
+}
+
+bool App::ready_for_keys() const {
+    if (!collection_) {
+        return !busy();
+    }
+    return !finding_ && std::none_of(slots_.begin(), slots_.end(), [](const auto& one) { return one->checking.load(); });
+}
+
+bool App::any_running() const {
+    return std::any_of(slots_.begin(), slots_.end(), [](const auto& one) { return one->game.running(); });
+}
+
+bool App::navigation_paused() const {
+    if (capture_action_ >= 0 || nav_hold_) {
+        return true;
+    }
+    if (collection_) {
+        // (a window that is not shown, for pictures, is never in front)
+        return any_running() && interactive_ && !(SDL_GetWindowFlags(window_) & SDL_WINDOW_INPUT_FOCUS);
+    }
+    return any_running();
 }
 
 std::vector<size_t> App::titled() const {
@@ -383,7 +405,7 @@ Page App::own_page(int index, size_t* which) const {
 
 launcher::PageContext App::context(float width) {
     Slot& one = slot();
-    launcher::PageContext context{width, window_, prefs_, one.settings, one.folder, program_folder_, game_.running(), game_.exit_code(), play_error_, {}};
+    launcher::PageContext context{width, window_, prefs_, one.settings, one.folder, program_folder_, one.game.running(), one.game.exit_code(), one.play_error, {}};
     context.play = [this] { play(slot_); };
     return context;
 }
@@ -497,7 +519,10 @@ void App::find_in(const std::string& path) {
 
 void App::play(size_t which) {
     Slot& one = *slots_[which];
-    play_error_.clear();
+    if (one.game.running()) {
+        return;  // (one of each game at a time: a second would share its settings and saves)
+    }
+    one.play_error.clear();
     std::error_code error;
     if (one.about->saves_folder) {
         std::filesystem::create_directories(one.folder / "saves", error);
@@ -505,13 +530,12 @@ void App::play(size_t which) {
     std::filesystem::create_directories(one.folder / "logs", error);
     one.settings.save();
     one.values_before = recomp::FeatureValues(one.settings, one.features);
-    running_ = which;
     Target target;
     target.about = one.about;
     target.file_section = one.file_section;
     target.video_section = one.video_section;
     target.folder = one.folder;
-    game_.start(one.program(), arguments_for(prefs_, target), one.folder, play_error_, one.folder / "logs" / "game.log");
+    one.game.start(one.program(), arguments_for(prefs_, target), one.folder, one.play_error, one.folder / "logs" / "game.log");
 }
 
 bool App::toggle_on(const Slot& one, const launcher::Toggle& toggle) const {
@@ -614,12 +638,31 @@ void App::after_game(Slot& one) {
             }
             for (const auto& [which, feature] : shared.where) {
                 Slot& other = *slots_[which];
-                if (&other != &one && recomp::FeatureValues(other.settings, other.features)[feature] != values[i]) {
+                if (&other == &one) {
+                    continue;
+                }
+                if (other.game.running()) {
+                    // (it would write its settings.ini over this: set when it ends)
+                    const std::string name = other.features[feature].name;
+                    other.pending.erase(std::remove_if(other.pending.begin(), other.pending.end(), [&](const auto& p) { return p.first == name; }),
+                                        other.pending.end());
+                    other.pending.push_back({name, values[i]});
+                } else if (recomp::FeatureValues(other.settings, other.features)[feature] != values[i]) {
                     set_feature(other, feature, values[i]);
                 }
             }
         }
     }
+    // What the others' menus changed while it ran, of what its own did not
+    std::vector<int> now = recomp::FeatureValues(one.settings, one.features);
+    for (const auto& [name, value] : one.pending) {
+        for (size_t i = 0; i < one.features.size(); i++) {
+            if (one.features[i].name == name && now[i] == one.values_before[i] && now[i] != value) {
+                set_feature(one, i, value);
+            }
+        }
+    }
+    one.pending.clear();
     one.values_before.clear();
 }
 
@@ -698,14 +741,16 @@ void App::frame() {
             find_message_ = "Found " + names + " (" + std::to_string(found.size()) + " of " + std::to_string(here) + ").";
         }
     }
-    // The game may have changed settings.ini (its menu's features): what it left is what is shown and kept
-    if (was_running_ && !game_.running()) {
-        Slot& ended = *slots_[running_];
-        ended.settings.load();
-        after_game(ended);
-        show_focus_ = interactive_ && SDL_HasGamepad();  // (back from the game with a gamepad in hand)
+    // A game that ended may have changed its settings.ini (its menu's features): what it left is what is shown
+    // and kept
+    for (auto& one : slots_) {
+        if (one->was_running && !one->game.running()) {
+            one->settings.load();
+            after_game(*one);
+            show_focus_ = interactive_ && SDL_HasGamepad();  // (back from the game with a gamepad in hand)
+        }
+        one->was_running = one->game.running();
     }
-    was_running_ = game_.running();
     navigation();
     const ui::Palette& p = ui::palette();
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -1005,7 +1050,8 @@ void App::play_button(size_t which, float width) {
     }
     bool file_ok = !one.checking && file.usable();
     bool have_program = one.has_program();
-    bool ready = file_ok && have_program && !game_.running();
+    // (a port's launcher: while its game runs; a collection's: while this game runs, the others may start)
+    bool ready = file_ok && have_program && !one.game.running() && (collection_ || !any_running());
     if (one.about->preset_summary) {
         std::string preset = recomp::Preset(one.settings);
         std::string summary = preset == "pure"       ? std::string("Features: Pure (exactly as ") + one.about->original + ")"
@@ -1014,8 +1060,7 @@ void App::play_button(size_t which, float width) {
         ui::text(summary.c_str(), Font::Regular, ui::size::kDetail, p.secondary);
         ui::gap(12);
     }
-    bool this_one = running_ == which;
-    if (ui::button(game_.running() && this_one ? "Playing…###play" : "Play###play", Kind::Primary, 200.0f, ready, 48.0f)) {
+    if (ui::button(one.game.running() ? "Playing…###play" : "Play###play", Kind::Primary, 200.0f, ready, 48.0f)) {
         play(which);
     }
     // With a gamepad in hand the ring starts on Play, once there is a game to play
@@ -1028,12 +1073,12 @@ void App::play_button(size_t which, float width) {
     if (!have_program) {
         ui::gap(10);
         ui::text("The game program wasn't found next to the launcher.", Font::Regular, ui::size::kDetail, p.danger, width);
-    } else if (this_one && !play_error_.empty()) {
+    } else if (!one.play_error.empty()) {
         ui::gap(10);
-        ui::text(play_error_.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
-    } else if (this_one && !game_.running() && game_.exit_code() != 0) {
+        ui::text(one.play_error.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
+    } else if (!one.game.running() && one.game.exit_code() != 0) {
         ui::gap(10);
-        std::string text = "The game stopped with code " + std::to_string(game_.exit_code()) + ".";
+        std::string text = "The game stopped with code " + std::to_string(one.game.exit_code()) + ".";
         ui::text(text.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
     }
     // Linux and Steam Deck: shortcuts for Steam's Game Mode.
@@ -1117,8 +1162,7 @@ void App::library_page(float width) {
                 }
             }
             ImGui::SameLine(0.0f, px(10));
-            bool this_one = game_.running() && running_ == which;
-            if (ui::button(this_one ? "Playing…" : "Play", Kind::Primary, 110.0f, usable && !game_.running())) {
+            if (ui::button(one.game.running() ? "Playing…" : "Play", Kind::Primary, 110.0f, usable && !one.game.running())) {
                 play(which);
             }
         });
@@ -1135,15 +1179,16 @@ void App::library_page(float width) {
         ImGui::PopID();
     }
     games.end();
-    if (game_.running() || (!play_error_.empty() && running_ < slots_.size())) {
-        ui::gap(10);
-        if (!play_error_.empty()) {
-            ui::text(play_error_.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
+    // (what went wrong with each game's last start)
+    for (const auto& one : slots_) {
+        std::string text = !one->play_error.empty() ? one->name + ": " + one->play_error
+                           : !one->game.running() && one->game.exit_code() != 0
+                               ? one->name + " stopped with code " + std::to_string(one->game.exit_code()) + "."
+                               : std::string();
+        if (!text.empty()) {
+            ui::gap(10);
+            ui::text(text.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
         }
-    } else if (game_.exit_code() != 0) {
-        ui::gap(10);
-        std::string text = slots_[running_]->name + " stopped with code " + std::to_string(game_.exit_code()) + ".";
-        ui::text(text.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
     }
 }
 

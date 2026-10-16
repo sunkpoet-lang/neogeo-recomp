@@ -44,12 +44,17 @@ public:
     // A collection's: the page of the game with this id (--page ID), if it has one
     void set_page(const std::string& id);
     bool busy() const;
+    bool any_running() const;
+    // --press: the next key may be pressed (a port's launcher: nothing is busy; a collection's: nothing but its
+    // games, so that a second can be started while one runs)
+    bool ready_for_keys() const;
     // A window the player sees (not pictures for a test): with a gamepad connected the ring shows from the start
     void set_interactive();
     // While a key or a button is being chosen for an action (and until that button is let go), and while
     // the game runs (its gamepad is the game's), the arrow keys and the gamepad do not move the ring:
-    // main.cpp switches them off for those frames.
-    bool navigation_paused() const { return capture_action_ >= 0 || nav_hold_ || game_.running(); }
+    // main.cpp switches them off for those frames. (A collection's launcher, whose games can run several at
+    // once, is paused only while one runs and the launcher's window is not the one in front.)
+    bool navigation_paused() const;
 
 private:
     // One game the launcher starts: a port's launcher has one, a collection's one for each of its games.
@@ -69,6 +74,12 @@ private:
         std::atomic<bool> checking{false};
         std::thread checker;
         std::vector<int> values_before;  // its features' values when it was started (a collection's: what its menu changed)
+        GameProcess game;                // its program, while it runs (a collection's games can run at once)
+        bool was_running = false;
+        std::string play_error;          // why it did not start, or ""
+        // What another game's menu changed of a feature they share while this one was running: set when it
+        // ends, unless its own menu changed the same feature
+        std::vector<std::pair<std::string, int>> pending;
 
         explicit Slot(const std::filesystem::path& settings_path) : settings(settings_path) {}
         std::filesystem::path program() const;
@@ -164,10 +175,6 @@ private:
     char feature_search_[128] = {};  // what the Features page is narrowed to ("": all of them)
     bool focus_search_ = false;      // Ctrl+F (or Cmd+F): into the search box
 
-    GameProcess game_;
-    size_t running_ = 0;         // the game that is running
-    bool was_running_ = false;
-    std::string play_error_;
     std::string steam_message_;  // what Add to Steam did
     int selected_pad_ = 0;
     recomp::Bindings bindings_{};  // (a collection's are every game's)
