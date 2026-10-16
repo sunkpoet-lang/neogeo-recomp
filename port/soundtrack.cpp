@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <random>
 
 namespace port {
 
@@ -112,23 +113,63 @@ namespace {
     }
 
     constexpr size_t kChunk = 1024;
+
+    // File names in the order a person numbers them: "2 Theme" before "10 Theme", small and capital letters alike
+    bool NaturalLess(const std::string &a, const std::string &b) {
+        size_t i = 0, j = 0;
+        while (i < a.size() && j < b.size()) {
+            if (isdigit(static_cast<unsigned char>(a[i])) && isdigit(static_cast<unsigned char>(b[j]))) {
+                size_t ei = i, ej = j;
+                while (ei < a.size() && isdigit(static_cast<unsigned char>(a[ei]))) {
+                    ei++;
+                }
+                while (ej < b.size() && isdigit(static_cast<unsigned char>(b[ej]))) {
+                    ej++;
+                }
+                const std::string x = a.substr(i, ei - i), y = b.substr(j, ej - j);
+                const size_t zx = std::min(x.find_first_not_of('0'), x.size()), zy = std::min(y.find_first_not_of('0'), y.size());
+                const std::string nx = x.substr(zx), ny = y.substr(zy);
+                if (nx.size() != ny.size()) {
+                    return nx.size() < ny.size();
+                }
+                if (nx != ny) {
+                    return nx < ny;
+                }
+                i = ei;
+                j = ej;
+                continue;
+            }
+            const int ca = tolower(static_cast<unsigned char>(a[i])), cb = tolower(static_cast<unsigned char>(b[j]));
+            if (ca != cb) {
+                return ca < cb;
+            }
+            i++;
+            j++;
+        }
+        return a.size() - i < b.size() - j;
+    }
 } // namespace
 
 SoundtrackPlayer::SoundtrackPlayer() = default;
 SoundtrackPlayer::~SoundtrackPlayer() = default;
 
-int SoundtrackPlayer::Open(const std::string &folder, Soundtrack &tap) {
+int SoundtrackPlayer::Open(const std::string &folder, Soundtrack &tap, bool shuffle) {
     m_files.clear();
     m_decoder.reset();
     m_song = -1;
+    m_playlist.clear();
+    m_order.clear();
+    m_shuffle = shuffle;
     std::error_code error;
     const std::filesystem::path dir = TextPath(folder);
     // The folder's sound files by their names without the ending, in small letters
     std::map<std::string, std::string> stems;
+    std::vector<std::string> all;
     for (std::filesystem::directory_iterator each(dir, error); !error && each != std::filesystem::directory_iterator(); each.increment(error)) {
         const std::string ending = Lower(PathText(each->path().extension()));
         if (ending == ".ogg" || ending == ".oga" || ending == ".flac" || ending == ".mp3" || ending == ".wav") {
             stems.emplace(Lower(PathText(each->path().stem())), PathText(each->path()));
+            all.push_back(PathText(each->path()));
         }
     }
     auto ini = ReadIni(dir / "soundtrack.ini");
@@ -189,6 +230,19 @@ int SoundtrackPlayer::Open(const std::string &folder, Soundtrack &tap) {
     if (!found) {
         m_files.clear();
     }
+    if (!found && !all.empty()) {
+        // No file is named for a song: the folder is a playlist, played through in its files' order in place of all
+        // of the game's music
+        m_playlist = all;
+        std::sort(m_playlist.begin(), m_playlist.end(), NaturalLess);
+        replaced.assign(tap.MusicSongs().empty() ? 0 : tap.MusicSongs().back() + 1u, false);
+        for (uint16_t number : tap.MusicSongs()) {
+            replaced[number] = true;
+        }
+        found = static_cast<int>(m_playlist.size());
+        m_track = SIZE_MAX;
+        m_carry = 0;
+    }
     tap.Replace(std::move(replaced));
     return found;
 }
@@ -246,6 +300,10 @@ void SoundtrackPlayer::SeekTo(uint64_t made) {
 
 void SoundtrackPlayer::Make(const Soundtrack::State &state, bool heard, std::vector<float> &out) {
     out.clear();
+    if (!m_playlist.empty()) {
+        Playlist(state, heard, out);
+        return;
+    }
     if (state.song != m_song || state.serial != m_serial) {
         m_serial = state.serial;
         Start(state.song);
@@ -305,6 +363,64 @@ void SoundtrackPlayer::Make(const Soundtrack::State &state, bool heard, std::vec
         }
     }
     m_gain = target;
+}
+
+// The next file of the playlist (shuffled again each time round, when asked); one that cannot be read is passed over
+void SoundtrackPlayer::NextTrack() {
+    m_decoder.reset();
+    for (size_t tries = 0; tries < m_playlist.size() && !m_decoder; tries++) {
+        if (m_track == SIZE_MAX || ++m_track >= m_order.size()) {
+            m_order.resize(m_playlist.size());
+            for (size_t n = 0; n < m_order.size(); n++) {
+                m_order[n] = n;
+            }
+            if (m_shuffle) {
+                static std::mt19937 random{std::random_device{}()};
+                std::shuffle(m_order.begin(), m_order.end(), random);
+            }
+            m_track = 0;
+        }
+        m_decoder = OpenDecoder(m_playlist[m_order[m_track]]);
+        if (!m_decoder) {
+            fprintf(stderr, "soundtrack: %s is not a sound file this reads (Ogg Vorbis, FLAC, MP3, WAV)\n", m_playlist[m_order[m_track]].c_str());
+        }
+    }
+    m_rate = m_decoder ? m_decoder->rate : m_rate;
+}
+
+// A playlist plays on through the game, each file to its end, in place of all its music: a frame's worth of it for
+// each frame the game is heard (none while it is held, fast-forwarded or behind the menu)
+void SoundtrackPlayer::Playlist(const Soundtrack::State &state, bool heard, std::vector<float> &out) {
+    if (!heard) {
+        return;
+    }
+    if (!m_decoder) {
+        NextTrack();
+        if (!m_decoder) {
+            return;
+        }
+    }
+    m_carry += m_rate / cps2recomp::Machine::kFramesPerSecond;
+    size_t wanted = static_cast<size_t>(m_carry);
+    m_carry -= static_cast<double>(wanted);
+    const float gain = static_cast<float>(volume / 100.0 * (state.allLevel / double(Soundtrack::kFull)));
+    float buffer[kChunk * 8];
+    const int channels = m_decoder->channels;
+    out.reserve(wanted * 2);
+    while (wanted) {
+        const size_t got = channels <= 8 ? m_decoder->Read(buffer, std::min(wanted, kChunk)) : 0;
+        for (size_t n = 0; n < got; n++) {
+            const float left = buffer[n * channels];
+            out.push_back(left * gain);
+            out.push_back((channels > 1 ? buffer[n * channels + 1] : left) * gain);
+        }
+        wanted -= got;
+        if (got == 0) {
+            // (the file is over: the next one starts with the next frame, at its own rate)
+            NextTrack();
+            break;
+        }
+    }
 }
 
 std::string SongList(const Soundtrack &tap) {

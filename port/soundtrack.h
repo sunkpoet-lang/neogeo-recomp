@@ -16,6 +16,10 @@
 //   loop = 0:12.5 - 2:47.25     ; the part that repeats: start - end (minutes:seconds, or seconds); "no": played once
 //   volume = 90
 //
+// A folder with no file named for a song is a playlist instead: its files play one after another, each to its end,
+// in their names' order ("2 ..." before "10 ...") or shuffled, in place of all the game's music, and from the first
+// again after the last. It goes on through the game's screens, and stops only while the game is held.
+//
 // Without a loop, a file repeats from its LOOPSTART tag (and LOOPEND or LOOPLENGTH, in samples) where it has one,
 // or whole; a song the board plays once (a fanfare, a game over) is played once.
 #pragma once
@@ -48,9 +52,14 @@ public:
 
     // Looks in the folder for the songs' files (the game's music: `tap`'s, with the names the game's sources give)
     // and tells the machine which songs it has. Returns how many.
-    int Open(const std::string &folder, cps2recomp::Soundtrack &tap);
+    // When no file is named for a song, the folder is a playlist: all its files, in their names' order (`shuffle`:
+    // in a new random order each time round), one after another in place of all the game's music.
+    int Open(const std::string &folder, cps2recomp::Soundtrack &tap, bool shuffle = false);
+    bool IsPlaylist() const {
+        return !m_playlist.empty();
+    }
     bool Any() const {
-        return !m_files.empty();
+        return !m_files.empty() || !m_playlist.empty();
     }
     // The file the player has for a song ("": none)
     std::string FileFor(uint16_t song) const;
@@ -82,6 +91,14 @@ private:
     float m_gain = 0;              // (the last sample's: the next frame's starts there)
     int m_rate = 0;
     void Start(int32_t song);
+    // (a playlist)
+    std::vector<std::string> m_playlist;
+    std::vector<size_t> m_order;
+    size_t m_track = 0;
+    bool m_shuffle = false;
+    double m_carry = 0;
+    void NextTrack();
+    void Playlist(const cps2recomp::Soundtrack::State &state, bool heard, std::vector<float> &out);
     void SeekTo(uint64_t made);
     uint64_t Place(uint64_t made) const; // where in the file a count of samples made since the start is
 };
