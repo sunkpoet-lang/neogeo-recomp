@@ -155,8 +155,9 @@ launcher::Description describe_game(const GameInfo& game) {
     d.saves_folder = true;
     // (the custom soundtrack's files: port/soundtrack.h)
     d.folders = {{"soundtrack", "Custom soundtrack",
-                  "Your own music files, played in place of the board's music while the Custom soundtrack feature is on. None chosen: "
-                  "the soundtrack folder in the game's own folder. The songs.txt the game writes there names the files.",
+                  "Your own music, played in place of the board's music while the Custom soundtrack feature is on: a folder of music "
+                  "plays as a playlist, or files named as the songs.txt the game writes there replace those songs. None chosen: the "
+                  "soundtrack folder in the game's own folder.",
                   "--soundtrack"}};
     d.display = {{"fullscreen", "Full screen", "F11 switches while playing.", false, nullptr}};  // (a window unless asked)
     for (const FeatureSwitch& one : switches) {
