@@ -5,13 +5,14 @@
 
   gamecfg.py KEY [GAME]            print one value
   gamecfg.py --header OUT [GAME]   write a C header with every value as a GAME_<KEY> string macro
+  gamecfg.py --collection OUT GAME...   write the collection launcher's table of games (launcher/src/games.h)
 """
 
 import os
 import sys
 
-# The game's repository: where this is run from (make runs it from there), or else the one the toolkit is in
-ROOT = os.getcwd() if os.path.isdir("games") else os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Where games/ is: where this is run from (make runs it from the top, the example from example/), or else this repository
+ROOT = os.getcwd() if os.path.isdir("games") else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def load(game=None):
@@ -27,8 +28,34 @@ def load(game=None):
     return cfg
 
 
+# What the collection's launcher is told of each game (launcher/src/description.cpp, GameInfo), in its order
+COLLECTION_KEYS = ["id", "name", "rom_set", "rom_parent", "rom_name", "program", "graphics", "sound_program", "samples", "key", "display"]
+
+
+def quoted(value):
+    return '"%s"' % value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def write_if_changed(path, content):
+    if not os.path.exists(path) or open(path).read() != content:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w") as f:
+            f.write(content)
+
+
 def main():
     args = sys.argv[1:]
+    if len(args) >= 2 and args[0] == "--collection":
+        lines = ["// Generated from games/*/game.cfg by tools/gamecfg.py --collection", "#pragma once", "",
+                 "static const GameInfo kGames[] = {"]
+        # (in the order of their names, as the player reads them)
+        for game in sorted(args[2:], key=lambda g: load(g).get("name", g)):
+            cfg = load(game)
+            cfg.setdefault("id", game)
+            lines.append("    {" + ", ".join(quoted(cfg.get(key, "")) for key in COLLECTION_KEYS) + "},")
+        lines.append("};")
+        write_if_changed(args[1], "\n".join(lines) + "\n")
+        return
     if len(args) >= 2 and args[0] == "--header":
         cfg = load(args[2] if len(args) > 2 else None)
         lines = ["// Generated from game.cfg by cps2recomp/tools/gamecfg.py", "#pragma once", ""]

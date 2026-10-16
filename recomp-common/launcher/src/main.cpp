@@ -12,7 +12,11 @@
 //                                                       A B the buttons, [ ] the shoulders; 0-9 that page;
 //                                                       . a wait; f Ctrl+F; "text" typed)
 //   <id>-launcher --play                               (straight into the game set up earlier)
-// <ID>_HOME=folder (LAUNCHER_HOME_ENV) uses that folder instead of the player's (settings, launcher.ini).
+//   <id>-launcher --play ID                            (a collection's: straight into that game)
+//   <id>-launcher --play [ID] -- ARGS...               (and ARGS given to the game after the launcher's own)
+//   <id>-launcher --page ID                            (a collection's: opens on that game's page)
+// <ID>_HOME=folder (LAUNCHER_HOME_ENV) uses that folder instead of the player's (settings, launcher.ini; a
+// collection's games each in a folder named by its id in it).
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -21,6 +25,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "app.h"
 #include "imgui_impl_sdl3.h"
@@ -126,9 +131,14 @@ int main(int argc, char** argv) {
     std::string press;
     bool pressing = false;
     bool play = false;
+    std::string play_id, page_id;
+    std::vector<std::string> extra;  // (after --: the game's)
     int width = 980, height = 660;
     for (int i = 1; i < argc; i++) {
-        if (std::strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
+        if (std::strcmp(argv[i], "--") == 0) {
+            extra.assign(argv + i + 1, argv + argc);
+            break;
+        } else if (std::strcmp(argv[i], "--screenshot") == 0 && i + 1 < argc) {
             screenshot_prefix = argv[++i];
         } else if (std::strcmp(argv[i], "--size") == 0 && i + 1 < argc) {
             if (std::sscanf(argv[++i], "%dx%d", &width, &height) != 2 || width < 320 || height < 240) {
@@ -139,12 +149,17 @@ int main(int argc, char** argv) {
             pressing = true;
         } else if (std::strcmp(argv[i], "--play") == 0) {
             play = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                play_id = argv[++i];
+            }
+        } else if (std::strcmp(argv[i], "--page") == 0 && i + 1 < argc) {
+            page_id = argv[++i];
         }
     }
     SDL_SetAppMetadata(LAUNCHER_GAME_NAME, "0.1", LAUNCHER_APP_ID ".launcher");
     if (play) {
         // Straight into the game, e.g. from a Steam shortcut in Game Mode.
-        int code = play_directly();
+        int code = play_directly(play_id, extra);
         SDL_Quit();
         return code;
     }
@@ -187,6 +202,9 @@ int main(int argc, char** argv) {
     ui::set_dark(system_dark());
     ui::apply_style(SDL_GetWindowDisplayScale(window));
     App app(window);
+    if (!page_id.empty()) {
+        app.set_page(page_id);
+    }
     if (screenshot_prefix.empty()) {  // (pictures are taken with nothing put on the screen)
         SDL_ShowWindow(window);
         app.set_interactive();
@@ -236,7 +254,7 @@ int main(int argc, char** argv) {
         ImGui_ImplSDLRenderer3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
-        if (!screenshot_prefix.empty() && shot_frames == 0 && !pressing) {
+        if (!screenshot_prefix.empty() && shot_frames == 0 && !pressing && page_id.empty()) {
             app.set_page(shot_page);
         }
         if (pressing && shot_frames >= 10 && press_at < press.size() && !app.busy()) {

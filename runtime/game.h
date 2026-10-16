@@ -41,6 +41,9 @@ enum : unsigned {
     // A training aid (hit boxes, frame data, the dummy...): it works only while a training session is on
     // (Game::inTraining); elsewhere it reads as off (FeatureValue), though the menu and settings.ini keep it
     kFeatureTraining = 32,
+    // The game's own: the collection's launcher shows it on the game's page and never sets it for another game that
+    // has a feature of the same name (a record, a number that means something else in each game)
+    kFeatureOwn = 64,
 };
 
 // Something the game's sources can do when the player asks (a row of the in-game menu, and a key if it has
@@ -110,6 +113,8 @@ void SetFeatureValue(const char *name, int value);
 int FeatureSetting(const char *name);
 // The game's sources mark features of theirs as training aids (kFeatureTraining), by name
 void TrainingAids(std::initializer_list<const char *> names);
+// ... and as their own (kFeatureOwn), by name
+void OwnFeatures(std::initializer_list<const char *> names);
 // The board is being reset from the menu: the features that last a session go off
 void EndSessionFeatures();
 

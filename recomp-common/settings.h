@@ -40,6 +40,8 @@ enum : unsigned {
     kFeatureEnhanced = 2,  // on in the "enhanced" preset
     kFeatureExclusive = 4, // only one of its category's exclusive features on at a time
     kFeatureSession = 8,   // for one run of the game only: never kept in the file, not shown by a launcher
+    // (16, 32: a port's own)
+    kFeatureOwn = 64,      // the game's own: a collection's launcher never sets it for another game (a record, say)
 };
 
 struct FeatureInfo {

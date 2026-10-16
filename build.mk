@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 #
-# cps2recomp build rules. Included by the top-level Makefile with GAME set.
+# cps2recomp build rules for one game. Included by the top-level Makefile with GAME set (and by example/).
 #
 #   make            translate the game's code to C++ and build the game (build/$(GAME)/$(GAME)); on macOS also
 #                   the launcher and the app bundle, so that the bundle is never older than the game (NO_APP=1: not)
@@ -11,7 +11,6 @@
 #   make check      translated code against the interpreter run the same way, by state hash; two runs alike
 #   make check-blocks  every translated block beside the interpreter (registers, cycles, writes)
 #   make check-sound   the sound driver beside the game's sound program on the Z80 (every write to the chip)
-#   make check-toolkit the toolkit (cps2recomp/) is what its tools/sync-toolkit.sh recorded
 #   make check-common  the copy of recomp-common (recomp-common/) is what tools/sync-common.sh recorded
 #   make launcher   build the launcher (build/$(GAME)/$(GAME)-launcher)
 #   make app        macOS app bundle (build/$(GAME)/<Name>.app)
@@ -20,13 +19,11 @@
 # (decrypted program, generated code, settings memory); builds in build/$(GAME)/. The ROM set is never
 # part of the repository: ROM points at your own folder of its files.
 
-# (CR: where the toolkit is. A game's repository has a copy in cps2recomp/; to work on the toolkit itself,
-# build a game against a clone of it: make CR=../cps2recomp)
-CR ?= cps2recomp
+# (CR: where the toolkit is, from where make runs: the repository's top, or .. from example/)
+CR ?= .
 CFG := python3 $(CR)/tools/gamecfg.py
 WORK := work/$(GAME)
-# (a build against a clone of the toolkit is kept apart from the usual one)
-B := build/$(GAME)$(if $(filter cps2recomp,$(CR)),,-dev)
+B := build/$(GAME)
 GEN := $(WORK)/gen
 PORT := $(B)/$(GAME)
 export GAME B
@@ -43,7 +40,7 @@ RUN_ARGS = --rom "$(ROM)" --eeprom $(WORK)/eeprom.bin --settings $(WORK)/setting
 PROGRAM := $(WORK)/program.bin
 ENTRIES := $(WORK)/entries.txt
 
-.PHONY: all configure port gen run record explore check check-blocks check-sound check-rewrites check-common check-toolkit launcher app clean
+.PHONY: all configure port gen run record explore check check-blocks check-sound check-rewrites check-common launcher app clean
 # (on macOS the app bundle too, which is what the player opens: a bundle left from an older build hides what
 # changed since)
 ifeq ($(shell uname -s)$(NO_APP),Darwin)
@@ -110,7 +107,7 @@ check-blocks: gen configure
 check-sound: port
 	@$(CR)/tools/check_sound.sh
 
-check-rewrites: port check-common check-toolkit
+check-rewrites: port check-common
 	@games/$(GAME)/check_rewrites.sh
 
 # The code shared with the other recomp ports (recomp-common/: the in-game menu) is a copy of recomp-common's, made
@@ -118,13 +115,8 @@ check-rewrites: port check-common check-toolkit
 check-common:
 	@$(CR)/tools/sync-common.sh --check
 
-# The toolkit itself (cps2recomp/) is a copy of the cps2recomp repository's, made by its tools/sync-toolkit.sh
-# and never changed here; this fails if it was. (Not asked of a build against a clone of the toolkit.)
-check-toolkit:
-	@if [ "$(CR)" = cps2recomp ]; then $(CR)/tools/sync-toolkit.sh --check; fi
-
 # Translated code against the interpreter run the same way, frame by frame; and two runs alike
-check: port check-common check-toolkit
+check: port check-common
 	@$(CR)/tools/check.sh $(FRAMES) "$(MOVIE)" $(ARGS)
 
 # The launcher (SDL3 + Dear ImGui; cps2recomp/launcher): the player's ROM set, features, controllers, Play.

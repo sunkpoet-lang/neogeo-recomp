@@ -112,6 +112,10 @@ bool can_add_to_steam() {
 }
 
 bool add_to_steam(std::string& message) {
+    return add_to_steam(message, LAUNCHER_GAME_NAME, LAUNCHER_GAME_EXE, "--play");
+}
+
+bool add_to_steam(std::string& message, const std::string& name, const std::string& entry, const std::string& play) {
 #ifdef __linux__
     const char* home = std::getenv("HOME");
     if (!home) {
@@ -133,21 +137,29 @@ bool add_to_steam(std::string& message) {
         fs::copy_file(fs::path(appdir) / LAUNCHER_GAME_EXE ".png", icon, fs::copy_options::overwrite_existing, error);
     }
     std::string quoted = "\"" + launcher.string() + "\"";
-    fs::path game_entry = share / "applications" / (LAUNCHER_GAME_EXE ".desktop");
+    // (a port's launcher is named "<Game> Launcher"; a collection's by its own name, and added once for all its games)
+    bool collection = entry != LAUNCHER_GAME_EXE;
+    std::string launcher_name = collection ? std::string(LAUNCHER_GAME_NAME) : name + " Launcher";
+    fs::path game_entry = share / "applications" / (entry + ".desktop");
     fs::path launcher_entry = share / "applications" / (LAUNCHER_GAME_EXE "-launcher.desktop");
-    if (!write_entry(game_entry, LAUNCHER_GAME_NAME, "Play " LAUNCHER_GAME_NAME, quoted + " --play", icon) ||
-        !write_entry(launcher_entry, LAUNCHER_GAME_NAME " Launcher", "Game file, features and controllers for " LAUNCHER_GAME_NAME, quoted, icon)) {
+    bool add_launcher = !collection || !fs::exists(launcher_entry, error);
+    if (!write_entry(game_entry, name, "Play " + name, quoted + " " + play, icon) ||
+        (add_launcher && !write_entry(launcher_entry, launcher_name, collection ? "Games, features and controllers" : "Game file, features and controllers for " + name, quoted, icon))) {
         message = "Can't write the shortcuts in " + (share / "applications").string() + ".";
         return false;
     }
-    if (!add(game_entry) || !add(launcher_entry)) {
+    if (!add(game_entry) || (add_launcher && !add(launcher_entry))) {
         message = "Steam didn't take the shortcuts. Is Steam running? You can add " + launcher.filename().string() +
-                  " with Steam's \"Add a Non-Steam Game\" instead (launch option --play to skip the launcher).";
+                  " with Steam's \"Add a Non-Steam Game\" instead (launch option " + play + " to skip the launcher).";
         return false;
     }
-    message = "Added \"" LAUNCHER_GAME_NAME "\" and \"" LAUNCHER_GAME_NAME " Launcher\" to Steam (Library, Non-Steam). If you move this file, add them again.";
+    message = "Added \"" + name + "\"" + (add_launcher ? " and \"" + launcher_name + "\"" : std::string()) +
+              " to Steam (Library, Non-Steam). If you move this file, add them again.";
     return true;
 #else
+    (void)name;
+    (void)entry;
+    (void)play;
     message = "Adding to Steam from here works on Linux and Steam Deck.";
     return false;
 #endif

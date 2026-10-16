@@ -10,6 +10,9 @@
 #   LAUNCHER_HOME_ENV     MYGAME_HOME               a variable naming a folder to use instead of the player's
 #   LAUNCHER_DISCLAIMER   "Not affiliated with ..."
 #   LAUNCHER_PORT_SOURCES description.cpp ...       the port's own: launcher::describe() and its file check
+#   LAUNCHER_COLLECTION   ON                        optional: a launcher for several games (launcher.h), whose
+#                                                   sources define launcher::describe_collection(); the names
+#                                                   above are then the collection's
 #
 # It makes the target `launcher` (the program <LAUNCHER_GAME_EXE>-launcher), to which the port may add its
 # own definitions, include folders and libraries. SDL3 is the system's or is built in; Dear ImGui and the
@@ -79,4 +82,7 @@ target_compile_options(launcher PRIVATE -Wall -Wextra)
 target_compile_definitions(launcher PRIVATE
     LAUNCHER_GAME_NAME="${LAUNCHER_GAME_NAME}" LAUNCHER_GAME_EXE="${LAUNCHER_GAME_EXE}" LAUNCHER_APP_ID="${LAUNCHER_APP_ID}"
     LAUNCHER_HOME_ENV="${LAUNCHER_HOME_ENV}" LAUNCHER_DISCLAIMER="${LAUNCHER_DISCLAIMER}")
+if(LAUNCHER_COLLECTION)
+    target_compile_definitions(launcher PRIVATE LAUNCHER_COLLECTION=1)
+endif()
 target_link_libraries(launcher PRIVATE launcher_imgui)
