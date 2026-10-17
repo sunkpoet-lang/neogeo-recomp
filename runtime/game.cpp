@@ -71,6 +71,15 @@ uint32_t ExtraBase() {
     return g_extraBase;
 }
 namespace {
+    SoundBoard *g_extraSound = nullptr;
+}
+void SetExtraSound(SoundBoard *board) {
+    g_extraSound = board;
+}
+SoundBoard *ExtraSound() {
+    return g_extraSound;
+}
+namespace {
     PointerLoadFn g_pointerLoads = nullptr;
     uint32_t g_pointerLow = 0xFFFFFFFF, g_pointerHigh = 0;
 } // namespace

@@ -17,6 +17,7 @@
 #include "eeprom.h"
 #include "m68k.h"
 #include "romset.h"
+#include "sound_board.h"
 #include "soundtrack.h"
 
 #include <cstdint>
@@ -63,7 +64,15 @@ public:
         if (extra && !extra->graphics.empty()) {
             video.SetExtraGraphics(extra->graphics.data(), extra->graphics.size());
         }
+        // (its sound side too, where it has one: machine/sound_board.h)
+        extraSound.reset();
+        if (extra && !extra->soundProgram.empty() && !extra->samples.empty()) {
+            extraSound = std::make_unique<SoundBoard>(*extra);
+            extraSound->SetRunning(m_soundRunning);
+        }
     }
+    // The extra set's sound side (none: no extra set, or it has no sound), run beside this one and heard with it
+    std::unique_ptr<SoundBoard> extraSound;
     // An object list entry is drawn from the extra set's graphics when the extra set's program was read (as data)
     // since the entry before was written: what the game draws an object from (its picture's tiles and places) is
     // read just before the entry is written, so an object of the other set's is drawn from its graphics
