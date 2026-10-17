@@ -45,6 +45,11 @@ public:
         m_extraGraphics = graphics;
         m_extraGraphicsSize = size;
     }
+    // ... and which of the scroll screens' tiles are drawn from it: a byte for each four of video RAM (an entry of a
+    // scroll screen's map), or none
+    void SetScrollFromExtra(const uint8_t *fromExtra) {
+        m_scrollFromExtra = fromExtra;
+    }
     // One line of the picture (0..kHeight-1): Width() pixels with red in the low byte, then green, then blue
     void RenderLine(int line, uint32_t *out);
     void Serialize(Archive &ar);
@@ -106,6 +111,7 @@ private:
     uint16_t m_objects[0x1000] = {}; // the latched object list: 1024 entries of four words
     uint8_t m_objectsFromExtra[0x400] = {}; // ... and which are drawn from the extra graphics
     const uint8_t *m_extraGraphics = nullptr;
+    const uint8_t *m_scrollFromExtra = nullptr;
     size_t m_extraGraphicsSize = 0;
     uint16_t m_priorityControl = 0;
     int m_lastObject = -4;

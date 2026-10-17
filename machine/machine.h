@@ -63,6 +63,8 @@ public:
         m_extraBase = base;
         if (extra && !extra->graphics.empty()) {
             video.SetExtraGraphics(extra->graphics.data(), extra->graphics.size());
+            scrollFromExtra.assign(videoRam.size() / 4, 0);
+            video.SetScrollFromExtra(scrollFromExtra.data());
         }
         // (its sound side too, where it has one: machine/sound_board.h)
         extraSound.reset();
@@ -79,6 +81,9 @@ public:
     // from its graphics; and one the game makes up itself (a shadow), written long after the other set's code last
     // read its tables, is not
     uint8_t objectsFromExtra[2][0x400] = {};
+    // ... and a scroll screen's tile the same way: video RAM's tile word written just after the extra set's program
+    // was read (a byte for each four bytes of video RAM; none without an extra set)
+    std::vector<uint8_t> scrollFromExtra;
 
     void Reset();
     // Runs to the start of the next vertical blanking: one picture and its sound
@@ -181,11 +186,17 @@ private:
         return m_extra && address >= m_extraBase && address - m_extraBase < m_extra->program.size();
     }
     bool m_readExtra = false; // (the extra program read as data since the last object entry was written)
+    bool m_readExtraEver = false;
     uint64_t m_readExtraAt = 0; // (... the 68000's cycle count then)
     static constexpr uint64_t kExtraReadNear = 256;
     void ReadExtra() {
-        m_readExtra = true;
+        m_readExtra = m_readExtraEver = true;
         m_readExtraAt = cpu.cycles;
+    }
+    void VideoWritten(uint32_t address) {
+        if (!scrollFromExtra.empty() && (address & 2) == 0) { // (a map entry's tile word)
+            scrollFromExtra[(address - 0x900000) / 4] = m_readExtraEver && cpu.cycles - m_readExtraAt < kExtraReadNear;
+        }
     }
     void ObjectWritten(int bank, uint32_t address) {
         if (m_extra && (address & 6) == 0) { // (an entry's first word)
