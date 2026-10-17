@@ -320,7 +320,11 @@ def main():
     ap.add_argument("--data", default=None, help="the program as data (the port writes it beside the program)")
     ap.add_argument("--list", default=None, help="write the disassembly of everything decoded here")
     ap.add_argument("--hook-sources", default=None,
-                    help="the game's sources: translated code stops by for a hook wherever they say AddHook(0x...) or AddRewrite(0x...)")
+                    help="the game's sources (folders, with %s between): translated code stops by for a hook wherever they say "
+                         "AddHook(0x...) or AddRewrite(0x...)" % os.pathsep)
+    ap.add_argument("--places", default=None,
+                    help="for sources shared with another game: the list of where the places they name as At(0x...) are in "
+                         "this one (a game's family.h: {0x..., 0x...} pairs)")
     args = ap.parse_args()
 
     mem = open(args.program, "rb").read()
@@ -333,18 +337,33 @@ def main():
             if line:
                 entries.append(int(line, 16))
     hooks = set()
-    if args.hook_sources and os.path.isdir(args.hook_sources):
-        # AddHook(0x1234, ...), AddRewrite(kName, ...) or HookAt(0x1234), with "kName = 0x1234" somewhere in the sources
+    folders = [d for d in (args.hook_sources or "").split(os.pathsep) if d and os.path.isdir(d)]
+    if folders:
+        # AddHook(0x1234, ...), AddRewrite(kName, ...) or HookAt(0x1234), with "kName = 0x1234" somewhere in the sources;
+        # a place may be At(0x1234): where that place of the game the sources were written for is in this one
         import re
-        texts = [open(os.path.join(args.hook_sources, name)).read() for name in sorted(os.listdir(args.hook_sources))
+        places = {}
+        if args.places and os.path.exists(args.places):
+            places = {int(a, 16): int(b, 16) for a, b in
+                      re.findall(r"\{\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+)\s*\}", open(args.places).read())}
+
+        def at(wrapped, value):
+            if not wrapped or not places:
+                return value
+            if value not in places:
+                sys.exit("recomp: the sources name At(0x%06X), and %s does not say where that is" % (value, args.places))
+            return places[value]
+        texts = [open(os.path.join(d, name)).read() for d in folders for name in sorted(os.listdir(d))
                  if name.endswith((".cpp", ".h"))]
         names = {}
         for text in texts:
-            names.update((n, int(v, 16)) for n, v in re.findall(r"\b(k\w+)\s*=\s*0x([0-9A-Fa-f]+)", text))
+            names.update((n, at(w, int(v, 16))) for n, w, v in
+                         re.findall(r"\b(k\w+)\s*=\s*(?:\w+::)?(At\(\s*)?0x([0-9A-Fa-f]+)", text))
         for text in texts:
-            for where in re.findall(r"(?:Add(?:Hook|Rewrite)|HookAt)\(\s*(0x[0-9A-Fa-f]+|k\w+)", text):
+            for wrapped, where in re.findall(r"(?:Add(?:Hook|Rewrite)|HookAt)\(\s*(?:HookAt\(\s*)?(?:\w+::)?(At\(\s*)?(0x[0-9A-Fa-f]+|k\w+)",
+                                             text):
                 if where.startswith("0x"):
-                    hooks.add(int(where, 16))
+                    hooks.add(at(wrapped, int(where, 16)))
                 elif where in names:
                     hooks.add(names[where])
                 else:
