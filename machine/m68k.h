@@ -131,6 +131,16 @@ public:
     const uint8_t *opcodes = nullptr; // the program as program
     uint32_t romSize = 0;
 
+    // An address register loaded from memory (movea.l) at `extraLow` or above: the game's sources may change the
+    // value (a game that runs another set's code and tables there, whose addresses are that set's own: game.h,
+    // SetPointerLoads). Below, nothing is changed.
+    using PointerFn = uint32_t (*)(uint32_t address, uint32_t value);
+    PointerFn pointerFrom = nullptr;
+    uint32_t extraLow = 0xFFFFFFFF;
+    uint32_t PointerLoad(uint32_t address, uint32_t value) const {
+        return (address & 0xFFFFFF) >= extraLow && pointerFrom ? pointerFrom(address & 0xFFFFFF, value) : value;
+    }
+
     // Addresses reached in ways the translator cannot follow (computed jumps, returns, exceptions) that are
     // not yet the start of a translated block; kept when recording is on
     bool recording = false;

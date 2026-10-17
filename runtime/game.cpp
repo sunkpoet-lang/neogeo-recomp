@@ -38,6 +38,47 @@ void SetProgram(uint8_t *program, uint32_t size) {
     g_program = program;
     g_programSize = size;
 }
+namespace {
+    uint8_t *g_opcodes = nullptr;
+    uint8_t *g_extra = nullptr, *g_extraOpcodes = nullptr;
+    uint32_t g_extraSize = 0, g_extraBase = 0;
+} // namespace
+void SetProgramOpcodes(uint8_t *opcodes) {
+    g_opcodes = opcodes;
+}
+uint8_t *ProgramOpcodes(uint32_t address) {
+    return g_opcodes + address;
+}
+void SetExtraProgram(uint8_t *program, uint8_t *opcodes, uint32_t size, uint32_t base) {
+    g_extra = program;
+    g_extraOpcodes = opcodes;
+    g_extraSize = size;
+    g_extraBase = base;
+}
+uint8_t *ExtraProgram(uint32_t address) {
+    return g_extra ? g_extra + address : nullptr;
+}
+uint8_t *ExtraOpcodes(uint32_t address) {
+    return g_extraOpcodes ? g_extraOpcodes + address : nullptr;
+}
+uint32_t ExtraProgramSize() {
+    return g_extraSize;
+}
+uint32_t ExtraBase() {
+    return g_extraBase;
+}
+namespace {
+    PointerLoadFn g_pointerLoads = nullptr;
+    uint32_t g_pointerLow = 0xFFFFFFFF;
+} // namespace
+void SetPointerLoads(PointerLoadFn fn, uint32_t low) {
+    g_pointerLoads = fn;
+    g_pointerLow = low;
+}
+PointerLoadFn PointerLoads(uint32_t &low) {
+    low = g_pointerLow;
+    return g_pointerLoads;
+}
 uint32_t ProgramSize() {
     return g_programSize;
 }

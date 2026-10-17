@@ -367,7 +367,8 @@ void M68K::Execute(uint16_t op) {
         const unsigned dstMode = (op >> 6) & 7;
         m_cycles += 4 + operandCycles(sz);
         if (dstMode == 1) {
-            a[reg2] = static_cast<uint32_t>(Extend(value, sz));
+            const bool memory = source.kind == Operand::Kind::Memory || source.kind == Operand::Kind::Program;
+            a[reg2] = sz == 2 && memory ? PointerLoad(source.at, value) : static_cast<uint32_t>(Extend(value, sz));
             return;
         }
         const Operand target = Locate(dstMode, reg2, sz);

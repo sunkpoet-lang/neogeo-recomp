@@ -54,6 +54,14 @@ public:
 
     explicit Machine(const RomSet &roms);
 
+    // A second program, of another set (a game's game.cfg names it: extra_set), seen by the 68000 at `base` on: for
+    // a game that runs code and reads tables of another made from the same program (the CPS-2 board leaves
+    // A00000-EFFFFF unused). As data and as program (deciphered) both; reads only.
+    void SetExtraProgram(const RomSet *extra, uint32_t base) {
+        m_extra = extra;
+        m_extraBase = base;
+    }
+
     void Reset();
     // Runs to the start of the next vertical blanking: one picture and its sound
     void RunFrame();
@@ -149,6 +157,11 @@ public:
 
 private:
     const RomSet &m_roms;
+    const RomSet *m_extra = nullptr;
+    uint32_t m_extraBase = 0;
+    bool InExtra(uint32_t address) const {
+        return m_extra && address >= m_extraBase && address - m_extraBase < m_extra->program.size();
+    }
     std::vector<uint32_t> m_picture;
     int m_pictureWidth = Video::kWidth;
     int m_line = 0;

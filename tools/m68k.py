@@ -369,6 +369,9 @@ def _decode(insn, dec, op):
 
             def emit(live, src=src, cycles=cycles):
                 value = src.load() if sz == 2 else "S16(%s)" % src.load()
+                if sz == 2 and src.kind in ("m", "p"):
+                    # (an address loaded from memory: a game's sources may move it: M68K::PointerLoad)
+                    value = "c.PointerLoad(%s, %s)" % (src.var, value)
                 return src.pre + ["c.a[%d] = %s;" % (reg2, value), cyc(cycles)]
 
             insn.emit = emit

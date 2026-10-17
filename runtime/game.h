@@ -177,8 +177,22 @@ const std::vector<HudBox> &Boxes();
 // reads from it (its colours, say) before or while it runs. Never its code: the translated code is made from
 // the deciphered program and does not see this.
 void SetProgram(uint8_t *program, uint32_t size);
+void SetProgramOpcodes(uint8_t *opcodes);
 uint32_t ProgramSize();
 uint8_t *Program(uint32_t address);
+// ... and as the 68000 reads it as program (deciphered: what a table read through the program counter gives)
+uint8_t *ProgramOpcodes(uint32_t address);
+// The extra set's program (game.cfg's extra_set; none: nullptr), as data and as program, and where the 68000 sees it
+void SetExtraProgram(uint8_t *program, uint8_t *opcodes, uint32_t size, uint32_t base);
+uint8_t *ExtraProgram(uint32_t address);  // (address: the extra set's own, from 0)
+uint8_t *ExtraOpcodes(uint32_t address);
+uint32_t ExtraProgramSize();
+uint32_t ExtraBase();
+// An address register loaded from memory at `low` or above (machine/m68k.h, M68K::PointerLoad) goes through `fn`,
+// which may change the address: for a game whose extra set's tables hold that set's own addresses
+using PointerLoadFn = uint32_t (*)(uint32_t address, uint32_t value);
+void SetPointerLoads(PointerLoadFn fn, uint32_t low);
+PointerLoadFn PointerLoads(uint32_t &low);
 
 // Work RAM as the game's sources see it: by the 68000's address (FF0000-FFFFFF). Values are big-endian.
 void SetRam(uint8_t *ram);
