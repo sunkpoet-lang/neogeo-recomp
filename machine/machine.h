@@ -74,8 +74,10 @@ public:
     // The extra set's sound side (none: no extra set, or it has no sound), run beside this one and heard with it
     std::unique_ptr<SoundBoard> extraSound;
     // An object list entry is drawn from the extra set's graphics when the extra set's program was read (as data)
-    // since the entry before was written: what the game draws an object from (its picture's tiles and places) is
-    // read just before the entry is written, so an object of the other set's is drawn from its graphics
+    // since the entry before was written, and just before (kExtraReadNear): what the game draws an object from (its
+    // picture's tiles and places) is read just before the entry is written, so an object of the other set's is drawn
+    // from its graphics; and one the game makes up itself (a shadow), written long after the other set's code last
+    // read its tables, is not
     uint8_t objectsFromExtra[2][0x400] = {};
 
     void Reset();
@@ -179,9 +181,15 @@ private:
         return m_extra && address >= m_extraBase && address - m_extraBase < m_extra->program.size();
     }
     bool m_readExtra = false; // (the extra program read as data since the last object entry was written)
+    uint64_t m_readExtraAt = 0; // (... the 68000's cycle count then)
+    static constexpr uint64_t kExtraReadNear = 256;
+    void ReadExtra() {
+        m_readExtra = true;
+        m_readExtraAt = cpu.cycles;
+    }
     void ObjectWritten(int bank, uint32_t address) {
         if (m_extra && (address & 6) == 0) { // (an entry's first word)
-            objectsFromExtra[bank][(address & 0x1FFE) / 8] = m_readExtra;
+            objectsFromExtra[bank][(address & 0x1FFE) / 8] = m_readExtra && cpu.cycles - m_readExtraAt < kExtraReadNear;
             m_readExtra = false;
         }
     }
