@@ -161,6 +161,14 @@ std::vector<std::string> arguments_for(const recomp::Ini& prefs, const Target& t
         }
         return false;
     };
+    launch.file_of = [&](const char* id) {
+        for (const Target& other : targets()) {
+            if (other.id == id) {
+                return prefs.get(other.file_section, other.about->file_key);
+            }
+        }
+        return std::string();
+    };
     std::vector<std::string> arguments = about.arguments(launch);
     if (about.mute_argument && prefs.get("audio", "muted") == "1") {
         arguments.push_back(about.mute_argument);
