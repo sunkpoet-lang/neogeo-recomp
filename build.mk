@@ -37,6 +37,11 @@ EXPLORE_LADDER ?= $(shell $(CFG) explore_ladder_features $(GAME))
 EXPLORE_LADDER_2 ?= $(shell $(CFG) explore_ladder_features_2 $(GAME))
 RUN_ARGS = --rom "$(ROM)" --eeprom $(WORK)/eeprom.bin --settings $(WORK)/settings.ini --record-entries $(ENTRIES)
 
+# The game's sources, and those of the games it shares sources with (game.cfg's sources: another game made from the
+# same program, whose sources name its places as At(0x...); the game's family.h says where they are in it)
+SHARES := $(shell $(CFG) sources $(GAME))
+HOOK_SOURCES := games/$(GAME)/src$(foreach g,$(SHARES),:games/$(g)/src)
+
 PROGRAM := $(WORK)/program.bin
 ENTRIES := $(WORK)/entries.txt
 
@@ -59,7 +64,7 @@ gen:
 		python3 $(CR)/tools/recomp.py --program $(PROGRAM) --entries $(ENTRIES) --out $(GEN) \
 			--limit $(shell $(CFG) code_end $(GAME)) --list $(WORK)/program.lst \
 			--guess $(WORK)/guessed.txt --data $(PROGRAM).data \
-			--hook-sources games/$(GAME)/src; \
+			--hook-sources "$(HOOK_SOURCES)" --places games/$(GAME)/family.h; \
 	fi
 	@if [ -f $(PROGRAM).z80 ]; then \
 		python3 $(CR)/tools/recompz80.py --program $(PROGRAM).z80 --entries $(ENTRIES).z80 --out $(GEN) \
