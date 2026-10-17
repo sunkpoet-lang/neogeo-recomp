@@ -59,26 +59,35 @@ namespace native {
     uint32_t CheckRead(M68K &c, uint32_t address, unsigned size);
     void CheckWrite(M68K &c, uint32_t address, unsigned size, uint32_t value);
     inline uint32_t R8(M68K &c, uint32_t address) {
+        c.BusWait(address);
         return CheckRead(c, address, 0);
     }
     inline uint32_t R16(M68K &c, uint32_t address) {
+        c.BusWait(address);
         return CheckRead(c, address, 1);
     }
     inline uint32_t R32(M68K &c, uint32_t address) {
+        c.BusWait(address);
+        c.BusWait(address + 2);
         return CheckRead(c, address, 2);
     }
     inline void W8(M68K &c, uint32_t address, uint32_t value) {
+        c.BusWait(address);
         CheckWrite(c, address, 0, value);
     }
     inline void W16(M68K &c, uint32_t address, uint32_t value) {
+        c.BusWait(address);
         CheckWrite(c, address, 1, value);
     }
     inline void W32(M68K &c, uint32_t address, uint32_t value) {
+        c.BusWait(address);
+        c.BusWait(address + 2);
         CheckWrite(c, address, 2, value);
     }
 #else
     // Memory as data: work RAM and the ROM directly, everything else through the machine
     inline uint32_t R8(M68K &c, uint32_t address) {
+        c.BusWait(address);
         address &= 0xFFFFFF;
         if (address >= 0xFF0000) {
             return c.ram[address & 0xFFFF];
@@ -89,6 +98,7 @@ namespace native {
         return c.bus.Read8(address);
     }
     inline uint32_t R16(M68K &c, uint32_t address) {
+        c.BusWait(address);
         address &= 0xFFFFFE;
         if (address >= 0xFF0000) {
             const uint8_t *p = &c.ram[address & 0xFFFF];
@@ -105,6 +115,7 @@ namespace native {
         return (high << 16) | R16(c, address + 2);
     }
     inline void W8(M68K &c, uint32_t address, uint32_t value) {
+        c.BusWait(address);
         address &= 0xFFFFFF;
         if (address >= 0xFF0000) {
             c.ram[address & 0xFFFF] = static_cast<uint8_t>(value);
@@ -113,6 +124,7 @@ namespace native {
         }
     }
     inline void W16(M68K &c, uint32_t address, uint32_t value) {
+        c.BusWait(address);
         address &= 0xFFFFFE;
         if (address >= 0xFF0000) {
             uint8_t *p = &c.ram[address & 0xFFFF];
@@ -130,6 +142,7 @@ namespace native {
 
     // Memory as program (what addressing relative to the PC reads): the deciphered ROM
     inline uint32_t P16(M68K &c, uint32_t address) {
+        c.BusWait(address);
         address &= 0xFFFFFE;
         if (address < c.romSize) {
             const uint8_t *p = &c.opcodes[address];

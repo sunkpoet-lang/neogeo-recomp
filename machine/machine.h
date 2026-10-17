@@ -86,6 +86,18 @@ public:
     uint64_t soundWritesChecked = 0;
     void ReportSoundTimes() const;
     bool monoForTest = false; // (--sound-test) the Z80 reads the game's stereo setting as mono
+
+    // The board's timing (the port's arcade_timing feature; docs/TIMING.md): the 68000 waits a clock for each bus
+    // access outside 500000-7FFFFF (M68K::busWait), and the CPS-A's DMA takes the bus from it for the row scroll,
+    // the scroll layers' tile rows and the palette. Off: the 68000 has every clock, as the port always gave it.
+    void SetBoardTiming(bool on) {
+        boardTiming = on;
+        cpu.busWait = on ? 1 : 0;
+    }
+    bool BoardTiming() const {
+        return boardTiming;
+    }
+    uint64_t dmaCounted = 0; // (CPS2RECOMP_BUS_LOG: the DMA's clocks since the last frame)
     // The game's music from the player's files (machine/soundtrack.h): sees the game's sound requests
     Soundtrack soundtrack;
 
@@ -153,6 +165,9 @@ private:
 
     void RunLine();
     int LineCycles() const;
+    uint32_t LineDma();
+    bool boardTiming = false;
+    bool m_palettePending = false; // (the game has set the palette's base: the DMA copies it at the next line)
     void RunSound(int cycles);
     struct ChipWrite {
         uint8_t reg;

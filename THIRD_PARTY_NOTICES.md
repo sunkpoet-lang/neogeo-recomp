@@ -53,6 +53,11 @@ facts about the hardware that MAME's CPS-1/CPS-2 drivers record (register layout
 timings); the files that do say so. No emulator is compiled or linked into a game, and none is in
 this repository.
 
+The arcade timing (`machine/machine.cpp`, `LineDma`; `machine/m68k.h`, `busWait`; `docs/TIMING.md`) follows what
+[jtcps2](https://github.com/jotego/jtcores) (jotego's CPS-2 core, GPL-3.0-or-later) does: the board's acknowledge
+after Loic Petit's study of the DL-1827, and the CPS-A's DMA as jotego measured it. No code of it is here; the rules
+were written again from reading it and from simulating it, and checked against the simulation.
+
 ### wiiparty-recomp (GPL-3.0-or-later) and recomp-common (GPL-3.0)
 
 `recomp-common/` is a copy of [recomp-common](https://github.com/tmcleroy/recomp-common) (the

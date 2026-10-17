@@ -45,6 +45,10 @@ void M68K::Reset(bool hard) {
 // --- memory ---
 
 uint32_t M68K::Read(uint32_t address, unsigned size) {
+    BusWait(address);
+    if (size == 2) {
+        BusWait(address + 2);
+    }
 #ifdef CPS2RECOMP_CHECK
     if (check::side) {
         return native::CheckRead(*this, address, size);
@@ -60,6 +64,10 @@ uint32_t M68K::Read(uint32_t address, unsigned size) {
     }
 }
 void M68K::Write(uint32_t address, unsigned size, uint32_t value) {
+    BusWait(address);
+    if (size == 2) {
+        BusWait(address + 2);
+    }
 #ifdef CPS2RECOMP_CHECK
     if (check::side) {
         native::CheckWrite(*this, address, size, value);
@@ -87,6 +95,10 @@ void M68K::Write(uint32_t address, unsigned size, uint32_t value) {
     }
 }
 uint32_t M68K::ReadProgram(uint32_t address, unsigned size) {
+    BusWait(address);
+    if (size == 2) {
+        BusWait(address + 2);
+    }
     switch (size) {
     case 0: {
         const uint16_t word = bus.Fetch16(address & 0xFFFFFE);
@@ -100,6 +112,8 @@ uint32_t M68K::ReadProgram(uint32_t address, unsigned size) {
     }
 }
 uint16_t M68K::Fetch() {
+    BusWait(pc); // (a word of the instruction)
+    fetchedWords++;
     const uint16_t word = bus.Fetch16(pc & 0xFFFFFE);
     pc += 2;
     return word;
@@ -212,6 +226,9 @@ bool M68K::TakeInterrupt() {
         const uint8_t level = m_interruptLevel;
         Exception(24 + level, pc, level); // (the board asks for the autovector)
         bus.InterruptAck(level);
+        // (with the board's bus waits: the acknowledge cycle, and the two words fetched at the handler)
+        cycles += busWait * 3;
+        waitsCounted += busWait * 3;
         return true;
     }
     return false;
@@ -225,14 +242,14 @@ uint32_t M68K::Step() {
         return 4;
     }
     m_cycles = 0;
-    Execute(Fetch());
+    ExecuteOne();
     return m_cycles;
 }
 
 void M68K::Interpret(uint32_t address) {
     pc = address;
     m_cycles = 0;
-    Execute(Fetch());
+    ExecuteOne();
     cycles += m_cycles;
 }
 
