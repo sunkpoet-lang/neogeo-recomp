@@ -112,6 +112,9 @@ namespace {
 } // namespace
 
 void AddHook(uint32_t address, const char *name, HookFn fn) {
+    if (address == kNoPlace) {
+        return;
+    }
     Hooks().push_back({address, name, fn});
     if (g_hooked.size() <= address / 2) {
         g_hooked.resize(address / 2 + 1, 0);
@@ -296,6 +299,9 @@ bool ReportRewrites() {
 }
 
 void AddRewrite(uint32_t address, const char *name, RewriteFn fn, uint32_t free, uint32_t cycles) {
+    if (address == kNoPlace) {
+        return;
+    }
     AddHook(address, name, nullptr);
     Hooks().back().rewrite = fn;
     Hooks().back().free = free;
@@ -303,6 +309,9 @@ void AddRewrite(uint32_t address, const char *name, RewriteFn fn, uint32_t free,
 }
 
 void RewriteWhen(uint32_t address, RewriteWhenFn when) {
+    if (address == kNoPlace) {
+        return;
+    }
     for (Hook &hook : Hooks()) {
         if (hook.address == address && hook.rewrite) {
             hook.when = when;

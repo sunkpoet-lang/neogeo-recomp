@@ -368,7 +368,7 @@ def main():
                     hooks.add(names[where])
                 else:
                     sys.exit("recomp: the sources hook %s, and nothing says where that is" % where)
-    hooks = sorted(hooks)
+    hooks = sorted(hooks - {0})  # (0: a place the game does not have, lift.h's kNoPlace)
     entries += hooks  # (a hook's place is a place to translate from)
     entries = [e for e in dict.fromkeys(entries) if e < limit and not e & 1]
 

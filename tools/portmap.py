@@ -13,12 +13,14 @@ second, and where the places its instructions name (routines, tables in the ROM,
   2. The second's code is found from the first's entries moved by the anchors (tools/recomp.py's discovery).
   3. Between two anchors, the two instruction lists are matched by what the instructions do (the places they
      name left out), so code that was changed in the second game still lines up around the change.
-  4. The places named by two matched instructions are taken as the same place in the two games.
+  4. The places named by two matched instructions are taken as the same place in the two games, and the
+     places in two matched jump tables are paired in their order.
 
   portmap.py --from work/vampire_savior --to work/vsav2 --out work/vsav2/portmap.txt [--limit 100000]
 
 What it writes is made from the two programs and stays in work/ (never in the repository): the instruction
-map (`I a b`), the places named (`P a b votes`), and the entries for the second game's translation
+map (`I a b`), the places jump tables give by their order (`T a b`), places
+reached two ways (`C a kept other`), the places named (`P a b votes`), and the entries for the second game's translation
 (--entries), which spare a fresh tree most of 'make explore'. A game's sources take the few places they need
 from it by hand, checked (see games/vsav2/PROGRESS.md).
 """
@@ -77,16 +79,25 @@ HEX = re.compile(r"\$([0-9A-F]+)")
 A5 = re.compile(r"(-?0x[0-9A-F]+)\(a5")
 
 
+def is_place(text, m):
+    """A $ number in an instruction that is a place: an address, or an immediate as big as a place in the ROM's
+    tables (from 010000) or in work RAM (a table's place loaded into a register)"""
+    if m.start() == 0 or text[m.start() - 1] != "#":
+        return True
+    v = int(m.group(1), 16)
+    return 0x10000 <= v < 0x400000 or 0xFF0000 <= v <= 0xFFFFFF
+
+
 def shape(insn):
-    """What an instruction does, the places it names left out (immediates kept: they are '#$')"""
-    t = HEX.sub(lambda m: "@" if m.start() == 0 or insn.text[m.start() - 1] != "#" else m.group(0), insn.text)
+    """What an instruction does, the places it names left out (other immediates kept: they are '#$')"""
+    t = HEX.sub(lambda m: "@" if is_place(insn.text, m) else m.group(0), insn.text)
     return A5.sub("@(a5", t)
 
 
 def places(insn):
     """The places an instruction names, in order (its branch target among them; A5's displacements as FF8000 on)"""
     t = insn.text
-    found = [(m.start(), int(m.group(1), 16)) for m in HEX.finditer(t) if m.start() == 0 or t[m.start() - 1] != "#"]
+    found = [(m.start(), int(m.group(1), 16)) for m in HEX.finditer(t) if is_place(t, m)]
     found += [(m.start(), (0xFF8000 + int(m.group(1), 16)) & 0xFFFFFF) for m in A5.finditer(t)]
     return [v for _, v in sorted(found)]
 
@@ -127,40 +138,118 @@ def main():
 
     a_entries = read_entries(os.path.join(args.src, "entries.txt"))
     a_insns, _, _ = recomp.discover(a, a_entries + [0x400], limit, True)
-    # The second's entries: the first's block starts moved, where they are inside an anchor
     a_starts = sorted(set(a_entries))
-    b_entries = sorted({m for m in (moved(x) for x in a_starts) if m is not None})
-    b_insns, _, _ = recomp.discover(b, b_entries + [0x400], limit, True)
     a_list = sorted(a_insns)
-    b_list = sorted(b_insns)
 
-    imap = {}
-    # Inside anchors: moved as they are
-    for x in a_list:
-        m = moved(x)
-        if m is not None and m in b_insns:
-            imap[x] = m
-    # Between: match the instruction lists by shape
+    imap, conflicts = {}, []
+    b_known = {}  # the second's instructions decoded so far
+
+    def b_insn(y):
+        if y not in b_known:
+            b_known[y] = m68k.decode(b, y)
+        return b_known[y]
+
+    def walk(seeds):
+        """Both programs' code followed side by side from pairs of places taken to be the same, while what the
+        instructions do is the same: branches and calls give more pairs"""
+        work = list(seeds)
+        while work:
+            x, y = work.pop()
+            while x in a_insns and not y & 1 and y < limit:
+                if x in imap:
+                    if imap[x] != y:
+                        conflicts.append((x, y))
+                    break
+                ia, ib = a_insns[x], b_insn(y)
+                if ib.text == "?" or shape(ia) != shape(ib):
+                    break
+                imap[x] = y
+                if ia.target is not None and ib.target is not None and ia.flow in ("cond", "branch", "call", "dbcc"):
+                    work.append((ia.target, ib.target))
+                if ia.flow in ("next", "cond", "dbcc", "call"):
+                    x, y = x + ia.length, y + ib.length
+                else:
+                    break
+
+    # 1. Inside anchors, moved as they are
+    walk([(x, moved(x)) for x in reversed(a_list) if moved(x) is not None])
+    # 2. Jump tables read by code that matched: the n-th place of one is the n-th of the other
+    tables = {}
+
+    def table(mem, insns, at, count=None):
+        insn = insns(at)
+        if insn is None:
+            return None
+        m = re.match(r"move\.w \$([0-9A-F]+)\(pc,d\d\.w\),(d\d)$", insn.text)
+        if m:
+            nxt = insns(at + insn.length)
+            base = int(m.group(1), 16)
+            if nxt is None or nxt.text != "jmp $%X(pc,%s.w)" % (base, m.group(2)):
+                return None
+            # word offsets from the table, up to where the first place it gives begins
+            out, i = [], base
+            while not out or i < min(out):
+                out.append((base + int.from_bytes(mem[i:i + 2], "big", signed=True)) & 0xFFFFFF)
+                i += 2
+                if len(out) > 256 or (count and len(out) > count):
+                    return None
+            return out
+        m = re.match(r"movea\.l \$([0-9A-F]+)\(pc,d\d\.w\),a\d$", insn.text)
+        if m:
+            base, out = int(m.group(1), 16), []
+            while len(out) < (count or 256):
+                v = int.from_bytes(mem[base + 4 * len(out):base + 4 * len(out) + 4], "big")
+                # (a place in the code of either: not every place a table gives was reached in the first)
+                if v & 1 or not 0x400 <= v < limit or (count is None and not out and v not in a_insns):
+                    break
+                out.append(v)
+            return out
+        return None
+
+    for _ in range(4):
+        before = len(imap)
+        seeds = []
+        for x, y in list(imap.items()):
+            ta = table(a, a_insns.get, x)
+            tb = table(b, b_insn, y, len(ta)) if ta else None
+            if ta and tb and len(ta) == len(tb):
+                for p, q in zip(ta, tb):
+                    if p not in tables:
+                        tables[p] = q
+                        seeds.append((p, q))
+        walk(seeds)
+        # 3. The first's entries moved as the code around them
+        if len(imap) == before:
+            break
+
+    # 4. What is left between two placed instructions: the lists matched by shape (code changed in the second)
+    b_entries = sorted(set(imap.values()) | {m for m in (moved(x) for x in a_starts) if m is not None})
+    b_insns, _, _ = recomp.discover(b, b_entries + [0x400], limit, True)
+    b_list = sorted(b_insns)
     known = sorted(imap.items())
+    filled = {}
     for (pa, pb), (na, nb) in zip(known, known[1:]):
-        if na - pa <= a_insns[pa].length:
+        if na - pa <= a_insns[pa].length or nb - pb <= 0 or nb - pb > 2 * (na - pa) + 0x400:
             continue
-        ga = [x for x in a_list[bisect.bisect_right(a_list, pa):bisect.bisect_left(a_list, na)]]
-        if not pb < nb <= pb + 2 * (na - pa) + 0x400:
-            # (the next anchor went elsewhere: look in as much after this one as the gap is long, and some)
-            nb = pb + 2 * (na - pa) + 0x100
-        gb = [y for y in b_list[bisect.bisect_right(b_list, pb):bisect.bisect_left(b_list, nb)]]
+        ga = a_list[bisect.bisect_right(a_list, pa):bisect.bisect_left(a_list, na)]
+        gb = b_list[bisect.bisect_right(b_list, pb):bisect.bisect_left(b_list, nb)]
         if not ga or not gb or len(ga) > 4000 or len(gb) > 4000:
             continue
         sm = difflib.SequenceMatcher(None, [shape(a_insns[x]) for x in ga], [shape(b_insns[y]) for y in gb],
                                      autojunk=False)
         for i, j, n in sm.get_matching_blocks():
             for k in range(n):
-                imap[ga[i + k]] = gb[j + k]
+                filled[ga[i + k]] = gb[j + k]
+    for x, y in filled.items():
+        if x not in imap:
+            b_known[y] = b_insns[y]
+            imap[x] = y
+    if conflicts:
+        print("portmap: %d places reached two ways (the first kept)" % len(conflicts), file=sys.stderr)
 
     votes = collections.Counter()
     for x, y in imap.items():
-        pa, pb = places(a_insns[x]), places(b_insns[y])
+        pa, pb = places(a_insns[x]), places(b_insn(y))
         if len(pa) == len(pb):
             for p, q in zip(pa, pb):
                 votes[(p, q)] += 1
@@ -172,6 +261,10 @@ def main():
         f.write("# made by tools/portmap.py from two games' programs: stays in work/\n")
         for x in sorted(imap):
             f.write("I %06X %06X\n" % (x, imap[x]))
+        for p in sorted(tables):
+            f.write("T %06X %06X\n" % (p, tables[p]))
+        for x, y in conflicts:
+            f.write("C %06X %06X %06X\n" % (x, imap[x], y))
         for p in sorted(best):
             q, n, total = best[p]
             f.write("P %06X %06X %d/%d\n" % (p, q, n, total))

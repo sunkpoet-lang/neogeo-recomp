@@ -20,6 +20,10 @@ namespace cps2recomp {
 
 // An address given to something that will hook it (the board's services in board.h, say): written this way
 // the translator finds it in the sources, as it finds AddHook's and AddRewrite's
+// A place a game does not have (a routine of another game made from the same program, which shares its sources):
+// a hook or a rewrite there is not made, and the game's own code runs
+constexpr uint32_t kNoPlace = 0;
+
 constexpr uint32_t HookAt(uint32_t address) {
     return address;
 }
