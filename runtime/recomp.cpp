@@ -88,7 +88,7 @@ namespace {
         static std::vector<Hook> hooks;
         return hooks;
     }
-    std::vector<uint8_t> g_hooked; // by address / 2: the hook's number + 1
+    std::vector<uint16_t> g_hooked; // by address / 2: the hook's number + 1
     bool g_hooksChecked = false;
 
     // Translated code only stops by at the hooks the translator knew of
@@ -117,10 +117,14 @@ void AddHook(uint32_t address, const char *name, HookFn fn) {
         return;
     }
     Hooks().push_back({address, name, fn});
+    if (Hooks().size() > 0xFFFF) {
+        fprintf(stderr, "more than %d hooks\n", 0xFFFF);
+        abort();
+    }
     if (g_hooked.size() <= address / 2) {
         g_hooked.resize(address / 2 + 1, 0);
     }
-    g_hooked[address / 2] = static_cast<uint8_t>(Hooks().size());
+    g_hooked[address / 2] = static_cast<uint16_t>(Hooks().size());
 }
 
 bool HasHook(uint32_t address) {
