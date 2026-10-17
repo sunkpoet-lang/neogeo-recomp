@@ -179,7 +179,8 @@ const std::vector<HudBox> &Boxes();
 void SetProgram(uint8_t *program, uint32_t size);
 void SetProgramOpcodes(uint8_t *opcodes);
 uint32_t ProgramSize();
-uint8_t *Program(uint32_t address);
+uint8_t *Program(uint32_t address); // (the extra set's too, where the 68000 sees it)
+bool InProgram(uint32_t address);   // (the game's program or the extra set's)
 // ... and as the 68000 reads it as program (deciphered: what a table read through the program counter gives)
 uint8_t *ProgramOpcodes(uint32_t address);
 // The extra set's program (game.cfg's extra_set; none: nullptr), as data and as program, and where the 68000 sees it

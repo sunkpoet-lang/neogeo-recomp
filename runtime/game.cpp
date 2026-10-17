@@ -47,6 +47,9 @@ void SetProgramOpcodes(uint8_t *opcodes) {
     g_opcodes = opcodes;
 }
 uint8_t *ProgramOpcodes(uint32_t address) {
+    if (g_extraOpcodes && address >= g_extraBase && address - g_extraBase < g_extraSize) {
+        return g_extraOpcodes + (address - g_extraBase);
+    }
     return g_opcodes + address;
 }
 void SetExtraProgram(uint8_t *program, uint8_t *opcodes, uint32_t size, uint32_t base) {
@@ -85,7 +88,13 @@ uint32_t ProgramSize() {
     return g_programSize;
 }
 uint8_t *Program(uint32_t address) {
+    if (g_extra && address >= g_extraBase && address - g_extraBase < g_extraSize) {
+        return g_extra + (address - g_extraBase);
+    }
     return g_program + address;
+}
+bool InProgram(uint32_t address) {
+    return address < g_programSize || (g_extra && address >= g_extraBase && address - g_extraBase < g_extraSize);
 }
 
 namespace {
