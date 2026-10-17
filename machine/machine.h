@@ -60,7 +60,14 @@ public:
     void SetExtraProgram(const RomSet *extra, uint32_t base) {
         m_extra = extra;
         m_extraBase = base;
+        if (extra && !extra->graphics.empty()) {
+            video.SetExtraGraphics(extra->graphics.data(), extra->graphics.size());
+        }
     }
+    // An object list entry is drawn from the extra set's graphics when the extra set's program was read (as data)
+    // since the entry before was written: what the game draws an object from (its picture's tiles and places) is
+    // read just before the entry is written, so an object of the other set's is drawn from its graphics
+    uint8_t objectsFromExtra[2][0x400] = {};
 
     void Reset();
     // Runs to the start of the next vertical blanking: one picture and its sound
@@ -161,6 +168,13 @@ private:
     uint32_t m_extraBase = 0;
     bool InExtra(uint32_t address) const {
         return m_extra && address >= m_extraBase && address - m_extraBase < m_extra->program.size();
+    }
+    bool m_readExtra = false; // (the extra program read as data since the last object entry was written)
+    void ObjectWritten(int bank, uint32_t address) {
+        if (m_extra && (address & 6) == 0) { // (an entry's first word)
+            objectsFromExtra[bank][(address & 0x1FFE) / 8] = m_readExtra;
+            m_readExtra = false;
+        }
     }
     std::vector<uint32_t> m_picture;
     int m_pictureWidth = Video::kWidth;

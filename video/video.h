@@ -37,8 +37,14 @@ public:
     void Reset();
     // The palette is copied from video RAM when the game writes its address register
     void CopyPalette();
-    // At the start of vertical blanking the board keeps a copy of the object list for the next picture
-    void LatchObjects(const uint8_t *objectRam);
+    // At the start of vertical blanking the board keeps a copy of the object list for the next picture (and,
+    // with a second set of graphics, which of its entries are drawn from that: a byte an entry, or none)
+    void LatchObjects(const uint8_t *objectRam, const uint8_t *fromExtra = nullptr);
+    // A second set of graphics (another set's, whose objects the game's sources mark: Machine::drawFromExtra)
+    void SetExtraGraphics(const uint8_t *graphics, size_t size) {
+        m_extraGraphics = graphics;
+        m_extraGraphicsSize = size;
+    }
     // One line of the picture (0..kHeight-1): Width() pixels with red in the low byte, then green, then blue
     void RenderLine(int line, uint32_t *out);
     void Serialize(Archive &ar);
@@ -98,6 +104,9 @@ private:
     Sources m_src;
     uint32_t m_palette[0xC00] = {};
     uint16_t m_objects[0x1000] = {}; // the latched object list: 1024 entries of four words
+    uint8_t m_objectsFromExtra[0x400] = {}; // ... and which are drawn from the extra graphics
+    const uint8_t *m_extraGraphics = nullptr;
+    size_t m_extraGraphicsSize = 0;
     uint16_t m_priorityControl = 0;
     int m_lastObject = -4;
 
