@@ -360,6 +360,10 @@ def main():
         texts = [open(os.path.join(d, name)).read() for d in folders for name in sorted(os.listdir(d))
                  if name.endswith((".cpp", ".h"))]
         names = {}
+        if args.places and os.path.exists(args.places):
+            # (a game's family.h may name places of its own, written as they are: hooks the sources make there)
+            names.update((n, int(v, 0)) for n, v in
+                         re.findall(r"\b(k\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\b", open(args.places).read()))
         for text in texts:
             names.update((n, at(w, int(v, 16))) for n, w, v in
                          re.findall(r"\b(k\w+)\s*=\s*(?:\w+::)?(At\(\s*)?0x([0-9A-Fa-f]+)", text))
