@@ -344,8 +344,12 @@ def main():
         import re
         places = {}
         if args.places and os.path.exists(args.places):
-            places = {int(a, 16): int(b, 16) for a, b in
-                      re.findall(r"\{\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+)\s*\}", open(args.places).read())}
+            # (the list is between the lines "places: begin" and "places: end"; none: the sources' own game)
+            text = open(args.places).read()
+            if "places: begin" in text and "places: end" in text:
+                text = text.split("places: begin", 1)[1].split("places: end", 1)[0]
+                places = {int(a, 16): int(b, 16) for a, b in
+                          re.findall(r"\{\s*0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+)\s*\}", text)}
 
         def at(wrapped, value):
             if not wrapped or not places:
