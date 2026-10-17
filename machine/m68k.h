@@ -72,6 +72,39 @@ public:
     bool stopped = false; // (after STOP: until an interrupt)
 
     uint64_t cycles = 0; // clock cycles since reset
+    // The board's bus waits (Machine::SetBoardTiming; docs/TIMING.md): on CPS-2 (its DL-1827, as jtcps2_dtack has
+    // it) an access outside 500000-7FFFFF (the ROM, instruction fetches included, work RAM, video RAM, the I/O) is
+    // acknowledged a clock late. 1: counted (each word of program an instruction is, each byte or word of data it
+    // reads or writes, and an interrupt's acknowledge and fetches); 0: not, as the port always ran the 68000.
+    unsigned busWait = 0;
+    static bool WaitedFor(uint32_t address) {
+        address &= 0xFFFFFF;
+        return address < 0x500000 || address >= 0x800000;
+    }
+    void BusWait(uint32_t address) {
+        if (busWait && WaitedFor(address)) {
+            cycles += busWait;
+            waitsCounted += busWait;
+        }
+    }
+    uint64_t waitsCounted = 0; // (CPS2RECOMP_BUS_LOG: the waits since the last frame)
+    // A one-word instruction that went somewhere else (a short branch taken, RTS, JMP (An), TRAP, RTE): the
+    // 68000 fetches two words there in place of the one it had fetched ahead, a word more than the instruction
+    // has (translated code adds the same where it jumps; tools/recomp.py)
+    unsigned fetchedWords = 0;
+    void RefillWait(uint32_t start) {
+        if (busWait && fetchedWords == 1 && pc != start + 2) {
+            cycles += busWait;
+            waitsCounted += busWait;
+        }
+    }
+    // One instruction by the interpreter, the refetch above counted (every run loop's and check's way of doing one)
+    void ExecuteOne() {
+        const uint32_t start = pc;
+        fetchedWords = 0;
+        Execute(Fetch());
+        RefillWait(start);
+    }
     uint64_t budget = 0; // translated code stops at the first block that starts at or after this
     // A wait (runtime/lift.h, Wait): the 68000 does nothing for so many cycles when it is next at `waitResume`
     // with the stack at `waitStack`; interrupts are taken meanwhile as they would be. When the wait is over

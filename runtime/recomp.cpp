@@ -7,6 +7,7 @@
 // translation). The interpreter can be run the same way (Mode::Blocks), and then does exactly what the
 // translated code does, cycle for cycle: that is what translated code is checked against.
 #include "native.h"
+#include "game.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -336,10 +337,24 @@ bool RunHook(M68K &c, uint32_t address) {
     }
 #endif
     Hook &hook = Hooks()[g_hooked[address / 2] - 1];
+    // (the port's own code takes none of the 68000's time for the board's waits: a hook only looks, and a rewrite
+    // charges what it says)
+    struct NoWaits {
+        M68K &c;
+        unsigned kept;
+        explicit NoWaits(M68K &c) : c(c), kept(c.busWait) {}
+        ~NoWaits() { c.busWait = kept; }
+    };
     if (!hook.rewrite) {
+        NoWaits quiet(c);
+        c.busWait = 0;
         return hook.fn(c);
     }
     if (g_noRewrites) {
+        return false;
+    }
+    // (the board's timing: the game's own code, with its own time, unless the game's sources need their rewrites)
+    if (c.busWait && !(TheGame().rewritesNeeded && TheGame().rewritesNeeded())) {
         return false;
     }
     {
@@ -350,6 +365,8 @@ bool RunHook(M68K &c, uint32_t address) {
             return false;
         }
     }
+    NoWaits quiet(c);
+    c.busWait = 0;
     if (hook.when && !hook.when(c)) {
         return false;
     }
@@ -374,7 +391,7 @@ void M68K::RunToReturn() {
             exit(1);
         }
         m_cycles = 0;
-        Execute(Fetch());
+        ExecuteOne();
         cycles += m_cycles;
     }
 }
@@ -406,7 +423,7 @@ void M68K::CallGuest(uint32_t address) {
         (void)tables;
 #endif
         m_cycles = 0;
-        Execute(Fetch());
+        ExecuteOne();
         cycles += m_cycles;
     }
     budget = keptBudget;
@@ -477,7 +494,7 @@ void M68K::Run(uint64_t until, Mode mode) {
         do {
             m_cycles = 0;
             m_jumped = false;
-            Execute(Fetch());
+            ExecuteOne();
             cycles += m_cycles;
             interpreted++;
             if (m_jumped) {
@@ -627,7 +644,7 @@ void M68K::RunChecked(uint64_t until) {
         check::noting = true;
         do {
             m_cycles = 0;
-            Execute(Fetch());
+            ExecuteOne();
             cycles += m_cycles;
         } while (!stopped && tables.Inside(pc));
         check::noting = false;
@@ -647,6 +664,8 @@ void M68K::RunChecked(uint64_t until) {
         }
         const Regs after = save();
         if (!(native == after) || split != g_interpreterWrites) {
+            fprintf(stderr, "(budget %+lld from the block's start, until %+lld)\n", static_cast<long long>(budget - before.cycles),
+                    static_cast<long long>(until - before.cycles));
             fprintf(stderr, "translated block at %06X differs from the interpreter (after %llu blocks checked)\n", before.pc,
                     static_cast<unsigned long long>(g_blocksChecked));
             auto show = [](const char *name, const Regs &r) {

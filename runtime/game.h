@@ -96,6 +96,11 @@ struct Game {
     // A training session is on (the game's own idea of one): the training aids (kFeatureTraining) work only then.
     // Not given: they work everywhere.
     bool (*inTraining)() = nullptr;
+    // With the board's timing (the port's arcade_timing feature) the game's own code runs in place of the readable
+    // rewrites, whose time is only what their originals' takes without the board's waits: unless this says the
+    // rewrites are needed now (training mode, a mode of the sources' own, widescreen, a cheat that works inside
+    // one). Not given: never (the game's own code throughout).
+    bool (*rewritesNeeded)() = nullptr;
     // For a custom soundtrack (machine/soundtrack.h): where the sound program's table of songs has song 0's entry,
     // and how many entries it has (0: no custom soundtrack); and the names of the music, where they are known
     uint32_t songTable = 0, songCount = 0;

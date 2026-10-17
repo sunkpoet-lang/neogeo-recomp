@@ -235,17 +235,32 @@ def emit_routine(out, head, members, blocks, mem, hooks=()):
         out.append("    BLOCK(%s, 0x%Xu)" % (label(addr), addr))
         if addr in hooks:
             out.append("    HOOK(0x%Xu)" % addr)
+        # (the board's bus waits, when the machine counts them: one a word of each instruction, as the interpreter's
+        # fetches have them, and a word more where a one-word instruction goes elsewhere, as the 68000 then fetches
+        # two words there (M68K::RefillWait); added up over the instructions that run on, and charged before one that
+        # may go elsewhere, and at the block's end; the instructions left to the interpreter count their own)
+        fetched = 0
         wanted = liveness(block)
         ended = False
         for n, insn in enumerate(block.insns):
             nxt = insn.addr + insn.length
             words = " ".join("%04X" % ((mem[a] << 8) | mem[a + 1]) for a in range(insn.addr, nxt, 2))
             out.append("    // %06X: %-22s %s" % (insn.addr, insn.text, words))
+            if not (insn.interp and not directly(insn, mem, nxt)):
+                jumps = insn.flow in ("branch", "call", "jump", "calli", "return")
+                fetched += insn.length // 2 + (1 if jumps and insn.length == 2 else 0)
+            if fetched and (insn.flow != "next" or insn.interp):
+                out.append("    c.cycles += c.busWait * %du;" % fetched)
+                fetched = 0
             if insn.interp:
                 # (the block ends here either way, as it does for the interpreter)
                 direct = directly(insn, mem, nxt)
                 if direct:
                     out.extend("    " + line for line in direct)
+                    if insn.length == 2:  # (a trap or rte that went elsewhere: the refetch, as the interpreter has it)
+                        out.append("    if (c.pc != 0x%Xu) {" % nxt)
+                        out.append("        c.cycles += c.busWait;")
+                        out.append("    }")
                 else:
                     out.append("    c.Interpret(0x%Xu);" % insn.addr)
                 if insn.flow in ("stop", "end"):
@@ -260,6 +275,8 @@ def emit_routine(out, head, members, blocks, mem, hooks=()):
             if insn.flow == "cond":
                 out.append("    if (%s) {" % insn.cond)
                 out.append("        c.cycles += %d;" % insn.taken)
+                if insn.length == 2:
+                    out.append("        c.cycles += c.busWait;")
                 out.append("        %s" % go(insn.target))
                 out.append("    }")
                 out.append("    c.cycles += %d;" % insn.not_taken)
@@ -297,6 +314,8 @@ def emit_routine(out, head, members, blocks, mem, hooks=()):
                 out.append("        LEAVE(to);")
                 ended = True
             out.append("    }")
+        if fetched:
+            out.append("    c.cycles += c.busWait * %du;" % fetched)
         if not ended:
             nxt = block.end
             following = members[index + 1] if index + 1 < len(members) else None
