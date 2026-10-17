@@ -188,11 +188,11 @@ uint8_t *ExtraProgram(uint32_t address);  // (address: the extra set's own, from
 uint8_t *ExtraOpcodes(uint32_t address);
 uint32_t ExtraProgramSize();
 uint32_t ExtraBase();
-// An address register loaded from memory at `low` or above (machine/m68k.h, M68K::PointerLoad) goes through `fn`,
+// An address register loaded from memory from `low` to `high` (machine/m68k.h, M68K::PointerLoad) goes through `fn`,
 // which may change the address: for a game whose extra set's tables hold that set's own addresses
 using PointerLoadFn = uint32_t (*)(uint32_t address, uint32_t value);
-void SetPointerLoads(PointerLoadFn fn, uint32_t low);
-PointerLoadFn PointerLoads(uint32_t &low);
+void SetPointerLoads(PointerLoadFn fn, uint32_t low, uint32_t high);
+PointerLoadFn PointerLoads(uint32_t &low, uint32_t &high);
 
 // Work RAM as the game's sources see it: by the 68000's address (FF0000-FFFFFF). Values are big-endian.
 void SetRam(uint8_t *ram);

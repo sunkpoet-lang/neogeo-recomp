@@ -40,6 +40,8 @@ RUN_ARGS = --rom "$(ROM)" --eeprom $(WORK)/eeprom.bin --settings $(WORK)/setting
 # The game's sources, and those of the games it shares sources with (game.cfg's sources: another game made from the
 # same program, whose sources name its places as At(0x...); the game's family.h says where they are in it)
 SHARES := $(shell $(CFG) sources $(GAME))
+# Another set the game reads (game.cfg's extra_set: characters of another game taken in, tools/graft.py)
+EXTRA_SET := $(shell $(CFG) extra_set $(GAME))
 HOOK_SOURCES := games/$(GAME)/src$(foreach g,$(SHARES),:games/$(g)/src)
 
 PROGRAM := $(WORK)/program.bin
@@ -60,11 +62,19 @@ endif
 gen:
 	@mkdir -p $(GEN)
 	@$(CFG) --header $(GEN)/game_info.h $(GAME)
+	@if [ -f $(PROGRAM).extra ] && [ -f games/$(GAME)/graft.cfg ]; then \
+		mkdir -p $(WORK)/extra; \
+		ln -sf ../program.bin.extra $(WORK)/extra/program.bin; ln -sf ../program.bin.extra.data $(WORK)/extra/program.bin.data; \
+		[ -f $(WORK)/extra/portmap.txt ] || python3 $(CR)/tools/portmap.py --from $(WORK) --to $(WORK)/extra \
+			--out $(WORK)/extra/portmap.txt --entries $(WORK)/extra/entries.txt 2>/dev/null; \
+		python3 $(CR)/tools/graft.py --spec games/$(GAME)/graft.cfg --work $(WORK) \
+			--base $(shell $(CFG) extra_base $(GAME)) --out $(GEN)/graft_data.h; \
+	fi
 	@if [ -f $(PROGRAM) ]; then \
 		python3 $(CR)/tools/recomp.py --program $(PROGRAM) --entries $(ENTRIES) --out $(GEN) \
 			--limit $(shell $(CFG) code_end $(GAME)) --list $(WORK)/program.lst \
 			--guess $(WORK)/guessed.txt --data $(PROGRAM).data \
-			--hook-sources "$(HOOK_SOURCES)" --places games/$(GAME)/family.h; \
+			--hook-sources "$(HOOK_SOURCES)" --places games/$(GAME)/family.h --hooks $(GEN)/graft_data_hooks.txt; \
 	fi
 	@if [ -f $(PROGRAM).z80 ]; then \
 		python3 $(CR)/tools/recompz80.py --program $(PROGRAM).z80 --entries $(ENTRIES).z80 --out $(GEN) \
@@ -77,7 +87,8 @@ configure:
 
 port: gen configure
 	@ninja -C $(B) $(GAME)
-	@if [ -z "$(NO_ROM)" ] && [ ! -f $(PROGRAM).z80 ]; then $(PORT) --rom "$(ROM)" --dump-program $(PROGRAM) && $(MAKE) --no-print-directory port; fi
+	@if [ -z "$(NO_ROM)" ] && { [ ! -f $(PROGRAM).z80 ] || { [ -n "$(EXTRA_SET)" ] && [ ! -f $(PROGRAM).extra ]; }; }; then \
+		$(PORT) --rom "$(ROM)" --dump-program $(PROGRAM) && $(MAKE) --no-print-directory port; fi
 
 run: port
 	$(PORT) $(RUN_ARGS) $(ARGS)

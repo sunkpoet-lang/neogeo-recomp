@@ -28,11 +28,12 @@ FILE_LINES = 12000        # about this many lines to a generated file
 
 
 def find_tables(mem, insns, limit):
-    """Jump tables the compiler's switch idiom leaves: 'move.w T(pc,dN.w),dM' followed by 'jmp T(pc,dM.w)',
-    the table of 16-bit offsets from T. The table runs up to the first place it sends to."""
+    """Jump tables the compiler's switch idiom leaves: 'move.w T(pc,dN.w),dM' followed by 'jmp T(pc,dM.w)' (or
+    'jsr', a call by the table), the table of 16-bit offsets from T. The table runs up to the first place it sends to."""
     found = []
     for addr, insn in insns.items():
-        if insn.flow != "jump" or not insn.text.startswith("jmp $") or "(pc," not in insn.text:
+        if not (insn.flow == "jump" and insn.text.startswith("jmp $") or insn.flow == "calli" and insn.text.startswith("jsr $")) \
+                or "(pc," not in insn.text:
             continue
         base = int(insn.text[5:insn.text.index("(")], 16)
         targets = []
@@ -46,20 +47,23 @@ def find_tables(mem, insns, limit):
             targets.append(target)
             end = min(end, target)
             at += 2
-        if len(targets) >= 2:
+        # (one entry is a table too when it sends to just after itself)
+        if len(targets) >= 2 or targets == [base + 2]:
             found += targets
     return found
 
 
-def discover(mem, entries, limit, tables=True):
-    """Decodes everything reachable. Returns (insns by address, block starts, call targets)."""
+def discover(mem, entries, limit, tables=True, stop=()):
+    """Decodes everything reachable. Returns (insns by address, block starts, call targets). Nothing is followed into
+    the places in `stop` (but for the entries)."""
     insns = {}
     starts = set()
     calls = set()
     work = []
+    stop = set(stop) - set(entries)
 
     def start(addr):
-        if addr < limit and not addr & 1 and addr not in starts:
+        if addr < limit and not addr & 1 and addr not in starts and addr not in stop:
             starts.add(addr)
             work.append(addr)
 
@@ -341,6 +345,8 @@ def main():
     ap.add_argument("--hook-sources", default=None,
                     help="the game's sources (folders, with %s between): translated code stops by for a hook wherever they say "
                          "AddHook(0x...) or AddRewrite(0x...)" % os.pathsep)
+    ap.add_argument("--hooks", default=None,
+                    help="more places translated code stops by for a hook (a file of them, hex, one a line)")
     ap.add_argument("--places", default=None,
                     help="for sources shared with another game: the list of where the places they name as At(0x...) are in "
                          "this one (a game's family.h: {0x..., 0x...} pairs)")
@@ -395,6 +401,8 @@ def main():
                     hooks.add(names[where])
                 else:
                     sys.exit("recomp: the sources hook %s, and nothing says where that is" % where)
+    if args.hooks and os.path.exists(args.hooks):
+        hooks |= {int(line, 16) for line in open(args.hooks).read().split()}
     hooks = sorted(hooks - {0})  # (0: a place the game does not have, lift.h's kNoPlace)
     entries += hooks  # (a hook's place is a place to translate from)
     entries = [e for e in dict.fromkeys(entries) if e < limit and not e & 1]

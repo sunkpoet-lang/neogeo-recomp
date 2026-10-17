@@ -69,14 +69,16 @@ uint32_t ExtraBase() {
 }
 namespace {
     PointerLoadFn g_pointerLoads = nullptr;
-    uint32_t g_pointerLow = 0xFFFFFFFF;
+    uint32_t g_pointerLow = 0xFFFFFFFF, g_pointerHigh = 0;
 } // namespace
-void SetPointerLoads(PointerLoadFn fn, uint32_t low) {
+void SetPointerLoads(PointerLoadFn fn, uint32_t low, uint32_t high) {
     g_pointerLoads = fn;
     g_pointerLow = low;
+    g_pointerHigh = high;
 }
-PointerLoadFn PointerLoads(uint32_t &low) {
+PointerLoadFn PointerLoads(uint32_t &low, uint32_t &high) {
     low = g_pointerLow;
+    high = g_pointerHigh;
     return g_pointerLoads;
 }
 uint32_t ProgramSize() {

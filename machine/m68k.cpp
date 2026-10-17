@@ -214,6 +214,13 @@ void M68K::Illegal(uint16_t op, uint32_t address) {
     if (reports) {
         reports--;
         fprintf(stderr, "68000: instruction %04X at %06X is not one this interpreter runs\n", op, address);
+        if (keepHistory) {
+            fprintf(stderr, "68000: the places before it:");
+            for (unsigned n = 0; n < 64; n++) {
+                fprintf(stderr, " %06X", history[(historyAt + n) & 63]);
+            }
+            fprintf(stderr, "\n");
+        }
     }
     Exception((op >> 12) == 0xA ? 10 : (op >> 12) == 0xF ? 11 : 4, address, -1);
     m_cycles += 34;
