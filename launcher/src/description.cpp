@@ -133,8 +133,14 @@ launcher::Description describe_game(const GameInfo& game) {
     const std::string set = std::string(game.rom_set) + " (" + game.rom_name + ")";
     d.original = "in the arcade";
     d.file_heading = "ROM SET";
-    // (a game that names its own buttons is not a fighting game, and has no training mode)
+    // (a game that names its own buttons is not a fighting game, and has no training mode; the collection's controls,
+    // which its first game's description gives, are for every game, the fighting games among them)
     const bool fighting = !*game.buttons;
+#ifdef LAUNCHER_COLLECTION
+    const bool forAll = true;
+#else
+    const bool forAll = fighting;
+#endif
     d.file_intro = keep("Choose your own copy of the game: the arcade ROM set " + set + (*game.key ? ", with its key file" : "") +
                         ". Only this version works. It stays where it is: the launcher only reads it.\n\nWhile playing, Esc or F1 on "
                         "the keyboard, or the left stick's click (or Start and Select together) on a gamepad, opens the in-game menu: " +
@@ -182,7 +188,7 @@ launcher::Description describe_game(const GameInfo& game) {
     d.bindings = port::MakeBoundTable(*game.players ? atoi(game.players) : 2, game.buttons, false).table;
 #endif
     d.controls_heading = "WHILE PLAYING";
-    d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (fighting ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   " + (fighting ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
+    d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (forAll ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   " + (forAll ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
     return d;
 }
 
