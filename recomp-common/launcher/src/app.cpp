@@ -318,6 +318,17 @@ App::App(SDL_Window* window)
         }
     }
     bindings_ = recomp::LoadBindings(slots_[first]->settings.path().string(), about_.bindings);
+#ifdef LAUNCHER_UPDATE_REPO
+#ifdef _WIN32
+    const char* launcher_name = LAUNCHER_GAME_EXE "-launcher.exe";
+#else
+    const char* launcher_name = LAUNCHER_GAME_EXE "-launcher";
+#endif
+    updater_ = std::make_unique<launcher::Updater>(program_folder_, launcher_name, LAUNCHER_VERSION, LAUNCHER_UPDATE_REPO, wake);
+    if (std::getenv("RECOMP_UPDATE_RELEASES")) {
+        updater_->check();  // (a test's list of releases: checked for pictures too)
+    }
+#endif
 }
 
 App::~App() {
@@ -342,6 +353,11 @@ bool App::busy() const {
             return true;
         }
     }
+#ifdef LAUNCHER_UPDATE_REPO
+    if (updater_->busy()) {
+        return true;
+    }
+#endif
     return finding_ || any_running();
 }
 
@@ -567,6 +583,12 @@ void App::play(size_t which) {
         return;  // (one of each game at a time: a second would share its settings and saves)
     }
     one.play_error.clear();
+#ifdef LAUNCHER_UPDATE_REPO
+    if (updater_->status().state == launcher::Updater::State::Installing || updater_->status().state == launcher::Updater::State::Installed) {
+        one.play_error = "The update is being installed: the games start again after it.";
+        return;
+    }
+#endif
     std::error_code error;
     if (one.about->saves_folder) {
         std::filesystem::create_directories(one.folder / "saves", error);
@@ -802,6 +824,15 @@ void App::frame() {
         }
         one->was_running = one->game.running();
     }
+#ifdef LAUNCHER_UPDATE_REPO
+    // The new version installed: it is started, and this one quits (not for pictures, which start nothing)
+    if (interactive_ && !relaunched_ && updater_->status().state == launcher::Updater::State::Installed && updater_->relaunch()) {
+        relaunched_ = true;
+        SDL_Event quit{};
+        quit.type = SDL_EVENT_QUIT;
+        SDL_PushEvent(&quit);
+    }
+#endif
     navigation();
     const ui::Palette& p = ui::palette();
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -824,6 +855,11 @@ void App::frame() {
 void App::set_interactive() {
     interactive_ = true;
     show_focus_ = SDL_HasGamepad();
+#ifdef LAUNCHER_UPDATE_REPO
+    if (prefs_.get("update", "check") != "0" && updater_->status().state == launcher::Updater::State::Idle) {
+        updater_->check();
+    }
+#endif
 }
 
 // What the arrow keys and a gamepad do beyond moving the ring and pressing what it is on (which is ImGui's).
@@ -1192,16 +1228,25 @@ void App::play_button(size_t which, float width) {
 
 void App::game_page(float width) {
     layout::heading(LAUNCHER_GAME_NAME, about_.file_intro, width);
+#ifdef LAUNCHER_UPDATE_REPO
+    update_card(width, true);
+#endif
     file_card(0, width);
     display_cards(0, width);
     ui::gap(28);
     play_button(0, width);
+#ifdef LAUNCHER_UPDATE_REPO
+    update_card(width, false);
+#endif
 }
 
 // A collection's first page: every game, its file (or where to find them all), and Play
 void App::library_page(float width) {
     const ui::Palette& p = ui::palette();
     layout::heading("Games", collection_->intro, width);
+#ifdef LAUNCHER_UPDATE_REPO
+    update_card(width, true);
+#endif
     ui::text("FIND YOUR GAMES", Font::Semibold, ui::size::kDetail, p.secondary);
     ui::gap(10);
     Card find(width);
@@ -1276,7 +1321,80 @@ void App::library_page(float width) {
             ui::text(text.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
         }
     }
+#ifdef LAUNCHER_UPDATE_REPO
+    update_card(width, false);
+#endif
 }
+
+#ifdef LAUNCHER_UPDATE_REPO
+// The version, whether there is a newer one, and getting it. While there is one (or it is being installed) the card
+// is at the top of the first page; otherwise at its end, with the switch for checking when the launcher opens.
+void App::update_card(float width, bool top) {
+    using State = launcher::Updater::State;
+    const ui::Palette& p = ui::palette();
+    const launcher::Updater::Status status = updater_->status();
+    const bool news = status.state == State::Available || status.state == State::Installing || status.state == State::Installed ||
+                      status.state == State::NotInstalled;
+    if (news != top) {
+        return;
+    }
+    if (!top) {
+        ui::gap(36);
+    }
+    ui::text(news ? "NEW VERSION" : "UPDATES", Font::Semibold, ui::size::kDetail, p.secondary);
+    ui::gap(10);
+    Card card(width);
+    const bool running = any_running();
+    std::string title = status.state == State::Installed ? "Version " + status.version + ", installed"
+                        : news                            ? "Version " + status.version + " is out"
+                                                          : "Version " LAUNCHER_VERSION;
+    std::string detail = status.state == State::Idle ? std::string("Not checked yet.") : status.message;
+    if (status.state == State::Available && running) {
+        detail += " Quit the games that are running first.";
+    }
+    row(width, title.c_str(), detail.c_str(), news ? 250.0f : 150.0f, 36.0f, [&] {
+        switch (status.state) {
+        case State::Available:
+        case State::NotInstalled:
+            // (the release's page: what is new, and its downloads)
+            if (ui::button(status.state == State::NotInstalled ? "Releases" : "What's new", Kind::Secondary, 120.0f, !status.notes_url.empty()) &&
+                interactive_) {  // (pictures for a test open nothing)
+                SDL_OpenURL(status.notes_url.c_str());
+            }
+            ImGui::SameLine(0.0f, px(10));
+            if (ui::button("Update", Kind::Primary, 120.0f, status.state == State::Available && !running)) {
+                updater_->install();
+            }
+            break;
+        case State::Installing:
+        case State::Installed:
+            ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(0, px(15)));
+            ui::progress_bar(ImHashStr("update-progress"), static_cast<float>(status.fraction), 250.0f, 6.0f);
+            break;
+        default:
+            if (ui::button(status.state == State::Checking ? "Checking…###check" : "Check now###check", Kind::Secondary, 150.0f, !updater_->busy())) {
+                updater_->check();
+            }
+            break;
+        }
+    });
+    if (!news) {
+        inset_separator(width);
+        bool on = prefs_.get("update", "check") != "0";
+        row(width, "Check when the launcher opens", "Asks GitHub for the list of releases, once each time the launcher opens. Nothing is downloaded until you choose Update.",
+            42.0f, 24.0f, [&] {
+                if (ui::toggle("##update-check", on)) {
+                    prefs_.set("update", "check", on ? "0" : "1");
+                    prefs_.save();
+                }
+            });
+    }
+    card.end();
+    if (top) {
+        ui::gap(24);
+    }
+}
+#endif
 
 // A collection's page for one game: its file, Display and Sound, Play, and the features that are its alone
 void App::title_page(size_t which, float width) {

@@ -22,6 +22,9 @@
 #include "game_process.h"
 #include "launcher.h"
 #include "settings.h"
+#ifdef LAUNCHER_UPDATE_REPO
+#include "update.h"
+#endif
 
 // The launcher's own pages. A port's: Game, Features, Controllers. A collection's: Games (Library), Features and
 // Controllers (for all the games), then one page for each game whose file is chosen (Title).
@@ -153,6 +156,11 @@ private:
     void file_card(size_t which, float width);
     void display_cards(size_t which, float width);
     void play_button(size_t which, float width);
+#ifdef LAUNCHER_UPDATE_REPO
+    // Updates (update.h): the card on the first page, where it is drawn when there is a new version (`top`) or
+    // at the page's end when there is not
+    void update_card(float width, bool top);
+#endif
 
     const launcher::Collection* collection_ = nullptr;  // a collection's launcher's (a port's: none)
     SDL_Window* window_;
@@ -180,6 +188,10 @@ private:
     bool focus_search_ = false;      // Ctrl+F (or Cmd+F): into the search box
 
     std::string steam_message_;  // what Add to Steam did
+#ifdef LAUNCHER_UPDATE_REPO
+    std::unique_ptr<launcher::Updater> updater_;
+    bool relaunched_ = false;  // (the new version has been started: this one quits)
+#endif
     int selected_pad_ = 0;
     recomp::Bindings bindings_{};  // (a collection's are every game's)
     int bind_player_ = 0;         // whose buttons the Controllers page shows
