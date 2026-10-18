@@ -192,6 +192,7 @@ launcher::Description describe_game(const GameInfo& game) {
 
 #include "games.h"
 
+namespace {
 // As many players as the game with the most, and each button called as a fighting game calls it and as the other
 // games call it (port/bindings.h)
 const port::BoundTable& shared_table() {
@@ -220,6 +221,7 @@ const port::BoundTable& shared_table() {
     }();
     return table;
 }
+}  // namespace
 
 const launcher::Collection& launcher::describe_collection() {
     static const Collection about = [] {
