@@ -88,7 +88,7 @@ namespace {
         static std::vector<Hook> hooks;
         return hooks;
     }
-    std::vector<uint8_t> g_hooked; // by address / 2: the hook's number + 1
+    std::vector<uint16_t> g_hooked; // by address / 2: the hook's number + 1
     bool g_hooksChecked = false;
 
     // Translated code only stops by at the hooks the translator knew of
@@ -117,10 +117,14 @@ void AddHook(uint32_t address, const char *name, HookFn fn) {
         return;
     }
     Hooks().push_back({address, name, fn});
+    if (Hooks().size() > 0xFFFF) {
+        fprintf(stderr, "more than %d hooks\n", 0xFFFF);
+        abort();
+    }
     if (g_hooked.size() <= address / 2) {
         g_hooked.resize(address / 2 + 1, 0);
     }
-    g_hooked[address / 2] = static_cast<uint8_t>(Hooks().size());
+    g_hooked[address / 2] = static_cast<uint16_t>(Hooks().size());
 }
 
 bool HasHook(uint32_t address) {
@@ -348,6 +352,7 @@ bool RunHook(M68K &c, uint32_t address) {
     if (!hook.rewrite) {
         NoWaits quiet(c);
         c.busWait = 0;
+        c.pc = address; // (translated code does not keep it as it goes: a hook sees where it is)
         return hook.fn(c);
     }
     if (g_noRewrites) {
@@ -479,6 +484,9 @@ void M68K::Run(uint64_t until, Mode mode) {
             cycles = until;
             return;
         }
+        if (keepHistory) {
+            Remember(pc);
+        }
         if (mode == Mode::Native) {
             if (const NativeFn fn = tables.At(pc)) {
                 depth = 0;
@@ -494,6 +502,9 @@ void M68K::Run(uint64_t until, Mode mode) {
         do {
             m_cycles = 0;
             m_jumped = false;
+            if (keepHistory) {
+                Remember(pc);
+            }
             ExecuteOne();
             cycles += m_cycles;
             interpreted++;
