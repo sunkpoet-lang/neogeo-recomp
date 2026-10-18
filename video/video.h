@@ -9,6 +9,8 @@
 // code (BSD-3-Clause, Paul Leaman et al.); the renderer is cps2recomp's own.
 #pragma once
 
+#include "../machine/romset.h"
+
 #include <cstdint>
 #include <vector>
 
@@ -30,9 +32,13 @@ public:
         const uint16_t *cpsA = nullptr;      // 32 registers
         const uint16_t *cpsB = nullptr;      // 32 registers
         const uint16_t *objectRegs = nullptr; // the six words at 0x400000
+        Board board;                          // (a CPS-1's: the objects are in video RAM; its CPS-B's registers)
     };
     explicit Video(const Sources &sources)
         : m_src(sources) {}
+    // A CPS-1's object list (256 entries of four words) is where its CPS-A says, in video RAM: the board copies
+    // it at the start of vertical blanking for the next picture, as the CPS-2 does its object memory
+    void LatchObjectsCps1();
 
     void Reset();
     // The palette is copied from video RAM when the game writes its address register
@@ -119,7 +125,9 @@ private:
     // (each in two forms: the board's own picture, with its width known to the compiler and nothing asked
     // about; and a wider or moved one. The first is as fast as it was before there was a second.)
     template <bool kWide> void RenderLineAs(int line, uint32_t *out);
-    template <bool kWide> void DrawScroll(int which, int rasterLine, uint16_t *pens, uint8_t *priority, uint8_t mark);
+    template <bool kWide> void DrawScroll(int which, int rasterLine, uint16_t *pens, uint8_t *priority, uint8_t mark, uint8_t *high = nullptr);
+    void RenderLineCps1(int line, uint32_t *out);
+    void DrawObjectsCps1(int rasterLine, uint16_t *pens, const uint8_t *high);
     template <bool kWide> void DrawObjects(int rasterLine, uint16_t *pens, uint8_t *priority, const uint32_t *masks);
 };
 

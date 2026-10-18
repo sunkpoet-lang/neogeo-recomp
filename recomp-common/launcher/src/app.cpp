@@ -1851,12 +1851,14 @@ void App::controllers_page(float width) {
                 bindings_.key[bind_player_][action] = usual.key[bind_player_][action];
                 bindings_.pad[bind_player_][action] = usual.pad[bind_player_][action];
             }
-            // (a key the usual layout gives this player is taken from the other)
-            for (int action = 0; table.players > 1 && action < table.count; action++) {
-                for (int other = 0; other < table.count; other++) {
-                    SDL_Scancode& theirs = bindings_.key[1 - bind_player_][other];
-                    if (theirs != SDL_SCANCODE_UNKNOWN && theirs == bindings_.key[bind_player_][action]) {
-                        theirs = SDL_SCANCODE_UNKNOWN;
+            // (a key the usual layout gives this player is taken from the others)
+            for (int who = 0; who < table.players; who++) {
+                for (int action = 0; who != bind_player_ && action < table.count; action++) {
+                    for (int other = 0; other < table.count; other++) {
+                        SDL_Scancode& theirs = bindings_.key[who][other];
+                        if (theirs != SDL_SCANCODE_UNKNOWN && theirs == bindings_.key[bind_player_][action]) {
+                            theirs = SDL_SCANCODE_UNKNOWN;
+                        }
                     }
                 }
             }
@@ -1866,10 +1868,13 @@ void App::controllers_page(float width) {
         ui::gap(10);
         constexpr float kChip = 170.0f, kChipGap = 10.0f;
         Card buttons(width);
-        row(width, table.players < 2 ? "Buttons" : bind_player_ == 0 ? "Player 1" : "Player 2",
-            table.players < 2    ? "The keyboard and the gamepad. Click a button here, then press the key or the gamepad button for it."
-            : bind_player_ == 0 ? "The keyboard and the first gamepad. Click a button here, then press the key or the gamepad button for it."
-                                : "The keyboard and the second gamepad. Click a button here, then press the key or the gamepad button for it.",
+        static const char* const kNth[recomp::kBindMaxPlayers] = {"first", "second", "third", "fourth"};
+        const std::string whose = "Player " + std::to_string(bind_player_ + 1);
+        const std::string what = std::string("The keyboard and the ") + kNth[bind_player_] +
+                                 " gamepad. Click a button here, then press the key or the gamepad button for it.";
+        row(width, table.players < 2 ? "Buttons" : whose.c_str(),
+            table.players < 2 ? "The keyboard and the gamepad. Click a button here, then press the key or the gamepad button for it."
+                              : what.c_str(),
             kChip * 2 + kChipGap, 18.0f, [&] {
                 ImVec2 at = ImGui::GetCursorScreenPos();
                 ui::text("Keyboard", Font::Semibold, ui::size::kDetail, p.secondary);

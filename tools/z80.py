@@ -58,10 +58,12 @@ def s8(v):
     return v - 256 if v & 0x80 else v
 
 
-def decode(mem, addr):
+def decode(mem, addr, ops=None):
+    """ops: where the program's opcodes are read from, if not mem (a Z80 that deciphers its opcode reads another way:
+    Kabuki). An instruction's first byte, and the one after a prefix, are opcode reads; the rest are not."""
     insn = Insn(addr)
     try:
-        _decode(insn, mem)
+        _decode(insn, mem, ops if ops is not None else mem)
     except (NotCode, IndexError):
         insn.interp = True
         insn.flow = "stop"
@@ -71,7 +73,7 @@ def decode(mem, addr):
     return insn
 
 
-def _decode(insn, mem):
+def _decode(insn, mem, ops):
     pos = insn.addr
 
     def byte():
@@ -79,6 +81,14 @@ def _decode(insn, mem):
         if pos >= 0x8000:
             raise NotCode()
         v = mem[pos]
+        pos += 1
+        return v
+
+    def opbyte():
+        nonlocal pos
+        if pos >= 0x8000:
+            raise NotCode()
+        v = ops[pos]
         pos += 1
         return v
 
@@ -91,11 +101,11 @@ def _decode(insn, mem):
         insn.text = text
         insn.length = length
 
-    op = byte()
+    op = opbyte()
     p = 0
     if op in (0xDD, 0xFD):
         p = 1 if op == 0xDD else 2
-        op = byte()
+        op = opbyte()
         if op in (0xDD, 0xFD, 0xED):
             raise NotCode()
         insn.refresh = 2
@@ -133,7 +143,7 @@ def _decode(insn, mem):
             d = s8(byte())
             address = "static_cast<uint16_t>(c.%s %s %d)" % (hl, "+" if d >= 0 else "-", abs(d))
             where = "(%s%s%d)" % (hl, "+" if d >= 0 else "-", abs(d))
-        op2 = byte()
+        op2 = byte() if p else opbyte()
         insn.refresh += 1
         x, y, z = op2 >> 6, (op2 >> 3) & 7, op2 & 7
         memory = bool(p) or z == 6
@@ -170,7 +180,7 @@ def _decode(insn, mem):
     if op == 0xED:
         if p:
             raise NotCode()
-        op2 = byte()
+        op2 = opbyte()
         insn.refresh += 1
         x, y, z = op2 >> 6, (op2 >> 3) & 7, op2 & 7
         cycles = 8

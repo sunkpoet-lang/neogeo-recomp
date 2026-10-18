@@ -25,7 +25,7 @@ ROUTINE_BLOCKS = 400
 FILE_LINES = 12000
 
 
-def discover(mem, entries):
+def discover(mem, entries, ops=None):
     insns, starts, calls, work = {}, set(), set(), []
 
     def start(addr):
@@ -38,7 +38,7 @@ def discover(mem, entries):
     while work:
         addr = work.pop()
         while addr not in insns and addr < LIMIT:
-            insn = insns[addr] = z80.decode(mem, addr)
+            insn = insns[addr] = z80.decode(mem, addr, ops)
             nxt = addr + insn.length
             flow = insn.flow
             if flow in ("cond", "djnz", "branch"):
@@ -240,9 +240,11 @@ def main():
     ap.add_argument("--entries", default=None)
     ap.add_argument("--out", required=True)
     ap.add_argument("--list", default=None)
+    ap.add_argument("--opcodes", default=None, help="the program as opcode reads see it, where they decipher it another way")
     args = ap.parse_args()
 
     mem = open(args.program, "rb").read()
+    ops = open(args.opcodes, "rb").read() if args.opcodes else mem
     entries = [0x0000, 0x0038]  # reset; the interrupt (mode 1)
     if args.entries and os.path.exists(args.entries):
         for line in open(args.entries):
@@ -251,7 +253,7 @@ def main():
                 entries.append(int(line, 16))
     entries = [e for e in dict.fromkeys(entries) if e < LIMIT]
 
-    insns, starts, calls = discover(mem, entries)
+    insns, starts, calls = discover(mem, entries, ops)
     blocks = make_blocks(insns, starts)
     first = [0] + sorted(calls - {0})
     routines = make_routines(blocks, first, [e for e in entries if e not in calls] + sorted(starts))

@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 
 #include "z80.h"
+#include <cstdio>
+#include <cstdlib>
 
 #include "../runtime/native_z80.h"
 #include "../runtime/state.h"
@@ -91,6 +93,9 @@ void Z80::Wr(uint16_t address, uint8_t value) {
 }
 uint8_t Z80::Fetch() {
     return bus.Read(pc++);
+}
+uint8_t Z80::FetchOpcode() {
+    return bus.ReadOpcode(pc++);
 }
 uint16_t Z80::Fetch16() {
     const uint8_t low = Fetch();
@@ -419,7 +424,7 @@ unsigned Z80::Step() {
         return 4;
     }
     refresh++;
-    Execute(Fetch(), 0);
+    Execute(FetchOpcode(), 0);
     return m_cycles;
 }
 
@@ -427,7 +432,7 @@ void Z80::Interpret(uint16_t address) {
     pc = address;
     m_cycles = 0;
     refresh++;
-    Execute(Fetch(), 0);
+    Execute(FetchOpcode(), 0);
     cycles += m_cycles;
 }
 
@@ -636,13 +641,13 @@ void Z80::Execute(uint8_t op, unsigned prefix) {
         case 1:
             refresh++;
             m_cycles += 4;
-            Execute(Fetch(), 1);
+            Execute(FetchOpcode(), 1);
             break;
         case 2: ExecuteED(); break;
         default:
             refresh++;
             m_cycles += 4;
-            Execute(Fetch(), 2);
+            Execute(FetchOpcode(), 2);
             break;
         }
         return;
@@ -660,7 +665,7 @@ void Z80::ExecuteCB(unsigned prefix) {
     if (prefix) {
         address = static_cast<uint16_t>(Index(prefix) + static_cast<int8_t>(Fetch()));
     }
-    const uint8_t op = Fetch();
+    const uint8_t op = prefix ? Fetch() : FetchOpcode(); // (after an index prefix and its displacement: an operand's read)
     refresh++;
     const unsigned x = op >> 6, y = (op >> 3) & 7, z = op & 7;
     const bool memory = prefix || z == 6;
@@ -686,7 +691,7 @@ void Z80::ExecuteCB(unsigned prefix) {
 }
 
 void Z80::ExecuteED() {
-    const uint8_t op = Fetch();
+    const uint8_t op = FetchOpcode();
     refresh++;
     const unsigned x = op >> 6, y = (op >> 3) & 7, z = op & 7;
     m_cycles += 8;

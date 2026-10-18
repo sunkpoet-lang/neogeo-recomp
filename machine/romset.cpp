@@ -3,6 +3,8 @@
 
 #include "romset.h"
 
+#include "kabuki.h"
+
 #include "cps2crypt.h"
 
 #include <sys/stat.h>
@@ -227,8 +229,33 @@ namespace {
 } // namespace
 
 RomList ParseRomList(const char *program, const char *graphics, const char *soundProgram, const char *samples,
-                     const char *key, const char *set, const char *parent) {
+                     const char *key, const char *set, const char *parent, const char *board, const char *cpsB) {
     RomList list;
+    list.board.cps1 = std::string(board) == "cps1";
+    if (list.board.cps1) {
+        // (cps_b: layer control, four priority masks, palette control, three enable bits; hex bytes)
+        unsigned values[9];
+        int count = 0;
+        for (const char *at = cpsB; *at && count < 9;) {
+            char *end;
+            const unsigned long value = strtoul(at, &end, 16);
+            if (end == at) {
+                break;
+            }
+            values[count++] = static_cast<unsigned>(value);
+            at = end;
+        }
+        if (count == 9) {
+            list.board.layerControl = static_cast<uint8_t>(values[0]);
+            for (int n = 0; n < 4; n++) {
+                list.board.priority[n] = static_cast<uint8_t>(values[1 + n]);
+            }
+            list.board.paletteControl = static_cast<uint8_t>(values[5]);
+            for (int n = 0; n < 3; n++) {
+                list.board.enable[n] = static_cast<uint8_t>(values[6 + n]);
+            }
+        }
+    }
     list.set = set;
     list.parent = parent;
     list.program = ParseFiles(program);
@@ -291,13 +318,16 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
         }
     }
 
-    if (list.key.empty() || !ReadFile(folder, list.key[0], data, error) || !DecodeKey(data, set)) {
+    set.board = list.board;
+    if (list.board.cps1) {
+        set.opcodes = set.program; // (a CPS-1's program is not enciphered)
+    } else if (list.key.empty() || !ReadFile(folder, list.key[0], data, error) || !DecodeKey(data, set)) {
         if (error.empty()) {
             error = "the key file is not a CPS-2 key";
         }
         return false;
     }
-    {
+    if (!list.board.cps1) {
         const size_t words = set.program.size() / 2;
         std::vector<uint16_t> in(words), out(words);
         for (size_t i = 0; i < words; i++) {
@@ -333,7 +363,7 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
             }
         }
     }
-    {
+    if (!list.board.cps1) { // (a CPS-2's graphics ROMs have their tiles in another order)
         const size_t bank = 0x200000;
         std::vector<uint64_t> words(bank / 8);
         for (size_t at = 0; at + bank <= set.graphics.size(); at += bank) {
@@ -351,15 +381,29 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
         set.soundProgram.insert(set.soundProgram.end(), data.begin(), data.end());
     }
 
-    // Samples: 16-bit words low byte first, like the program
+    // A CPS-1's sound program is enciphered (Kabuki): its key is worked out from the program itself (kabuki.h)
+    set.soundOpcodes.clear();
+    if (list.board.cps1) {
+        KabukiKey kabuki;
+        if (set.soundProgram.size() < 0x8000 || !FindKabukiKey(set.soundProgram.data(), set.soundProgram.size(), kabuki)) {
+            error = "the sound program's cipher could not be worked out (is it the right ROM set?)";
+            return false;
+        }
+        set.soundOpcodes.resize(0x8000);
+        std::vector<uint8_t> plain(0x8000);
+        KabukiDecode(set.soundProgram.data(), 0x8000, kabuki, set.soundOpcodes.data(), plain.data());
+        std::copy(plain.begin(), plain.end(), set.soundProgram.begin());
+    }
+
+    // Samples: on a CPS-2, 16-bit words low byte first, like the program; on a CPS-1, bytes as they are
     set.samples.clear();
     for (const RomFile &file : list.samples) {
         if (!ReadFile(folder, file, data, error)) {
             return false;
         }
         for (size_t i = 0; i + 1 < data.size(); i += 2) {
-            set.samples.push_back(data[i + 1]);
-            set.samples.push_back(data[i]);
+            set.samples.push_back(data[list.board.cps1 ? i : i + 1]);
+            set.samples.push_back(data[list.board.cps1 ? i + 1 : i]);
         }
     }
     return true;

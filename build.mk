@@ -78,7 +78,7 @@ gen:
 	fi
 	@if [ -f $(PROGRAM).z80 ]; then \
 		python3 $(CR)/tools/recompz80.py --program $(PROGRAM).z80 --entries $(ENTRIES).z80 --out $(GEN) \
-			--list $(WORK)/sound.lst; \
+			--list $(WORK)/sound.lst $(if $(wildcard $(PROGRAM).z80ops),--opcodes $(PROGRAM).z80ops); \
 	fi
 
 configure:
@@ -146,7 +146,9 @@ launcher: port
 	  -DROM_NAME="$(shell $(CFG) rom_name $(GAME))" -DROM_PROGRAM="$(shell $(CFG) program $(GAME))" \
 	  -DROM_GRAPHICS="$(shell $(CFG) graphics $(GAME))" -DROM_SOUND_PROGRAM="$(shell $(CFG) sound_program $(GAME))" \
 	  -DROM_SAMPLES="$(shell $(CFG) samples $(GAME))" -DROM_KEY="$(shell $(CFG) key $(GAME))" \
-	  -DDISPLAY_SWITCHES="$(shell $(CFG) display $(GAME))" > /dev/null
+	  -DDISPLAY_SWITCHES="$(shell $(CFG) display $(GAME))" \
+	  -DPLAYERS="$(shell $(CFG) players $(GAME))" -DBUTTONS="$(shell $(CFG) buttons $(GAME))" \
+	  -DBOARD="$(shell $(CFG) board $(GAME))" -DCPS_B="$(shell $(CFG) cps_b $(GAME))" > /dev/null
 	@cmake --build $(B)/launcher
 	@echo "built $(B)/$(GAME)-launcher"
 

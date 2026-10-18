@@ -28,12 +28,22 @@ struct GameInfo {
     // says, with || between two of them (the game leaves these out of the list it gives for the Features page:
     // runtime/game.h, kFeatureFirstPage)
     const char* display;
+    // How many players (game.cfg's `players`; "" is two), and the game's names for its buttons ("Attack|Jump",
+    // port/bindings.h; "": a fighting game's six)
+    const char *players, *buttons;
+    // The board (game.cfg's `board` and `cps_b`: "" for a CPS-2; machine/romset.h)
+    const char *board, *cps_b;
     // Another set the game reads too (game.cfg's extra_set; empty: none). In a collection, the set chosen for the
     // game that is that set's is given to it (--rom2); else the game looks for it beside its own
     const char* extra_set;
 };
 #ifdef LAUNCHER_COLLECTION
 const GameInfo* game_of_set(const char* set);
+#endif
+
+#ifdef LAUNCHER_COLLECTION
+// (the table every game shares in the collection: below)
+const port::BoundTable& shared_table();
 #endif
 
 // (the words made for each game, kept for as long as the launcher runs: the descriptions point into them)
@@ -56,15 +66,16 @@ launcher::FileCheck check_rom_set(const GameInfo& game, const std::string& path)
     }
     // (the same reading the game does: its files by checksum, from the zip, its parent's or the folder)
     const cps2recomp::RomList list =
-        cps2recomp::ParseRomList(game.program, game.graphics, game.sound_program, game.samples, game.key, game.rom_set, game.rom_parent);
+        cps2recomp::ParseRomList(game.program, game.graphics, game.sound_program, game.samples, game.key, game.rom_set, game.rom_parent,
+                                 game.board, game.cps_b);
     cps2recomp::RomSet set;
     std::string message;
     if (cps2recomp::LoadRomSet(path, list, set, message)) {
         check.result = launcher::FileCheck::Result::Good;
         check.message = game.rom_name;
     } else {
-        check.message = "Not usable: " + message + ". This port needs the set " + game.rom_set + " (" + game.rom_name +
-                        "), with its key file. Other versions and regions of the game will not work.";
+        check.message = "Not usable: " + message + ". This port needs the set " + game.rom_set + " (" + game.rom_name + ")" +
+                        (*game.key ? ", with its key file" : "") + ". Other versions and regions of the game will not work.";
     }
     return check;
 }
@@ -128,10 +139,18 @@ launcher::Description describe_game(const GameInfo& game) {
     const std::string set = std::string(game.rom_set) + " (" + game.rom_name + ")";
     d.original = "in the arcade";
     d.file_heading = "ROM SET";
-    d.file_intro = keep("Choose your own copy of the game: the arcade ROM set " + set +
-                        ", with its key file. Only this version works. It stays where it is: the launcher only reads it.\n\nWhile playing, Esc or F1 on "
-                        "the keyboard, or the left stick's click (or Start and Select together) on a gamepad, opens the in-game menu: training mode "
-                        "and the other modes, save states, speed, and every feature.");
+    // (a game that names its own buttons is not a fighting game, and has no training mode; the collection's controls,
+    // which its first game's description gives, are for every game, the fighting games among them)
+    const bool fighting = !*game.buttons;
+#ifdef LAUNCHER_COLLECTION
+    const bool forAll = true;
+#else
+    const bool forAll = fighting;
+#endif
+    d.file_intro = keep("Choose your own copy of the game: the arcade ROM set " + set + (*game.key ? ", with its key file" : "") +
+                        ". Only this version works. It stays where it is: the launcher only reads it.\n\nWhile playing, Esc or F1 on "
+                        "the keyboard, or the left stick's click (or Start and Select together) on a gamepad, opens the in-game menu: " +
+                        (fighting ? "training mode and the other modes" : "the game's options") + ", save states, speed, and every feature.");
 #ifdef LAUNCHER_COLLECTION
     if (const GameInfo* other = game.extra_set && *game.extra_set ? game_of_set(game.extra_set) : nullptr) {
         d.file_intro = keep(std::string(d.file_intro) + "\n\nIt takes things from " + other->name + " too: choose that game's ROM set (" +
@@ -185,9 +204,13 @@ launcher::Description describe_game(const GameInfo& game) {
     for (const FeatureSwitch& one : switches) {
         d.display.push_back({keep(one.name), keep(one.title), keep(one.detail), false, nullptr});
     }
-    d.bindings = port::BindingTable();
+#ifdef LAUNCHER_COLLECTION
+    d.bindings = shared_table().table;
+#else
+    d.bindings = port::MakeBoundTable(*game.players ? atoi(game.players) : 2, game.buttons, false).table;
+#endif
     d.controls_heading = "WHILE PLAYING";
-    d.controls = {{"Keys", "Esc, F1, the left stick's click, or Start and Select together: the in-game menu (training mode and the other modes, save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   Backspace: start over (training)   F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)"}};
+    d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (forAll ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   " + (forAll ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
     return d;
 }
 
@@ -198,6 +221,34 @@ launcher::Description describe_game(const GameInfo& game) {
 #include "games.h"
 
 namespace {
+// As many players as the game with the most, and each button called as a fighting game calls it and as the other
+// games call it (port/bindings.h)
+const port::BoundTable& shared_table() {
+    static const port::BoundTable& table = [&]() -> const port::BoundTable& {
+        int players = 2;
+        std::vector<std::string> names(port::kButtons);
+        for (const GameInfo& game : kGames) {
+            players = std::max(players, *game.players ? atoi(game.players) : 2);
+            std::string list = game.buttons;
+            for (int button = 0; button < port::kButtons && !list.empty(); button++) {
+                const size_t bar = list.find('|');
+                std::string name = list.substr(0, bar);
+                name.erase(0, name.find_first_not_of(' '));
+                name.erase(name.find_last_not_of(' ') + 1);
+                list = bar == std::string::npos ? "" : list.substr(bar + 1);
+                if (!name.empty() && ("/" + names[button] + "/").find("/" + name + "/") == std::string::npos) {
+                    names[button] += (names[button].empty() ? "" : "/") + name;
+                }
+            }
+        }
+        std::string buttons;
+        for (int button = 0; button < port::kButtons; button++) {
+            buttons += (button ? "|" : "") + names[button];
+        }
+        return port::MakeBoundTable(players, buttons, true);
+    }();
+    return table;
+}
 // The collection's game whose ROM set this is
 const GameInfo* game_of_set(const char* set) {
     for (const GameInfo& game : kGames) {
@@ -212,8 +263,8 @@ const GameInfo* game_of_set(const char* set) {
 const launcher::Collection& launcher::describe_collection() {
     static const Collection about = [] {
         Collection c;
-        c.subtitle = "CPS-2 arcade games, native";
-        c.intro = "Each game needs your own copy of it: its arcade ROM set, with its key file. Show the launcher the folder you keep them in, "
+        c.subtitle = "Capcom CPS-1 and CPS-2 arcade games, native";
+        c.intro = "Each game needs your own copy of it: its arcade ROM set (a CPS-2 game's with its key file). Show the launcher the folder you keep them in, "
                   "or drop a set (or the folder) on this window. The sets stay where they are: the launcher only reads them.\n\n"
                   "While playing, Esc or F1 on the keyboard, or the left stick's click (or Start and Select together) on a gamepad, "
                   "opens the in-game menu.";
@@ -232,11 +283,24 @@ const launcher::Collection& launcher::describe_collection() {
 #ifndef LAUNCHER_DISPLAY_SWITCHES
 #define LAUNCHER_DISPLAY_SWITCHES ""
 #endif
+#ifndef LAUNCHER_PLAYERS
+#define LAUNCHER_PLAYERS ""
+#endif
+#ifndef LAUNCHER_BUTTONS
+#define LAUNCHER_BUTTONS ""
+#endif
+#ifndef LAUNCHER_BOARD
+#define LAUNCHER_BOARD ""
+#endif
+#ifndef LAUNCHER_CPS_B
+#define LAUNCHER_CPS_B ""
+#endif
 
 const launcher::Description& launcher::describe() {
     static const Description about = describe_game({LAUNCHER_GAME_EXE, LAUNCHER_GAME_NAME, LAUNCHER_ROM_SET, LAUNCHER_ROM_PARENT, LAUNCHER_ROM_NAME,
                                                     LAUNCHER_ROM_PROGRAM, LAUNCHER_ROM_GRAPHICS, LAUNCHER_ROM_SOUND_PROGRAM, LAUNCHER_ROM_SAMPLES,
-                                                    LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES, ""});
+                                                    LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES, LAUNCHER_PLAYERS, LAUNCHER_BUTTONS,
+                                                    LAUNCHER_BOARD, LAUNCHER_CPS_B, ""});
     return about;
 }
 

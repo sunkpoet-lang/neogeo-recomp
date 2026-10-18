@@ -10,6 +10,9 @@
 #   ROM_PROGRAM ROM_GRAPHICS ROM_SOUND_PROGRAM ROM_SAMPLES ROM_KEY
 # and, if the game has features whose switch belongs on the first page with "Full screen" (game.cfg, display):
 #   DISPLAY_SWITCHES  name|Title|What it says under it, and more of them with || between
+# and, for a game of more than two players or with buttons of its own (game.cfg, players and buttons):
+#   PLAYERS  BUTTONS
+# and, for a game on another board than a CPS-2 (game.cfg, board and cps_b; machine/romset.h):  BOARD  CPS_B
 # The collection's launcher, for every game (tools/collection.sh): COLLECTION=ON and GAMES (their ids; the table of
 # them, games.h, is written from their game.cfg files); GAME_NAME and the rest then name the collection.
 cmake_minimum_required(VERSION 3.20)
@@ -26,7 +29,8 @@ set(LAUNCHER_APP_ID "${APP_ID}")
 set(LAUNCHER_HOME_ENV "${HOME_ENV}")
 set(LAUNCHER_DISCLAIMER "${DISCLAIMER}")
 set(LAUNCHER_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../machine/romset.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../machine/cps2crypt.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../machine/romset.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../machine/cps2crypt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../machine/kabuki.cpp)
 set(LAUNCHER_COLLECTION ${COLLECTION})
 include(../recomp-common/launcher/launcher.cmake)
 if(COLLECTION)
@@ -44,6 +48,7 @@ target_compile_definitions(launcher PRIVATE
     LAUNCHER_ROM_SET="${ROM_SET}" LAUNCHER_ROM_PARENT="${ROM_PARENT}" LAUNCHER_ROM_NAME="${ROM_NAME}"
     LAUNCHER_ROM_PROGRAM="${ROM_PROGRAM}" LAUNCHER_ROM_GRAPHICS="${ROM_GRAPHICS}"
     LAUNCHER_ROM_SOUND_PROGRAM="${ROM_SOUND_PROGRAM}" LAUNCHER_ROM_SAMPLES="${ROM_SAMPLES}" LAUNCHER_ROM_KEY="${ROM_KEY}"
-    LAUNCHER_DISPLAY_SWITCHES="${DISPLAY_SWITCHES}")
+    LAUNCHER_DISPLAY_SWITCHES="${DISPLAY_SWITCHES}" LAUNCHER_PLAYERS="${PLAYERS}" LAUNCHER_BUTTONS="${BUTTONS}"
+    LAUNCHER_BOARD="${BOARD}" LAUNCHER_CPS_B="${CPS_B}")
 find_package(ZLIB REQUIRED)
 target_link_libraries(launcher PRIVATE ZLIB::ZLIB)

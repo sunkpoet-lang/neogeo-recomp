@@ -11,6 +11,19 @@
 
 namespace cps2recomp {
 
+// Which board the game is on. A CPS-2 unless the game's game.cfg says `board = cps1` (a CPS-1 with QSound, the
+// "CPS-1.5": a 12 MHz 68000 with an unenciphered program, the objects in the video memory, the Z80's program
+// enciphered with Kabuki). A CPS-1's CPS-B chip has its registers where the game's chip has them (game.cfg's
+// `cps_b`, the byte offsets as MAME's table of the chips has them: layer control, the four priority masks, palette
+// control, then the bits of the layer control that switch scroll screens 1-3 on). The CPS-2's are the defaults.
+struct Board {
+    bool cps1 = false;
+    uint8_t layerControl = 0x26;
+    uint8_t priority[4] = {0x28, 0x2A, 0x2C, 0x2E};
+    uint8_t paletteControl = 0x30;
+    uint8_t enable[3] = {0x02, 0x04, 0x08};
+};
+
 struct RomSet {
     // The 68000's ROM, as bytes in the order the CPU sees them: as it is on the chips (what a data read
     // gives), and deciphered (what a program read gives)
@@ -26,6 +39,11 @@ struct RomSet {
 
     uint32_t key[2] = {};     // the board's 64-bit key
     uint32_t encryptedEnd = 0; // program below this address is enciphered
+
+    Board board;
+    // (a CPS-1 with Kabuki: the sound program's first 0x8000 bytes as the Z80's opcode reads see them; soundProgram
+    // has them as its other reads do. Empty: the program is not enciphered.)
+    std::vector<uint8_t> soundOpcodes;
 };
 
 // One file of the set and its CRC32
@@ -42,9 +60,11 @@ struct RomList {
     // Where the first graphics file sits in the graphics space (a list that starts "@800000": boards with
     // few graphics ROMs have them in the last sockets, and the game's tile numbers count from the first)
     size_t graphicsBase = 0;
+    Board board;
 };
+// (board, cpsB: game.cfg's `board` and `cps_b`, or "")
 RomList ParseRomList(const char *program, const char *graphics, const char *soundProgram, const char *samples,
-                     const char *key, const char *set = "", const char *parent = "");
+                     const char *key, const char *set = "", const char *parent = "", const char *board = "", const char *cpsB = "");
 
 // Reads the set from `path`: a folder of its files, or a zip (<set>.zip; files not in it are looked for in
 // the parent's and the set's zips beside it, and a folder's files can be in such zips inside it). Files in
