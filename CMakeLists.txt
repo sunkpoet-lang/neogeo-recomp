@@ -37,7 +37,7 @@ endif ()
 set(MACHINE_SOURCES
     video/video.cpp
     sound/z80.cpp sound/qsound.cpp sound/driver.cpp
-    machine/m68k.cpp machine/machine.cpp machine/soundtrack.cpp machine/eeprom.cpp machine/romset.cpp machine/cps2crypt.cpp machine/kabuki.cpp
+    machine/m68k.cpp machine/machine.cpp machine/sound_board.cpp machine/soundtrack.cpp machine/eeprom.cpp machine/romset.cpp machine/cps2crypt.cpp machine/kabuki.cpp
     runtime/recomp.cpp runtime/recomp_z80.cpp
 )
 # The game's own sources (features, routines replaced by hand-written C++); without any, nothing is added
@@ -51,6 +51,7 @@ if (GAME_SHARES)
     foreach (other ${GAME_SHARES})
         file(GLOB shared CONFIGURE_DEPENDS "${GAME_DIR}/../${other}/src/*.cpp")
         list(APPEND GAME_SOURCES ${shared})
+        list(APPEND GAME_INCLUDES "${GAME_DIR}/../${other}/src") # (for the game's own sources, which use them)
         message(STATUS "cps2recomp: ${GAME}: the sources of ${other} too")
     endforeach ()
 endif ()
@@ -75,7 +76,7 @@ if (WIN32)
     set_target_properties(${GAME} PROPERTIES WIN32_EXECUTABLE ON)
 endif ()
 foreach (target ${GAME} ${GAME}-check)
-    target_include_directories(${target} PRIVATE runtime port machine fight "${WORK_DIR}/gen" "${GAME_DIR}")
+    target_include_directories(${target} PRIVATE runtime port machine fight "${WORK_DIR}/gen" "${GAME_DIR}" ${GAME_INCLUDES})
     target_link_libraries(${target} PRIVATE SDL3::SDL3 ZLIB::ZLIB)
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wno-unused-parameter -Wno-unused-label -Wno-unused-variable -Wno-parentheses-equality)
 endforeach ()

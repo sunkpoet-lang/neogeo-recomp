@@ -131,6 +131,16 @@ public:
     const uint8_t *opcodes = nullptr; // the program as program
     uint32_t romSize = 0;
 
+    // An address register loaded from memory (movea.l) from `extraLow` to `extraHigh`: the game's sources may change
+    // the value (a game that runs another set's code and tables there, whose addresses are that set's own: game.h,
+    // SetPointerLoads). Elsewhere, nothing is changed.
+    using PointerFn = uint32_t (*)(uint32_t address, uint32_t value);
+    PointerFn pointerFrom = nullptr;
+    uint32_t extraLow = 0xFFFFFFFF, extraHigh = 0;
+    uint32_t PointerLoad(uint32_t address, uint32_t value) const {
+        return (address & 0xFFFFFF) - extraLow < extraHigh - extraLow && pointerFrom ? pointerFrom(address & 0xFFFFFF, value) : value;
+    }
+
     // Addresses reached in ways the translator cannot follow (computed jumps, returns, exceptions) that are
     // not yet the start of a translated block; kept when recording is on
     bool recording = false;
@@ -141,6 +151,14 @@ public:
     // watchHigh are reported with the instruction's address. Translated code is not watched (run with
     // --cpu blocks, which does the same things).
     uint32_t watchLow = 1, watchHigh = 0;
+    // (CPS2RECOMP_PC_HISTORY=1: the places the run loop last came to, translated routines and instructions the
+    // interpreter ran, printed when it meets something that is not an instruction)
+    bool keepHistory = false;
+    uint32_t history[64] = {};
+    unsigned historyAt = 0;
+    void Remember(uint32_t place) {
+        history[historyAt++ & 63] = place;
+    }
     uint32_t instruction = 0; // the address of the instruction the interpreter is doing
 
     uint16_t SR() const {

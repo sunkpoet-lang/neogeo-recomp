@@ -177,8 +177,27 @@ const std::vector<HudBox> &Boxes();
 // reads from it (its colours, say) before or while it runs. Never its code: the translated code is made from
 // the deciphered program and does not see this.
 void SetProgram(uint8_t *program, uint32_t size);
+void SetProgramOpcodes(uint8_t *opcodes);
 uint32_t ProgramSize();
-uint8_t *Program(uint32_t address);
+uint8_t *Program(uint32_t address); // (the extra set's too, where the 68000 sees it)
+bool InProgram(uint32_t address);   // (the game's program or the extra set's)
+// ... and as the 68000 reads it as program (deciphered: what a table read through the program counter gives)
+uint8_t *ProgramOpcodes(uint32_t address);
+// The extra set's program (game.cfg's extra_set; none: nullptr), as data and as program, and where the 68000 sees it
+void SetExtraProgram(uint8_t *program, uint8_t *opcodes, uint32_t size, uint32_t base);
+uint8_t *ExtraProgram(uint32_t address);  // (address: the extra set's own, from 0)
+uint8_t *ExtraOpcodes(uint32_t address);
+uint32_t ExtraProgramSize();
+uint32_t ExtraBase();
+// The extra set's sound side (machine/sound_board.h; none: nullptr), for the game's sources to give requests to
+class SoundBoard;
+void SetExtraSound(SoundBoard *board);
+SoundBoard *ExtraSound();
+// An address register loaded from memory from `low` to `high` (machine/m68k.h, M68K::PointerLoad) goes through `fn`,
+// which may change the address: for a game whose extra set's tables hold that set's own addresses
+using PointerLoadFn = uint32_t (*)(uint32_t address, uint32_t value);
+void SetPointerLoads(PointerLoadFn fn, uint32_t low, uint32_t high);
+PointerLoadFn PointerLoads(uint32_t &low, uint32_t &high);
 
 // Work RAM as the game's sources see it: by the 68000's address (FF0000-FFFFFF). Values are big-endian.
 void SetRam(uint8_t *ram);

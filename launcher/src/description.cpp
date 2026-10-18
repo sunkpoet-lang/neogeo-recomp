@@ -33,7 +33,13 @@ struct GameInfo {
     const char *players, *buttons;
     // The board (game.cfg's `board` and `cps_b`: "" for a CPS-2; machine/romset.h)
     const char *board, *cps_b;
+    // Another set the game reads too (game.cfg's extra_set; empty: none). In a collection, the set chosen for the
+    // game that is that set's is given to it (--rom2); else the game looks for it beside its own
+    const char* extra_set;
 };
+#ifdef LAUNCHER_COLLECTION
+const GameInfo* game_of_set(const char* set);
+#endif
 
 #ifdef LAUNCHER_COLLECTION
 // (the table every game shares in the collection: below)
@@ -145,6 +151,12 @@ launcher::Description describe_game(const GameInfo& game) {
                         ". Only this version works. It stays where it is: the launcher only reads it.\n\nWhile playing, Esc or F1 on "
                         "the keyboard, or the left stick's click (or Start and Select together) on a gamepad, opens the in-game menu: " +
                         (fighting ? "training mode and the other modes" : "the game's options") + ", save states, speed, and every feature.");
+#ifdef LAUNCHER_COLLECTION
+    if (const GameInfo* other = game.extra_set && *game.extra_set ? game_of_set(game.extra_set) : nullptr) {
+        d.file_intro = keep(std::string(d.file_intro) + "\n\nIt takes things from " + other->name + " too: choose that game's ROM set (" +
+                            other->rom_set + ") on its own page as well.");
+    }
+#endif
     d.file_empty = keep("None chosen. Drop " + std::string(game.rom_set) + ".zip or its folder here, or choose the zip.");
     d.file_not_set_up = "The game isn't set up yet. Open the launcher (without --play) once to choose your ROM set.";
     d.file_filter = {"ROM set (zip)", "zip"};
@@ -154,9 +166,19 @@ launcher::Description describe_game(const GameInfo& game) {
     d.candidates = [game](const std::filesystem::path& folder) { return rom_set_candidates(game, folder); };
     const std::vector<FeatureSwitch> switches = feature_switches(game.display);
     // What the game is started with: the player's ROM set (read only) and their saves folder
-    d.arguments = [switches](const launcher::Launch& launch) {
+    const std::string extra = game.extra_set ? game.extra_set : "";
+    d.arguments = [switches, extra](const launcher::Launch& launch) {
         std::vector<std::string> args = {"--rom", launch.file, "--eeprom", (launch.folder / "saves" / "eeprom.bin").string(),
                                          "--settings", (launch.folder / "settings.ini").string()};
+#ifdef LAUNCHER_COLLECTION
+        if (const GameInfo* other = extra.empty() || !launch.file_of ? nullptr : game_of_set(extra.c_str())) {
+            const std::string file = launch.file_of(other->id);
+            if (!file.empty()) {
+                args.push_back("--rom2");
+                args.push_back(file);
+            }
+        }
+#endif
         if (launch.on("fullscreen")) {
             args.push_back("--fullscreen");
         }
@@ -227,6 +249,15 @@ const port::BoundTable& shared_table() {
     }();
     return table;
 }
+// The collection's game whose ROM set this is
+const GameInfo* game_of_set(const char* set) {
+    for (const GameInfo& game : kGames) {
+        if (std::string(game.rom_set) == set) {
+            return &game;
+        }
+    }
+    return nullptr;
+}
 }  // namespace
 
 const launcher::Collection& launcher::describe_collection() {
@@ -269,7 +300,7 @@ const launcher::Description& launcher::describe() {
     static const Description about = describe_game({LAUNCHER_GAME_EXE, LAUNCHER_GAME_NAME, LAUNCHER_ROM_SET, LAUNCHER_ROM_PARENT, LAUNCHER_ROM_NAME,
                                                     LAUNCHER_ROM_PROGRAM, LAUNCHER_ROM_GRAPHICS, LAUNCHER_ROM_SOUND_PROGRAM, LAUNCHER_ROM_SAMPLES,
                                                     LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES, LAUNCHER_PLAYERS, LAUNCHER_BUTTONS,
-                                                    LAUNCHER_BOARD, LAUNCHER_CPS_B});
+                                                    LAUNCHER_BOARD, LAUNCHER_CPS_B, ""});
     return about;
 }
 
