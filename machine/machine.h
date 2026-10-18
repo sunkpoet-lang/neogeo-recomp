@@ -101,7 +101,10 @@ public:
     // The game's music from the player's files (machine/soundtrack.h): sees the game's sound requests
     Soundtrack soundtrack;
 
-    uint16_t players[2] = {}; // Button bits
+    // Each player's Button bits (a game has two, three or four: the board's three- and four-player wiring is
+    // there for every game, and a two-player game never reads it)
+    static constexpr int kMaxPlayers = 4;
+    uint16_t players[kMaxPlayers] = {};
     bool serviceButton = false, testSwitch = false;
 
     M68K cpu;

@@ -28,7 +28,15 @@ struct GameInfo {
     // says, with || between two of them (the game leaves these out of the list it gives for the Features page:
     // runtime/game.h, kFeatureFirstPage)
     const char* display;
+    // How many players (game.cfg's `players`; "" is two), and the game's names for its buttons ("Attack|Jump",
+    // port/bindings.h; "": a fighting game's six)
+    const char *players, *buttons;
 };
+
+#ifdef LAUNCHER_COLLECTION
+// (the table every game shares in the collection: below)
+const port::BoundTable& shared_table();
+#endif
 
 // (the words made for each game, kept for as long as the launcher runs: the descriptions point into them)
 const char* keep(std::string text) {
@@ -163,7 +171,11 @@ launcher::Description describe_game(const GameInfo& game) {
     for (const FeatureSwitch& one : switches) {
         d.display.push_back({keep(one.name), keep(one.title), keep(one.detail), false, nullptr});
     }
-    d.bindings = port::BindingTable();
+#ifdef LAUNCHER_COLLECTION
+    d.bindings = shared_table().table;
+#else
+    d.bindings = port::MakeBoundTable(*game.players ? atoi(game.players) : 2, game.buttons, false).table;
+#endif
     d.controls_heading = "WHILE PLAYING";
     d.controls = {{"Keys", "Esc, F1, the left stick's click, or Start and Select together: the in-game menu (training mode and the other modes, save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   Backspace: start over (training)   F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)"}};
     return d;
@@ -174,6 +186,35 @@ launcher::Description describe_game(const GameInfo& game) {
 #ifdef LAUNCHER_COLLECTION
 
 #include "games.h"
+
+// As many players as the game with the most, and each button called as a fighting game calls it and as the other
+// games call it (port/bindings.h)
+const port::BoundTable& shared_table() {
+    static const port::BoundTable& table = [&]() -> const port::BoundTable& {
+        int players = 2;
+        std::vector<std::string> names(port::kButtons);
+        for (const GameInfo& game : kGames) {
+            players = std::max(players, *game.players ? atoi(game.players) : 2);
+            std::string list = game.buttons;
+            for (int button = 0; button < port::kButtons && !list.empty(); button++) {
+                const size_t bar = list.find('|');
+                std::string name = list.substr(0, bar);
+                name.erase(0, name.find_first_not_of(' '));
+                name.erase(name.find_last_not_of(' ') + 1);
+                list = bar == std::string::npos ? "" : list.substr(bar + 1);
+                if (!name.empty() && ("/" + names[button] + "/").find("/" + name + "/") == std::string::npos) {
+                    names[button] += (names[button].empty() ? "" : "/") + name;
+                }
+            }
+        }
+        std::string buttons;
+        for (int button = 0; button < port::kButtons; button++) {
+            buttons += (button ? "|" : "") + names[button];
+        }
+        return port::MakeBoundTable(players, buttons, true);
+    }();
+    return table;
+}
 
 const launcher::Collection& launcher::describe_collection() {
     static const Collection about = [] {
@@ -198,11 +239,17 @@ const launcher::Collection& launcher::describe_collection() {
 #ifndef LAUNCHER_DISPLAY_SWITCHES
 #define LAUNCHER_DISPLAY_SWITCHES ""
 #endif
+#ifndef LAUNCHER_PLAYERS
+#define LAUNCHER_PLAYERS ""
+#endif
+#ifndef LAUNCHER_BUTTONS
+#define LAUNCHER_BUTTONS ""
+#endif
 
 const launcher::Description& launcher::describe() {
     static const Description about = describe_game({LAUNCHER_GAME_EXE, LAUNCHER_GAME_NAME, LAUNCHER_ROM_SET, LAUNCHER_ROM_PARENT, LAUNCHER_ROM_NAME,
                                                     LAUNCHER_ROM_PROGRAM, LAUNCHER_ROM_GRAPHICS, LAUNCHER_ROM_SOUND_PROGRAM, LAUNCHER_ROM_SAMPLES,
-                                                    LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES});
+                                                    LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES, LAUNCHER_PLAYERS, LAUNCHER_BUTTONS});
     return about;
 }
 

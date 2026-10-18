@@ -10,8 +10,8 @@
 //   [gamepad1]          a button or a trigger by SDL's name ("a", "leftshoulder", "righttrigger"), or "none"
 //   lp = x
 //
-// (and [keyboard2], [gamepad2] for player 2). What is not in the file is as the table's usual layout has it.
-// The first gamepad is player 1's and the second player 2's.
+// (and [keyboard2], [gamepad2] for player 2, and so on for a port with more players). What is not in the file
+// is as the table's usual layout has it. The first gamepad is player 1's, the second player 2's, and so on.
 //
 // A game reads the file once when it starts (LoadBindings) and from then on looks only at the table in
 // memory: nothing is looked up by name while playing.
@@ -24,7 +24,8 @@
 
 namespace recomp {
 
-inline constexpr int kBindPlayers = 2;
+inline constexpr int kBindPlayers = 2;    // how many players a table has unless it says
+inline constexpr int kBindMaxPlayers = 4; // ... and the most it can say
 inline constexpr int kBindMaxActions = 32;
 
 // A gamepad's button, or one of its triggers, or nothing
@@ -40,11 +41,11 @@ struct PadInput {
 struct BindAction {
     const char *name;
     const char *title;
-    SDL_Scancode key[kBindPlayers];
-    PadInput pad[kBindPlayers];
+    SDL_Scancode key[kBindMaxPlayers]; // (players a table lists none for: no key, no gamepad input)
+    PadInput pad[kBindMaxPlayers];
 };
 
-// A port's actions (at most kBindMaxActions) and how many players have them (1 or 2)
+// A port's actions (at most kBindMaxActions) and how many players have them (1 to kBindMaxPlayers)
 struct BindTable {
     const BindAction *actions = nullptr;
     int count = 0;
@@ -52,14 +53,14 @@ struct BindTable {
 };
 
 struct Bindings {
-    SDL_Scancode key[kBindPlayers][kBindMaxActions];
-    PadInput pad[kBindPlayers][kBindMaxActions];
+    SDL_Scancode key[kBindMaxPlayers][kBindMaxActions];
+    PadInput pad[kBindMaxPlayers][kBindMaxActions];
 };
 
 // The layout with nothing chosen
 inline Bindings DefaultBindings(const BindTable &table) {
     Bindings b{};
-    for (int player = 0; player < kBindPlayers; player++) {
+    for (int player = 0; player < kBindMaxPlayers; player++) {
         for (int action = 0; action < kBindMaxActions; action++) {
             const bool has = action < table.count && player < table.players;
             b.key[player][action] = has ? table.actions[action].key[player] : SDL_SCANCODE_UNKNOWN;
