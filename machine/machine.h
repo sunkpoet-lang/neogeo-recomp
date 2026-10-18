@@ -4,7 +4,9 @@
 // The CPS-2 board as the game's code needs it: the 68000 and what it is wired to (ROM, RAM, the video
 // chips' registers and memory, the object memory, inputs, the settings EEPROM), the Z80 with the QSound
 // chip, and the timing that ties them: 262 raster lines a frame, an interrupt at the start of vertical
-// blanking and the raster interrupts the game asks for.
+// blanking and the raster interrupts the game asks for. Or a CPS-1 with QSound (RomSet::board): a 12 MHz 68000,
+// its objects in the video memory, inputs, settings memory and the sound CPU's memory where that board has them,
+// no raster interrupts, and the Z80 running from the start with its program deciphered (Kabuki).
 //
 // It is not a model of the board's timing: a line is a fixed amount of CPU time, and the picture's lines
 // are drawn as they pass. The hardware facts follow MAME's cps2 driver (BSD-3-Clause).
@@ -46,6 +48,7 @@ class Machine final : public M68KBus, public Z80Bus {
 public:
     static constexpr int kLines = 262, kBlankingLine = 240;
     static constexpr int kCpuCyclesPerLine = 1024; // 16 MHz, 512 pixel clocks of 8 MHz a line
+    static constexpr int kCps1CpuCyclesPerLine = 768; // (a CPS-1 with QSound: 12 MHz)
     static constexpr int kSoundCyclesPerLine = 512; // 8 MHz
     // For tests: the 68000 this many times as fast as the board's, so that the game is never short of time in
     // a frame (runs whose code takes different amounts of time can then be compared picture by picture)
@@ -90,7 +93,9 @@ public:
     // The board's timing (the port's arcade_timing feature; docs/TIMING.md): the 68000 waits a clock for each bus
     // access outside 500000-7FFFFF (M68K::busWait), and the CPS-A's DMA takes the bus from it for the row scroll,
     // the scroll layers' tile rows and the palette. Off: the 68000 has every clock, as the port always gave it.
+    // (A CPS-2's timing: a CPS-1's is not modelled, and stays off.)
     void SetBoardTiming(bool on) {
+        on = on && !m_roms.board.cps1;
         boardTiming = on;
         cpu.busWait = on ? 1 : 0;
     }
@@ -139,6 +144,9 @@ public:
     void InterruptAck(unsigned level) override;
     // Z80Bus
     uint8_t Read(uint16_t address) override;
+    uint8_t ReadOpcode(uint16_t address) override {
+        return address < 0x8000 && !m_roms.soundOpcodes.empty() ? m_roms.soundOpcodes[address] : Read(address);
+    }
     void Write(uint16_t address, uint8_t value) override;
     bool ChangesMapping(uint16_t address) override {
         return address == 0xD003;
@@ -168,6 +176,10 @@ private:
 
     void RunLine();
     int LineCycles() const;
+    const bool m_cps1;          // (RomSet::board)
+    const int m_cyclesPerLine;  // the 68000's
+    uint16_t ReadCps1(uint32_t address);
+    void WriteCps1(uint32_t address, uint16_t value, uint16_t mask);
     uint32_t LineDma();
     bool boardTiming = false;
     bool m_palettePending = false; // (the game has set the palette's base: the DMA copies it at the next line)

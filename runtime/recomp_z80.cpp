@@ -78,7 +78,7 @@ void Z80::Run(uint64_t until, Mode runMode) {
             m_cycles = 0;
             m_jumped = false;
             refresh++;
-            Execute(Fetch(), 0);
+            Execute(FetchOpcode(), 0);
             cycles += m_cycles;
             if (m_jumped) {
                 Record(pc);
@@ -106,7 +106,7 @@ void Z80::Run(uint64_t until, Mode runMode) {
             m_cycles = 0;
             m_jumped = false;
             refresh++;
-            Execute(Fetch(), 0);
+            Execute(FetchOpcode(), 0);
             cycles += m_cycles;
             interpreted++;
             if (m_jumped) {
@@ -190,7 +190,7 @@ void Z80::RunChecked(uint64_t until) {
             m_afterEI = false;
             m_cycles = 0;
             refresh++;
-            Execute(Fetch(), 0);
+            Execute(FetchOpcode(), 0);
             cycles += m_cycles;
             continue;
         }
@@ -221,7 +221,7 @@ void Z80::RunChecked(uint64_t until) {
         do {
             m_cycles = 0;
             refresh++;
-            Execute(Fetch(), 0);
+            Execute(FetchOpcode(), 0);
             cycles += m_cycles;
         } while (!halted && tables.Inside(pc));
         z80check::noting = false;

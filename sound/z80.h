@@ -18,6 +18,11 @@ class Archive;
 struct Z80Bus {
     virtual ~Z80Bus() = default;
     virtual uint8_t Read(uint16_t address) = 0;
+    // An opcode's read (the M1 cycle: an instruction's first byte, and the one after a prefix): the same as any
+    // other read but on a board whose Z80 deciphers its opcodes another way (Kabuki)
+    virtual uint8_t ReadOpcode(uint16_t address) {
+        return Read(address);
+    }
     virtual void Write(uint16_t address, uint8_t value) = 0;
     virtual uint8_t In(uint16_t port) {
         return 0xFF;
@@ -167,6 +172,7 @@ private:
     bool m_jumped = false;  // the instruction went somewhere the translator cannot follow
 
     uint8_t Fetch();
+    uint8_t FetchOpcode();
     uint16_t Fetch16();
     uint16_t Operand(unsigned prefix); // the address of (HL), or of (IX+d) / (IY+d)
     unsigned TakeInterrupt();
