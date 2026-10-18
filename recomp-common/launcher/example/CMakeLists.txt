@@ -20,6 +20,9 @@ set(LAUNCHER_APP_ID org.example.game)
 set(LAUNCHER_HOME_ENV EXAMPLE_HOME)
 set(LAUNCHER_DISCLAIMER "An example with no game.")
 set(LAUNCHER_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/description.cpp)
+# (updates from a repository's releases: this one's has none for the example, so it is always the newest)
+set(LAUNCHER_UPDATE_REPO tmcleroy/recomp-common)
+set(LAUNCHER_VERSION 0.0.0)
 include(../launcher.cmake)
 
 # The stand-in for the game program, beside the launcher

@@ -14,7 +14,8 @@
 #   PLAYERS  BUTTONS
 # and, for a game on another board than a CPS-2 (game.cfg, board and cps_b; machine/romset.h):  BOARD  CPS_B
 # The collection's launcher, for every game (tools/collection.sh): COLLECTION=ON and GAMES (their ids; the table of
-# them, games.h, is written from their game.cfg files); GAME_NAME and the rest then name the collection.
+# them, games.h, is written from their game.cfg files); GAME_NAME and the rest then name the collection. It updates
+# itself from this repository's releases (recomp-common/launcher/src/update.h), as the version in VERSION.
 cmake_minimum_required(VERSION 3.20)
 project(cps2recomp_launcher CXX)
 set(CMAKE_CXX_STANDARD 17)
@@ -32,6 +33,17 @@ set(LAUNCHER_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../machine/romset.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../machine/cps2crypt.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../machine/kabuki.cpp)
 set(LAUNCHER_COLLECTION ${COLLECTION})
+if(COLLECTION)
+    # (the collection updates itself from the releases: the manifests and files tools/release/update_files.sh writes)
+    set(LAUNCHER_UPDATE_REPO tmcleroy/cps2recomp)
+    # (VERSION's, or the release scripts' COLLECTION_VERSION, which their manifests say too)
+    if(COLLECTION_VERSION)
+        set(LAUNCHER_VERSION ${COLLECTION_VERSION})
+    else()
+        file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION LAUNCHER_VERSION LIMIT_COUNT 1)
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../VERSION)
+    endif()
+endif()
 include(../recomp-common/launcher/launcher.cmake)
 if(COLLECTION)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
