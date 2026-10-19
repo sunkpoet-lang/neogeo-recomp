@@ -70,6 +70,9 @@ public:
     // have their top byte set (0x80 and the object's colour set, 0-31), the others clear, so that a picture
     // of the objects alone can be laid over another picture, and one object's pixels told from another's.
     bool markObjects = false;
+    // ... and the pixels of these scroll screens too (layerMask's bits; 0: none): a game whose panel is a scroll
+    // screen, not objects, has it laid over the other picture with its fighters
+    unsigned markLayers = 0;
 
     // For a game's own sources that draw something the game's list has not got (a thing the game stopped
     // drawing because the board's picture would not show it): called when the board has taken the object
