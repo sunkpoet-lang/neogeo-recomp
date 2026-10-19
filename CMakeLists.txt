@@ -15,7 +15,13 @@ set(GAME "vampire_savior" CACHE STRING "Game id (directory under games/)")
 set(GAME_DIR "${CMAKE_SOURCE_DIR}/../games/${GAME}" CACHE PATH "The game's directory (game.cfg, src/)")
 set(WORK_DIR "${CMAKE_SOURCE_DIR}/../work/${GAME}" CACHE PATH "Generated code directory")
 
-find_package(SDL3 REQUIRED CONFIG)
+# (macOS: 3.4.16 or later. 3.4.14's Metal GPU device takes a frame's fence still being worked on for one signalled, so
+# after the first frames every picture is skipped and the window stays black while the game runs and sounds)
+if (APPLE)
+    find_package(SDL3 3.4.16 REQUIRED CONFIG)
+else ()
+    find_package(SDL3 REQUIRED CONFIG)
+endif ()
 find_package(ZLIB REQUIRED)
 
 # Translated game code: work/<game>/gen/native_*.cpp, written by tools/recomp.py.

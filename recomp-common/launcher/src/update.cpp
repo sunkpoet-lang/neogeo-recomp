@@ -2,14 +2,12 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of recomp-common: https://github.com/tmcleroy/recomp-common
 #include "update.h"
 
-#include <zlib.h>
-
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <map>
 #include <set>
 #include <sstream>
 #include <system_error>
@@ -453,30 +451,18 @@ int fetch_file(const std::string& url, const fs::path& to) {
                        nullptr);
 }
 
-// A gzipped file unpacked to `to`, checked against its size and SHA-256 as it is written
-bool unpack(const fs::path& from, const fs::path& to, const Updater::Entry& entry) {
-#ifdef _WIN32
-    gzFile in = gzopen_w(from.wstring().c_str(), "rb");
+// The archive unpacked into `into` by the system's own program for it (no shell): its exit code
+int unpack_archive(const fs::path& archive, const fs::path& into) {
+#if defined(__APPLE__)
+    return run_program("/usr/bin/ditto", {"-x", "-k", archive.string(), into.string()}, nullptr);
+#elif defined(_WIN32)
+    wchar_t system[MAX_PATH];
+    UINT n = GetSystemDirectoryW(system, MAX_PATH);
+    const fs::path tar = n > 0 && n < MAX_PATH ? fs::path(system) / L"tar.exe" : fs::path(L"tar.exe");  // (it reads zips too)
+    return run_program(tar, {"-xf", archive.string(), "-C", into.string()}, nullptr);
 #else
-    gzFile in = gzopen(from.string().c_str(), "rb");
+    return run_program("tar", {"-xzf", archive.string(), "-C", into.string()}, nullptr);
 #endif
-    if (!in) {
-        return false;
-    }
-    std::ofstream out(to, std::ios::binary | std::ios::trunc);
-    Sha256 sha;
-    uint64_t size = 0;
-    char buffer[1 << 16];
-    int got;
-    while ((got = gzread(in, buffer, sizeof buffer)) > 0) {
-        sha.add(buffer, static_cast<size_t>(got));
-        out.write(buffer, got);
-        size += static_cast<uint64_t>(got);
-    }
-    bool clean = got == 0;
-    gzclose(in);
-    out.close();
-    return clean && out && size == entry.size && sha.hex() == entry.sha256;
 }
 
 // A manifest path is relative, with no .. and no empty part: nothing outside the top can be named
@@ -492,6 +478,10 @@ bool safe_path(const std::string& path) {
         }
     }
     return path.back() != '/';
+}
+
+bool is_sha256(const std::string& text) {
+    return text.size() == 64 && text.find_first_not_of("0123456789abcdef") == std::string::npos;
 }
 
 std::string megabytes(uint64_t bytes) {
@@ -530,7 +520,7 @@ bool Updater::parse_manifest(const std::string& text, Manifest& manifest) {
     manifest = {};
     std::stringstream lines(text);
     std::string line;
-    bool header = false;
+    int kind = 0;  // (the header's: 1 or 2)
     std::set<std::string> seen;
     while (std::getline(lines, line)) {
         if (!line.empty() && line.back() == '\r') {
@@ -539,21 +529,35 @@ bool Updater::parse_manifest(const std::string& text, Manifest& manifest) {
         if (line.empty() || line[0] == '#') {
             continue;
         }
-        if (line == "recomp-update 1") {
-            header = true;
+        if (line == "recomp-update 1" || line == "recomp-update 2") {
+            kind = line.back() - '0';
         } else if (line.rfind("version ", 0) == 0) {
             manifest.version = line.substr(8);
+        } else if (kind == 2 && line.rfind("archive ", 0) == 0) {
+            std::istringstream fields(line.substr(8));
+            if (!(fields >> manifest.archive_sha256 >> manifest.archive_size)) {
+                return false;
+            }
+            std::getline(fields >> std::ws, manifest.archive);
+            if (!is_sha256(manifest.archive_sha256) || !safe_path(manifest.archive) || manifest.archive.find('/') != std::string::npos) {
+                return false;
+            }
+        } else if (kind == 2 && line.rfind("top ", 0) == 0) {
+            manifest.top = line.substr(4);
+            if (!safe_path(manifest.top) || manifest.top.find('/') != std::string::npos) {
+                return false;
+            }
         } else if (line.rfind("file ", 0) == 0) {
             std::istringstream fields(line.substr(5));
             Entry entry;
             std::string mode;
-            if (!(fields >> entry.sha256 >> entry.size >> entry.packed >> mode)) {
+            uint64_t packed = 0;  // (the first kind's: its gzipped size)
+            if (!(fields >> entry.sha256 >> entry.size) || (kind == 1 && !(fields >> packed)) || !(fields >> mode)) {
                 return false;
             }
             std::getline(fields >> std::ws, entry.path);
             entry.executable = mode == "x";
-            if (entry.sha256.size() != 64 || entry.sha256.find_first_not_of("0123456789abcdef") != std::string::npos || (mode != "x" && mode != "-") ||
-                !safe_path(entry.path) || !seen.insert(entry.path).second) {
+            if (!is_sha256(entry.sha256) || (mode != "x" && mode != "-") || !safe_path(entry.path) || !seen.insert(entry.path).second) {
                 return false;
             }
             manifest.files.push_back(entry);
@@ -561,7 +565,7 @@ bool Updater::parse_manifest(const std::string& text, Manifest& manifest) {
             return false;
         }
     }
-    return header && !manifest.version.empty() && !manifest.files.empty();
+    return kind != 0 && !manifest.version.empty() && !manifest.files.empty() && (kind == 1 || (!manifest.archive.empty() && !manifest.top.empty()));
 }
 
 int Updater::compare_versions(const std::string& a, const std::string& b) {
@@ -761,12 +765,13 @@ bool Updater::do_check() {
         status_.version = best_version;
         status_.notes_url = (*best)["html_url"].text;
     }
-    if (int code = fetch_text(best_manifest, text); code != 0 || !parse_manifest(text, next_) || compare_versions(next_.version, best_version) != 0) {
+    if (int code = fetch_text(best_manifest, text);
+        code != 0 || !parse_manifest(text, next_) || next_.archive.empty() || compare_versions(next_.version, best_version) != 0) {
         set(State::Failed, "Version " + best_version + " is out, but its list of files " +
                                (code != 0 ? "couldn't be downloaded: " + curl_problem(code) + "." : "could not be read."));
         return false;
     }
-    blob_base_ = best_manifest.substr(0, best_manifest.rfind('/') + 1);
+    archive_url_ = best_manifest.substr(0, best_manifest.rfind('/') + 1) + next_.archive;  // (a file of the same release)
     // (the files this version had, so that those the new one has not can go; without its manifest none go)
     current_ = {};
     if (!current_manifest.empty() && fetch_text(current_manifest, text) == 0) {
@@ -782,18 +787,16 @@ bool Updater::do_check() {
         return true;
     }
     needed_.clear();
-    needed_bytes_ = 0;
     for (size_t i = 0; i < next_.files.size(); i++) {
         const Entry& entry = next_.files[i];
         const fs::path here = top_ / fs::u8path(entry.path);
         if (!fs::is_regular_file(here, error) || fs::file_size(here, error) != entry.size || sha256_of_file(here) != entry.sha256) {
             needed_.push_back(i);
-            needed_bytes_ += entry.packed;
         }
     }
     const size_t n = needed_.size();
-    set(State::Available, "You have " + version_ + ". Only what changed is downloaded: " + std::to_string(n) + (n == 1 ? " file" : " files") + ", " +
-                              megabytes(needed_bytes_) + ".");
+    set(State::Available, "You have " + version_ + ". The download is " + megabytes(next_.archive_size) + "; " + std::to_string(n) +
+                              (n == 1 ? " file changes." : " files change."));
     return true;
 }
 
@@ -811,27 +814,43 @@ bool Updater::do_install() {
         set(State::Failed, "Couldn't update: " + why + " Nothing was changed.");
         return false;
     };
-    // 1. Every file that differs, downloaded and checked
-    uint64_t done = 0;
-    size_t count = 0;
+    // 1. The archive, downloaded and checked, unpacked, and every file that differs checked
+    const fs::path archive = staging / next_.archive, unpacked = staging / "new";
+    std::atomic<bool> downloading{true};
+    std::thread progress([&] {  // (curl writes the file as it comes)
+        while (downloading) {
+            std::error_code ignored;
+            const uint64_t got = fs::exists(archive, ignored) ? fs::file_size(archive, ignored) : 0;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                status_.fraction = next_.archive_size ? std::min(1.0, static_cast<double>(got) / static_cast<double>(next_.archive_size)) : 0.0;
+            }
+            set(State::Installing, "Downloading " + megabytes(got) + " of " + megabytes(next_.archive_size) + "…");
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        }
+    });
+    const int code = fetch_file(archive_url_, archive);
+    downloading = false;
+    progress.join();
+    if (code != 0) {
+        return fail(curl_problem(code) + ".");
+    }
+    if (fs::file_size(archive, error) != next_.archive_size || sha256_of_file(archive) != next_.archive_sha256) {
+        return fail("the download was not what the release says it is.");
+    }
+    set(State::Installing, "Unpacking…");
+    fs::create_directories(unpacked, error);
+    if (int status = unpack_archive(archive, unpacked); status != 0) {
+        return fail("the download could not be unpacked (" + std::to_string(status) + ").");
+    }
+    fs::remove(archive, error);
+    const fs::path from = unpacked / fs::u8path(next_.top);
     for (size_t index : needed_) {
         const Entry& entry = next_.files[index];
-        count++;
-        set(State::Installing, "Downloading " + std::to_string(count) + " of " + std::to_string(needed_.size()) + " (" + megabytes(done) + " of " +
-                                   megabytes(needed_bytes_) + ")…");
-        const fs::path packed = staging / (entry.sha256 + ".gz"), file = staging / entry.sha256;
-        if (!fs::exists(file, error)) {  // (the same file twice in the manifest is fetched once)
-            if (int code = fetch_file(blob_base_ + entry.sha256 + ".gz", packed); code != 0) {
-                return fail(curl_problem(code) + ".");
-            }
-            if (!unpack(packed, file, entry)) {
-                return fail(entry.path + " was not what the release says it is.");
-            }
-            fs::remove(packed, error);
+        const fs::path file = from / fs::u8path(entry.path);
+        if (!fs::is_regular_file(file, error) || fs::file_size(file, error) != entry.size || sha256_of_file(file) != entry.sha256) {
+            return fail(entry.path + " was not what the release says it is.");
         }
-        done += entry.packed;
-        std::lock_guard<std::mutex> lock(mutex_);
-        status_.fraction = needed_bytes_ ? static_cast<double>(done) / static_cast<double>(needed_bytes_) : 1.0;
     }
     // 2. All of them put in place: what was there is moved aside first (a running program can be moved, on Windows
     // too, but not written over), and moved back if any of them can't be
@@ -859,24 +878,16 @@ bool Updater::do_install() {
         moved.emplace_back(target, to);
         return true;
     };
-    std::map<std::string, size_t> uses;  // (staged files placed more than once are copied for all but the last)
-    for (size_t index : needed_) {
-        uses[next_.files[index].sha256]++;
-    }
     for (size_t index : needed_) {
         const Entry& entry = next_.files[index];
-        const fs::path target = top_ / fs::u8path(entry.path), file = staging / entry.sha256;
+        const fs::path target = top_ / fs::u8path(entry.path), file = from / fs::u8path(entry.path);
         fs::create_directories(target.parent_path(), error);
         if (!move_aside(target)) {
             undo();
             return fail(entry.path + " couldn't be moved aside.");
         }
         error.clear();
-        if (--uses[entry.sha256] > 0) {
-            fs::copy_file(file, target, error);
-        } else {
-            fs::rename(file, target, error);
-        }
+        fs::rename(file, target, error);
         if (error) {
             undo();
             return fail(entry.path + " couldn't be put in place.");
