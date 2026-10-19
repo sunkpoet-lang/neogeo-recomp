@@ -127,7 +127,7 @@ private:
     template <bool kWide> void RenderLineAs(int line, uint32_t *out);
     template <bool kWide> void DrawScroll(int which, int rasterLine, uint16_t *pens, uint8_t *priority, uint8_t mark, uint8_t *high = nullptr);
     void RenderLineCps1(int line, uint32_t *out);
-    void DrawObjectsCps1(int rasterLine, uint16_t *pens, const uint8_t *high);
+    void DrawObjectsCps1(int rasterLine, uint16_t *pens, const uint8_t *high, uint16_t *drawn = nullptr);
     template <bool kWide> void DrawObjects(int rasterLine, uint16_t *pens, uint8_t *priority, const uint32_t *masks);
 };
 
