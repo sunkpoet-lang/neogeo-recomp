@@ -34,7 +34,7 @@ set(LAUNCHER_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../machine/kabuki.cpp)
 set(LAUNCHER_COLLECTION ${COLLECTION})
 if(COLLECTION)
-    # (the collection updates itself from the releases: the manifests and files tools/release/update_files.sh writes)
+    # (the collection updates itself from the releases: each system's manifest and archive, tools/release/lib.sh)
     set(LAUNCHER_UPDATE_REPO tmcleroy/cps2recomp)
     # (VERSION's, or the release scripts' COLLECTION_VERSION, which their manifests say too)
     if(COLLECTION_VERSION)

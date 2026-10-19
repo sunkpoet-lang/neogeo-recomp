@@ -2,24 +2,28 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of recomp-common: https://github.com/tmcleroy/recomp-common
 //
 // Updates: the launcher brings its own folder (the app, or the folder the download was unpacked to) up to the
-// newest release, downloading only the files that changed. Built in when the port's launcher/CMakeLists.txt sets
-// LAUNCHER_UPDATE_REPO (owner/name on GitHub) and LAUNCHER_VERSION (launcher.cmake).
+// newest release. Built in when the port's launcher/CMakeLists.txt sets LAUNCHER_UPDATE_REPO (owner/name on
+// GitHub) and LAUNCHER_VERSION (launcher.cmake).
 //
-// What a release carries for it, beside its archives (a port's release script writes them):
-//   update-<platform>.txt   the manifest: every file of the download for that system, as unpacked
-//   <sha256>.gz             each of those files, gzipped, named by the SHA-256 of the file itself
+// What a release carries for it, beside its archives (a port's release script writes it), and nothing else:
+//   update-<platform>.txt   the manifest: that system's archive, and every file in it
 // Platforms: macos, linux-x86_64, linux-arm64, windows-x64. The manifest's lines:
-//   recomp-update 1
+//   recomp-update 2
 //   version 0.5.0
-//   file <sha256> <size> <size gzipped> <x or -> <path, from the top of the download, with / between folders>
-// On macOS the top is the app (paths start with Contents/), elsewhere the folder the launcher is in.
+//   archive <sha256> <size> <file name of the archive, among the release's files>
+//   top <the folder at the top of the archive: the app on macOS, the folder the download is unpacked to elsewhere>
+//   file <sha256> <size> <x or -> <path, from that top, with / between folders>
+// On macOS the top is the app (paths start with Contents/), elsewhere the folder the launcher is in. (Manifests of
+// the first kind, "recomp-update 1", named each file gzipped as a release file of its own; they are still read for
+// the files the running version had.)
 //
 // Checking reads the repository's releases (api.github.com), takes the newest with a manifest for this system
 // (a beta only while this is a beta), and compares the files listed with the ones here. Installing downloads the
-// ones that differ into <top>/.update, checks each against its SHA-256, and only then puts them all in place
-// (a file a game or the launcher has open is moved aside, not written over), and takes away the files that the
-// running version's manifest had and the new one has not. If any step fails nothing is changed. Downloads are
-// made by the system's curl (macOS, Windows 10 and later, and Linux distributions have it).
+// archive into <top>/.update, checks it against its SHA-256, unpacks it there (the system's ditto on macOS, tar
+// elsewhere) and checks each file that differs; only then it puts them all in place (a file a game or the
+// launcher has open is moved aside, not written over), and takes away the files that the running version's
+// manifest had and the new one has not. If any step fails nothing is changed. Downloads are made by the system's
+// curl (macOS, Windows 10 and later, and Linux distributions have it, and tar).
 //
 // The variable RECOMP_UPDATE_RELEASES names another list of releases (a file:// URL, for tests).
 #pragma once
@@ -72,11 +76,13 @@ public:
     // (used inside, and by the tests)
     struct Entry {
         std::string sha256, path;
-        uint64_t size = 0, packed = 0;
+        uint64_t size = 0;
         bool executable = false;
     };
     struct Manifest {
         std::string version;
+        std::string archive, archive_sha256, top;  // (none in a manifest of the first kind)
+        uint64_t archive_size = 0;
         std::vector<Entry> files;
     };
     static bool parse_manifest(const std::string& text, Manifest& manifest);
@@ -102,9 +108,8 @@ private:
     std::atomic<bool> busy_{false};
     // What the check found (read by the install, on the same thread one after the other)
     Manifest next_, current_;
-    std::string blob_base_;              // the URL the new release's files are under (ends with /)
+    std::string archive_url_;            // the new release's archive
     std::vector<size_t> needed_;         // next_.files that differ here
-    uint64_t needed_bytes_ = 0;          // their gzipped sizes, summed
 };
 
 }  // namespace launcher

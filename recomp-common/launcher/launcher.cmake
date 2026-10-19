@@ -14,7 +14,7 @@
 #                                                   sources define launcher::describe_collection(); the names
 #                                                   above are then the collection's
 #   LAUNCHER_UPDATE_REPO  owner/name                optional: the launcher updates its own folder from this
-#   LAUNCHER_VERSION      0.5.0                     GitHub repository's releases (src/update.h); needs zlib
+#   LAUNCHER_VERSION      0.5.0                     GitHub repository's releases (src/update.h)
 #
 # It makes the target `launcher` (the program <LAUNCHER_GAME_EXE>-launcher), to which the port may add its
 # own definitions, include folders and libraries. SDL3 is the system's or is built in; Dear ImGui and the
@@ -89,8 +89,6 @@ if(LAUNCHER_COLLECTION)
 endif()
 target_link_libraries(launcher PRIVATE launcher_imgui)
 if(LAUNCHER_UPDATE_REPO)
-    find_package(ZLIB REQUIRED)
     target_sources(launcher PRIVATE ${RECOMP_LAUNCHER_DIR}/src/update.cpp)
     target_compile_definitions(launcher PRIVATE LAUNCHER_UPDATE_REPO="${LAUNCHER_UPDATE_REPO}" LAUNCHER_VERSION="${LAUNCHER_VERSION}")
-    target_link_libraries(launcher PRIVATE ZLIB::ZLIB)
 endif()
