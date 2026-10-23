@@ -78,7 +78,8 @@ void M68K::Write(uint32_t address, unsigned size, uint32_t value) {
     }
 #endif
     if ((address & 0xFFFFFF) + kBytes[size] > watchLow && (address & 0xFFFFFF) <= watchHigh) {
-        static int reports = 2000;
+        // (CPS2RECOMP_WATCH_REPORTS=N for more: the board's memory test alone can take the first 2,000)
+        static int reports = getenv("CPS2RECOMP_WATCH_REPORTS") ? atoi(getenv("CPS2RECOMP_WATCH_REPORTS")) : 2000;
         if (reports > 0) {
             reports--;
             fprintf(stderr, "watch: %06X writes %0*X to %06X (cycle %llu)\n", instruction, static_cast<int>(kBytes[size] * 2),
