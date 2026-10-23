@@ -33,6 +33,9 @@ struct NativeCode {
     size_t rangeCount;
     const uint32_t *hooks; // the addresses at which the translated code stops by for a hook (lift.h)
     size_t hookCount;
+    // Set by the build without translated code only (runtime/no_blocks.cpp): words a release's check looks for in a
+    // program (tools/release/check_archive.sh), to tell that build from a release's
+    const char *none = nullptr;
 };
 // The game's translated code (generated; an empty set when there is none)
 extern const NativeCode kNativeCode;
