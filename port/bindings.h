@@ -64,8 +64,8 @@ struct BoundTable {
 //   game with the most. Its usual layout is a fighting game's, whatever the names.
 // The usual layout. Keyboard, player 1: arrows; A S D punches (or the first three buttons), Z X C kicks; 1 Start;
 // 5 a coin. Players 2 to 4 have no keys until some are chosen. A gamepad is laid out like a six-button panel:
-// punches on the top row (West, North, right shoulder), kicks below (South, East, right trigger); Start; Back puts
-// a coin in. A game that names its buttons has them (on its own) as a beat-'em-up's pad has them: the first on
+// punches on the top row (West, North, right shoulder), kicks below (South, East, right trigger); Start; no coin
+// (Back, Select, opens the menu, which has "Insert coin"). A game that names its buttons has them (on its own) as a beat-'em-up's pad has them: the first on
 // West, the second on South (jump, say), the third on East, then North and the shoulder and trigger.
 inline const BoundTable &MakeBoundTable(int players, const std::string &buttons, bool shared) {
     static constexpr SDL_Scancode kKeys[kBoundActionCount] = {
@@ -76,7 +76,7 @@ inline const BoundTable &MakeBoundTable(int players, const std::string &buttons,
         {SDL_GAMEPAD_BUTTON_DPAD_UP, -1},   {SDL_GAMEPAD_BUTTON_DPAD_DOWN, -1},      {SDL_GAMEPAD_BUTTON_DPAD_LEFT, -1},
         {SDL_GAMEPAD_BUTTON_DPAD_RIGHT, -1}, {SDL_GAMEPAD_BUTTON_WEST, -1},          {SDL_GAMEPAD_BUTTON_NORTH, -1},
         {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, -1}, {SDL_GAMEPAD_BUTTON_SOUTH, -1},     {SDL_GAMEPAD_BUTTON_EAST, -1},
-        {-1, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER}, {SDL_GAMEPAD_BUTTON_START, -1},        {SDL_GAMEPAD_BUTTON_BACK, -1},
+        {-1, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER}, {SDL_GAMEPAD_BUTTON_START, -1},        {-1, -1},
     };
     static constexpr PadInput kNamedPad[kButtons] = {
         {SDL_GAMEPAD_BUTTON_WEST, -1}, {SDL_GAMEPAD_BUTTON_SOUTH, -1}, {SDL_GAMEPAD_BUTTON_EAST, -1},
