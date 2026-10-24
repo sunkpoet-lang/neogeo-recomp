@@ -5,5 +5,5 @@
 #include "native.h"
 
 namespace cps2recomp {
-const NativeCode kNativeCode = {nullptr, 0, nullptr, 0, nullptr, 0};
+const NativeCode kNativeCode = {nullptr, 0, nullptr, 0, nullptr, 0, "cps2recomp: built with no translated code"};
 } // namespace cps2recomp
