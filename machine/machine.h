@@ -43,6 +43,9 @@ enum Button : uint16_t {
     kKick3 = 1 << 9,
     kStart = 1 << 10,
     kCoin = 1 << 11,
+    // Never on the board's lines: a gamepad's left trigger while the game runs (port/frontend_sdl.cpp), for a game's
+    // sources' own use (the team battle's tag: fight/battle.h)
+    kTag = 1 << 12,
 };
 
 class Machine final : public M68KBus, public Z80Bus {
