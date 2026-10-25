@@ -103,8 +103,14 @@ private:
 
     Slot& slot() { return *slots_[slot_]; }
     const Slot& slot() const { return *slots_[slot_]; }
-    // The collection's games that have a page of their own (their program here, their file chosen and usable)
+    // The collection's games that have a page of their own (their program here, their file chosen and usable), in
+    // the player's order
     std::vector<size_t> titled() const;
+    // A collection's games in the player's order: launcher.ini, [games] order (their ids; a game not in it comes
+    // after those that are, in the collection's order). The player changes it by dragging a game's row in the
+    // sidebar, or with Move up and Move down on the game's page.
+    void load_order();
+    void move_game(size_t which, int place);  // to that place among titled(); the page shown stays the one it was
 
     // Game file.
     void choose_game_file(size_t which);
@@ -167,8 +173,8 @@ private:
     void play_button(size_t which, float width);
 #ifdef LAUNCHER_UPDATE_REPO
     // Updates (update.h): the card on the first page, where it is drawn when there is a new version (`top`) or
-    // at the page's end when there is not
-    void update_card(float width, bool top);
+    // at the page's end when there is not (`always`: at the top either way)
+    void update_card(float width, bool top, bool always = false);
 #endif
 
     const launcher::Collection* collection_ = nullptr;  // a collection's launcher's (a port's: none)
@@ -178,6 +184,9 @@ private:
     recomp::Ini prefs_;     // launcher.ini: where each game's file is, the Display switches
     std::filesystem::path program_folder_;  // the launcher's
     std::vector<std::unique_ptr<Slot>> slots_;
+    std::vector<size_t> order_;  // slots_, in the player's order (load_order)
+    int dragging_ = -1;          // the game whose sidebar row is being dragged, or -1
+    float drag_grab_ = 0.0f;     //   (where in its row it was taken hold of)
     size_t slot_ = 0;       // the game the page shown is about
     const launcher::Description& about_;  // a port's (a collection's: its first game's, for what they all share)
     std::vector<Shared> shared_;
@@ -218,6 +227,9 @@ private:
     bool nav_hold_ = false;        // a button was just chosen for an action: nothing moves until it is let go
     bool focus_sidebar_ = false;   // put the ring on the sidebar's row for the page shown
     bool in_sidebar_ = false;      // the ring was in the sidebar in the last frame
+    int focus_row_ = -1;           // ... on this row of it
+    float sidebar_scroll_ = 0.0f;  // how far its list is scrolled (a long list, or a small window)
+    int scrolled_for_ = -1;        // the page shown when it was last scrolled to
     unsigned focus_seen_ = 0;      // what it was on in the last frame
     bool focus_page_ = false;      // put the ring on the first thing in the page
     bool right_from_sidebar_ = false;  // Right was pressed in the last frame with the ring in the sidebar

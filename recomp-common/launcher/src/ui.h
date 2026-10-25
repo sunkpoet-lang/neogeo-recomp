@@ -90,6 +90,8 @@ bool list_item(const char* label, bool active, float width);
 bool key_chip(const char* id, const char* label, bool capturing, float width, ImRect& rect);
 float keycap(const char* key);
 std::string fit_start(const std::string& value, Font font, float size, float width);
+// ... and its end ("Super Puzzle Fi…")
+std::string fit_end(const std::string& value, Font font, float size, float width);
 void separator(float width);
 void progress_bar(ImGuiID id, float fraction, float width, float height);
 void spinner(ImVec2 center, float radius, ImU32 color);

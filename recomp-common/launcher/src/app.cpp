@@ -29,9 +29,19 @@ using ui::px;
 
 namespace {
 
-constexpr float kSidebarWidth = 220.0f;
-constexpr float kPagePaddingX = 44.0f;
-constexpr float kPagePaddingTop = 40.0f;
+// A narrow window (a small screen, or large text) has a narrower sidebar and less room round the page
+bool narrow() {
+    return ImGui::GetMainViewport()->Size.x / ui::scale() < 760.0f;
+}
+float sidebar_width() {
+    return narrow() ? 180.0f : 220.0f;
+}
+float page_padding_x() {
+    return narrow() ? 24.0f : 44.0f;
+}
+float page_padding_top() {
+    return narrow() ? 26.0f : 40.0f;
+}
 constexpr float kContentMaxWidth = 720.0f;
 constexpr size_t kAnyGame = static_cast<size_t>(-1);  // (a file or folder for whichever game takes it)
 
@@ -267,6 +277,7 @@ App::App(SDL_Window* window)
         slot->folder = target.folder;
         slots_.push_back(std::move(slot));
     }
+    load_order();
     for (size_t which = 0; which < slots_.size(); which++) {
         Slot& one = *slots_[which];
         one.settings.load();
@@ -392,7 +403,7 @@ bool App::navigation_paused() const {
 
 std::vector<size_t> App::titled() const {
     std::vector<size_t> list;
-    for (size_t which = 0; which < slots_.size(); which++) {
+    for (size_t which : order_) {
         const Slot& one = *slots_[which];
         std::lock_guard<std::mutex> lock(mutex_);
         if (one.has_program() && !one.file_path.empty() && !one.checking && one.file.usable()) {
@@ -415,6 +426,56 @@ void App::set_page(const std::string& id) {
         if (slots_[list[i]]->id == id) {
             page_ = 3 + static_cast<int>(i);
         }
+    }
+}
+
+void App::load_order() {
+    order_.clear();
+    std::stringstream ids(prefs_.get("games", "order"));
+    for (std::string id; std::getline(ids, id, ',');) {
+        for (size_t which = 0; which < slots_.size(); which++) {
+            if (slots_[which]->id == id && std::find(order_.begin(), order_.end(), which) == order_.end()) {
+                order_.push_back(which);
+            }
+        }
+    }
+    for (size_t which = 0; which < slots_.size(); which++) {
+        if (std::find(order_.begin(), order_.end(), which) == order_.end()) {
+            order_.push_back(which);
+        }
+    }
+}
+
+void App::move_game(size_t which, int place) {
+    std::vector<size_t> list = titled();
+    auto at = std::find(list.begin(), list.end(), which);
+    if (at == list.end() || list.size() < 2) {
+        return;
+    }
+    place = std::clamp(place, 0, static_cast<int>(list.size()) - 1);
+    if (at - list.begin() == place) {
+        return;
+    }
+    size_t shown_game = 0;
+    bool shown_title = own_page(page_, &shown_game) == Page::Title;
+    std::vector<size_t> before = list;
+    list.erase(at);
+    list.insert(list.begin() + place, which);
+    // (the games with a page take the places such games had; those without stay where they are)
+    size_t next = 0;
+    for (size_t& one : order_) {
+        if (std::find(before.begin(), before.end(), one) != before.end()) {
+            one = list[next++];
+        }
+    }
+    std::string ids;
+    for (size_t one : order_) {
+        ids += (ids.empty() ? "" : ",") + slots_[one]->id;
+    }
+    prefs_.set("games", "order", ids);
+    prefs_.save();
+    if (shown_title) {
+        set_page(slots_[shown_game]->id);
     }
 }
 
@@ -849,12 +910,12 @@ void App::frame() {
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
                      ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoScrollWithMouse);
     float height = viewport->Size.y;
-    ImGui::GetWindowDrawList()->AddRectFilled(viewport->Pos, viewport->Pos + ImVec2(px(kSidebarWidth), height), p.sidebar);
-    ImGui::GetWindowDrawList()->AddRectFilled(viewport->Pos + ImVec2(px(kSidebarWidth) - 1.0f, 0), viewport->Pos + ImVec2(px(kSidebarWidth), height),
+    ImGui::GetWindowDrawList()->AddRectFilled(viewport->Pos, viewport->Pos + ImVec2(px(sidebar_width()), height), p.sidebar);
+    ImGui::GetWindowDrawList()->AddRectFilled(viewport->Pos + ImVec2(px(sidebar_width()) - 1.0f, 0), viewport->Pos + ImVec2(px(sidebar_width()), height),
                                               p.separator);
     sidebar(height);
-    ImGui::SetCursorScreenPos(viewport->Pos + ImVec2(px(kSidebarWidth), 0));
-    page(viewport->Size.x - px(kSidebarWidth), height);
+    ImGui::SetCursorScreenPos(viewport->Pos + ImVec2(px(sidebar_width()), 0));
+    page(viewport->Size.x - px(sidebar_width()), height);
     ImGui::End();
     popup_was_open_ = ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel);
 }
@@ -934,25 +995,71 @@ void App::navigation() {
 void App::sidebar(float height) {
     const ui::Palette& p = ui::palette();
     ImVec2 origin = ImGui::GetMainViewport()->Pos;
-    float inner = kSidebarWidth - 40.0f;
+    float inner = sidebar_width() - 40.0f;
     ImGui::SetCursorScreenPos(origin + ImVec2(px(24), px(28)));
     ui::text(LAUNCHER_GAME_NAME, Font::Semibold, 17.0f, p.text);
     ImGui::SetCursorScreenPos(origin + ImVec2(px(24), px(50)));
-    // (a collection's subtitle may take two lines)
+    // (a collection's subtitle may take two lines, or more in a narrow sidebar)
     ui::text(collection_ ? collection_->subtitle : about_.subtitle, Font::Regular, ui::size::kDetail, p.secondary, collection_ ? px(inner) : 0.0f);
     const char* own[] = {"Game", about_.features_name, "Controllers", "Games", "", ""};
-    float top = collection_ ? px(108) : px(100);
+    float top = std::max(collection_ ? px(108) : px(100), ImGui::GetCursorScreenPos().y - origin.y + px(24));
     float step = px(38);
     // (a collection's games' pages under a gap and a heading)
     float games_gap = px(52);
+    // Where a row is in the list, and on the screen: the list scrolls when it is longer than the room for it (a
+    // collection of many games, a small window), with the mouse wheel, and to keep the row the ring is on, or the
+    // page shown, in view
     auto row_y = [&](float index) { return top + index * step + (collection_ && index > 2.5f ? games_gap : 0.0f); };
+    int count = page_count();
+    float view_top = top - px(4);
+    float view_bottom = height - px(56);
+    float max_scroll = std::max(0.0f, row_y(static_cast<float>(count - 1)) + px(36) + px(4) - view_bottom);
+    // (the row the ring is on, while it is in the sidebar; else the page shown's)
+    auto want_row = [&] { return in_sidebar_ && ui::focus_shown() && focus_row_ >= 0 ? focus_row_ : page_; };
+    float mouse_y = ImGui::GetIO().MousePos.y - origin.y;
+    bool over = ImGui::GetIO().MousePos.x - origin.x < px(sidebar_width()) && ImGui::IsWindowHovered();
+    if (max_scroll > 0.0f) {
+        auto show_row = [&](int index) {
+            float at = row_y(static_cast<float>(index));
+            sidebar_scroll_ = std::min(sidebar_scroll_, at - view_top);
+            sidebar_scroll_ = std::max(sidebar_scroll_, at + px(36) - view_bottom);
+        };
+        if (over && ImGui::GetIO().MouseWheel != 0.0f) {
+            sidebar_scroll_ -= ImGui::GetIO().MouseWheel * step;
+        } else if (dragging_ >= 0) {
+            // (a row dragged to the top or the foot of the list scrolls it)
+            float speed = px(420) * ImGui::GetIO().DeltaTime;
+            sidebar_scroll_ += mouse_y < view_top + px(24) ? -speed : mouse_y > view_bottom - px(24) ? speed : 0.0f;
+            ui::request_frames(2);
+        } else if (want_row() != scrolled_for_) {
+            show_row(want_row());
+        }
+    }
+    scrolled_for_ = want_row();
+    sidebar_scroll_ = std::clamp(sidebar_scroll_, 0.0f, max_scroll);
+    float scroll = sidebar_scroll_;
+    ImGui::PushClipRect(origin + ImVec2(0, view_top), origin + ImVec2(px(sidebar_width()) - 1.0f, view_bottom), true);
     ImGuiID indicator = ImHashStr("nav-indicator");
-    float at = ui::animate(indicator, row_y(static_cast<float>(page_)), 18.0f);
+    // A game's row (a collection's) can be dragged up or down: it follows the mouse, the others make room, and the
+    // game takes the place it is over (move_game, once the rows are drawn)
+    int games = collection_ ? static_cast<int>(titled().size()) : 0;
+    int dropped = -1;  // (the row let go of: that is not a click on it)
+    if (dragging_ >= 0 && (!ImGui::IsMouseDown(ImGuiMouseButton_Left) || games < 2)) {
+        dropped = dragging_;
+        dragging_ = -1;
+    }
+    float drag_at = std::clamp(mouse_y + scroll - drag_grab_, row_y(3.0f), row_y(static_cast<float>(2 + games)));  // (in the list)
+    size_t shown_game = 0;
+    bool dragging_shown = dragging_ >= 0 && own_page(page_, &shown_game) == Page::Title && static_cast<int>(shown_game) == dragging_;
+    if (dragging_shown) {
+        ui::set_value(indicator, drag_at);
+    }
+    float at = (dragging_shown ? drag_at : ui::animate(indicator, row_y(static_cast<float>(page_)), 18.0f)) - scroll;
     int custom = collection_ ? 0 : static_cast<int>(about_.pages.size());
     ImVec2 pill = origin + ImVec2(px(20), at);
     ImGui::GetWindowDrawList()->AddRectFilled(pill, pill + ImVec2(px(inner), px(36)), p.control_hover, px(10));
     if (collection_) {
-        ImGui::SetCursorScreenPos(origin + ImVec2(px(24), row_y(3.0f) - px(26)));
+        ImGui::SetCursorScreenPos(origin + ImVec2(px(24), row_y(3.0f) - scroll - px(26)));
         ui::text(titled().empty() ? "YOUR GAMES: NONE YET" : "YOUR GAMES", Font::Semibold, ui::size::kSmall, p.tertiary, px(inner));
     }
     // With the arrow keys or a gamepad: from a page, left goes to the row of the page shown and to no
@@ -960,17 +1067,44 @@ void App::sidebar(float height) {
     ImGuiID focused = ImGui::GetFocusID();
     int shown = page_;
     bool in_sidebar = false;
-    for (int i = 0; i < page_count(); i++) {
-        ImGui::SetCursorScreenPos(origin + ImVec2(px(20), row_y(static_cast<float>(i))));
-        ImGui::PushID(i);
+    int move_to = -1;
+    focus_row_ = -1;
+    for (int i = 0; i < count; i++) {
         size_t which = 0;
         Page kind = own_page(i, &which);
+        float y = row_y(static_cast<float>(i));
+        if (kind == Page::Title) {
+            // (by the game's id, so that its row is the same row wherever it is)
+            ImGui::PushID(slots_[which]->id.c_str());
+            ImGuiID place = ImGui::GetID("place");
+            if (static_cast<int>(which) == dragging_) {
+                ui::set_value(place, drag_at);
+                y = drag_at;
+            } else {
+                y = ui::animate(place, y, 18.0f);
+            }
+        } else {
+            ImGui::PushID(i);
+        }
+        y -= scroll;
+        ImGui::SetCursorScreenPos(origin + ImVec2(px(20), y));
         const char* name = i < custom ? about_.pages[i].name : kind == Page::Title ? slots_[which]->name.c_str() : own[static_cast<int>(kind)];
-        if (ui::nav_item(name, shown == i, inner, in_sidebar_ || shown == i)) {
+        if (ui::nav_item(name, shown == i, inner, in_sidebar_ || shown == i) && !(kind == Page::Title && static_cast<int>(which) == dropped)) {
             page_ = i;
+        }
+        if (kind == Page::Title && games > 1 && ImGui::IsItemActive()) {
+            if (dragging_ < 0 && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                dragging_ = static_cast<int>(which);
+                drag_grab_ = ImGui::GetIO().MouseClickedPos[ImGuiMouseButton_Left].y - origin.y - y;
+            }
+            if (static_cast<int>(which) == dragging_) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+                move_to = static_cast<int>(std::floor((drag_at - row_y(3.0f)) / step + 0.5f));
+            }
         }
         if (focused == ImGui::GetItemID()) {
             in_sidebar = true;
+            focus_row_ = i;
             if (focused != focus_seen_ && in_sidebar_ && ui::focus_shown()) {
                 page_ = i;
             }
@@ -981,6 +1115,19 @@ void App::sidebar(float height) {
         }
         ImGui::PopID();
     }
+    ImGui::PopClipRect();
+    // (a line where the list goes on out of view)
+    float line = std::max(1.0f, std::floor(ui::scale()));
+    if (scroll > 0.0f) {
+        ImGui::GetWindowDrawList()->AddRectFilled(origin + ImVec2(0, view_top), origin + ImVec2(px(sidebar_width()) - 1.0f, view_top + line), p.separator);
+    }
+    if (scroll < max_scroll) {
+        ImGui::GetWindowDrawList()->AddRectFilled(origin + ImVec2(0, view_bottom - line), origin + ImVec2(px(sidebar_width()) - 1.0f, view_bottom),
+                                                  p.separator);
+    }
+    if (move_to >= 0) {
+        move_game(static_cast<size_t>(dragging_), move_to);
+    }
     in_sidebar_ = in_sidebar;
     focus_seen_ = focused;
     ImGui::SetCursorScreenPos(origin + ImVec2(px(24), height - px(36)));
@@ -989,11 +1136,15 @@ void App::sidebar(float height) {
 
 void App::page(float width, float height) {
     page_ = std::clamp(page_, 0, page_count() - 1);  // (a collection's game's page goes when its file does)
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(px(kPagePaddingX), px(kPagePaddingTop)));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(px(page_padding_x()), px(page_padding_top())));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ui::palette().background);
     // (the page as a whole is not something the ring goes on; what is in it is)
     ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
-    ImGui::BeginChild(page_ + 100, ImVec2(width, height), ImGuiChildFlags_AlwaysUseWindowPadding);
+    // (a collection's game's page by the game's id, so that it stays the same page when the game moves in the list)
+    size_t shown_game = 0;
+    ImGuiID child = own_page(page_, &shown_game) == Page::Title ? ImHashStr(slots_[shown_game]->id.c_str())
+                                                                : static_cast<ImGuiID>(page_ + 100);
+    ImGui::BeginChild(child, ImVec2(width, height), ImGuiChildFlags_AlwaysUseWindowPadding);
     ImGui::PushItemFlag(ImGuiItemFlags_NoNav, false);
     // (The sidebar and the page are apart for the arrow keys and a gamepad: ImGui's own search would go from
     // a sidebar row to whatever in the page is nearest. Left, Right and Back go between them: navigation().)
@@ -1007,7 +1158,7 @@ void App::page(float width, float height) {
     if (stick != 0.0f && !popup_was_open_) {
         ImGui::SetScrollY(std::clamp(ImGui::GetScrollY() + stick * px(1100) * ImGui::GetIO().DeltaTime, 0.0f, ImGui::GetScrollMaxY()));
     }
-    float content = std::min(width - px(kPagePaddingX) * 2, px(kContentMaxWidth));
+    float content = std::min(width - px(page_padding_x()) * 2, px(kContentMaxWidth));
     size_t which = 0;
     Page kind = own_page(page_, &which);
     slot_ = kind == Page::Title ? which : 0;
@@ -1252,7 +1403,7 @@ void App::library_page(float width) {
     const ui::Palette& p = ui::palette();
     layout::heading("Games", collection_->intro, width);
 #ifdef LAUNCHER_UPDATE_REPO
-    update_card(width, true);
+    update_card(width, true, true);  // (above the games, new version or not)
 #endif
     ui::text("FIND YOUR GAMES", Font::Semibold, ui::size::kDetail, p.secondary);
     ui::gap(10);
@@ -1273,7 +1424,7 @@ void App::library_page(float width) {
     ui::gap(10);
     Card games(width);
     bool first = true;
-    for (size_t which = 0; which < slots_.size(); which++) {
+    for (size_t which : order_) {
         Slot& one = *slots_[which];
         if (!one.has_program()) {
             continue;  // (not in this build)
@@ -1291,17 +1442,18 @@ void App::library_page(float width) {
         std::string status = one.checking ? std::string("Checking…") : one.file_path.empty() ? std::string(one.about->file_empty) : file.message;
         ImGui::PushID(static_cast<int>(which));
         ImVec2 row_top = ImGui::GetCursorScreenPos();
+        // (Play first, so that the ring coming into the row from the left is on it)
         row(width, one.name.c_str(), status.c_str(), 230.0f, 36.0f, [&] {
+            if (ui::button(one.game.running() ? "Playing…" : "Play", Kind::Primary, 110.0f, usable && !one.game.running())) {
+                play(which);
+            }
+            ImGui::SameLine(0.0f, px(10));
             if (ui::button("Choose…", Kind::Secondary, 110.0f, !one.checking)) {
                 if (ui::gamepad_in_use()) {
                     open_browser(which, false);
                 } else {
                     choose_game_file(which);
                 }
-            }
-            ImGui::SameLine(0.0f, px(10));
-            if (ui::button(one.game.running() ? "Playing…" : "Play", Kind::Primary, 110.0f, usable && !one.game.running())) {
-                play(which);
             }
         });
         if (!one.file_path.empty() && !one.checking) {
@@ -1328,21 +1480,19 @@ void App::library_page(float width) {
             ui::text(text.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
         }
     }
-#ifdef LAUNCHER_UPDATE_REPO
-    update_card(width, false);
-#endif
 }
 
 #ifdef LAUNCHER_UPDATE_REPO
 // The version, whether there is a newer one, and getting it. While there is one (or it is being installed) the card
-// is at the top of the first page; otherwise at its end, with the switch for checking when the launcher opens.
-void App::update_card(float width, bool top) {
+// is at the top of the first page; otherwise at its end, with the switch for checking when the launcher opens (a
+// collection's Games page has it at the top either way: `always`).
+void App::update_card(float width, bool top, bool always) {
     using State = launcher::Updater::State;
     const ui::Palette& p = ui::palette();
     const launcher::Updater::Status status = updater_->status();
     const bool news = status.state == State::Available || status.state == State::Installing || status.state == State::Installed ||
                       status.state == State::NotInstalled;
-    if (news != top) {
+    if (news != top && !always) {
         return;
     }
     if (!top) {
@@ -1412,6 +1562,27 @@ void App::title_page(size_t which, float width) {
     display_cards(which, width);
     ui::gap(28);
     play_button(which, width);
+    // Its place in the sidebar's list (which can be dragged there too)
+    std::vector<size_t> list = titled();
+    if (list.size() > 1) {
+        int place = static_cast<int>(std::find(list.begin(), list.end(), which) - list.begin());
+        ui::gap(36);
+        ui::text("YOUR GAMES", Font::Semibold, ui::size::kDetail, p.secondary);
+        ui::gap(10);
+        Card card(width);
+        std::string detail = std::to_string(place + 1) + " of " + std::to_string(list.size()) +
+                             " in the sidebar. Its row there can be dragged up or down too.";
+        row(width, "Its place in the list", detail.c_str(), 230.0f, 36.0f, [&] {
+            if (ui::button("Move up", Kind::Secondary, 110.0f, place > 0)) {
+                move_game(which, place - 1);
+            }
+            ImGui::SameLine(0.0f, px(10));
+            if (ui::button("Move down", Kind::Secondary, 110.0f, place + 1 < static_cast<int>(list.size()))) {
+                move_game(which, place + 1);
+            }
+        });
+        card.end();
+    }
     ui::gap(36);
     ui::text("THIS GAME'S FEATURES", Font::Semibold, ui::size::kDetail, p.secondary);
     ui::gap(6);
@@ -2028,7 +2199,7 @@ void App::controllers_page(float width) {
         ui::gap(10);
         // A collection's: every game's layout, or a game's, which may be one of its own
         std::vector<size_t> own_able;
-        for (size_t which = 0; which < slots_.size(); which++) {
+        for (size_t which : order_) {
             if (has_own_layout(which) && slots_[which]->has_program()) {
                 own_able.push_back(which);
             }

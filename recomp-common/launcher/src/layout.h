@@ -34,7 +34,8 @@ private:
     float width_;
 };
 
-// A card row: label and detail on the left, a control on the right.
+// A card row: label and detail on the left, a control on the right. In a narrow window, where the words would have
+// too little room beside the control, the control goes under them.
 template <typename Control>
 void row(float width, const char* label, const char* detail, float control_width, float control_height, Control control) {
     using ui::px;
@@ -44,6 +45,10 @@ void row(float width, const char* label, const char* detail, float control_width
     ImGui::SetCursorScreenPos(top + ImVec2(pad, px(14)));
     ImGui::BeginGroup();
     float text_width = width - pad * 2 - px(control_width) - px(24);
+    bool under = text_width < px(230);
+    if (under) {
+        text_width = width - pad * 2;
+    }
     ui::text(label, ui::Font::Regular, ui::size::kBody, p.text, text_width);
     if (detail && *detail) {
         ui::gap(3);
@@ -51,9 +56,15 @@ void row(float width, const char* label, const char* detail, float control_width
     }
     ImGui::EndGroup();
     float bottom = ImGui::GetItemRectMax().y + px(14);
-    float height = bottom - top.y;
-    ImGui::SetCursorScreenPos(ImVec2(top.x + width - pad - px(control_width), top.y + std::round((height - px(control_height)) * 0.5f)));
-    control();
+    if (under) {
+        ImGui::SetCursorScreenPos(ImVec2(top.x + pad, bottom - px(2)));
+        control();
+        bottom += px(control_height) + px(12);
+    } else {
+        float height = bottom - top.y;
+        ImGui::SetCursorScreenPos(ImVec2(top.x + width - pad - px(control_width), top.y + std::round((height - px(control_height)) * 0.5f)));
+        control();
+    }
     ImGui::SetCursorScreenPos(ImVec2(top.x, bottom));
     ImGui::Dummy(ImVec2(width, 0));
 }
