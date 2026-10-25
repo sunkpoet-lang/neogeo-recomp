@@ -10,6 +10,7 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <random>
 #include <sstream>
 
 #ifdef __APPLE__
@@ -521,18 +522,25 @@ std::vector<size_t> App::titled() const {
     return list;
 }
 
+int App::fixed_pages() const {
+    return collection_ ? (collection_->multi.empty() ? 3 : 4) : 0;
+}
+
 int App::page_count() const {
     if (collection_) {
-        return 3 + static_cast<int>(titled().size());
+        return fixed_pages() + static_cast<int>(titled().size());
     }
     return static_cast<int>(about_.pages.size()) + (about_.game_page ? 3 : 2);
 }
 
 void App::set_page(const std::string& id) {
+    if (id == "multi" && fixed_pages() > 3) {
+        page_ = 3;
+    }
     std::vector<size_t> list = titled();
     for (size_t i = 0; i < list.size(); i++) {
         if (slots_[list[i]]->id == id) {
-            page_ = 3 + static_cast<int>(i);
+            page_ = fixed_pages() + static_cast<int>(i);
         }
     }
 }
@@ -591,15 +599,16 @@ void App::move_game(size_t which, int place) {
 // collection's game's page, which game
 Page App::own_page(int index, size_t* which) const {
     if (collection_) {
-        if (index < 3) {
-            return index == 0 ? Page::Library : index == 1 ? Page::Features : Page::Controllers;
+        int fixed = fixed_pages();
+        if (index < fixed) {
+            return index == 0 ? Page::Library : index == 1 ? Page::Features : index == 2 ? Page::Controllers : Page::Multi;
         }
         std::vector<size_t> list = titled();
-        if (static_cast<size_t>(index - 3) >= list.size()) {
+        if (static_cast<size_t>(index - fixed) >= list.size()) {
             return Page::Count;
         }
         if (which) {
-            *which = list[static_cast<size_t>(index - 3)];
+            *which = list[static_cast<size_t>(index - fixed)];
         }
         return Page::Title;
     }
@@ -753,7 +762,7 @@ void App::find_in(const std::string& path) {
     });
 }
 
-void App::play(size_t which) {
+void App::play(size_t which, const std::vector<std::string>& extra) {
     Slot& one = *slots_[which];
     if (one.game.running()) {
         return;  // (one of each game at a time: a second would share its settings and saves)
@@ -777,7 +786,9 @@ void App::play(size_t which) {
     target.file_section = one.file_section;
     target.video_section = one.video_section;
     target.folder = one.folder;
-    one.game.start(one.program(), arguments_for(prefs_, target), one.folder, one.play_error, one.folder / "logs" / "game.log");
+    std::vector<std::string> arguments = arguments_for(prefs_, target);
+    arguments.insert(arguments.end(), extra.begin(), extra.end());
+    one.game.start(one.program(), arguments, one.folder, one.play_error, one.folder / "logs" / "game.log");
 }
 
 bool App::toggle_on(const Slot& one, const launcher::Toggle& toggle) const {
@@ -992,13 +1003,18 @@ void App::frame() {
     }
     // A game that ended may have changed its settings.ini (its menu's features): what it left is what is shown
     // and kept
-    for (auto& one : slots_) {
-        if (one->was_running && !one->game.running()) {
-            one->settings.load();
-            after_game(*one);
+    for (size_t which = 0; which < slots_.size(); which++) {
+        Slot& one = *slots_[which];
+        if (one.was_running && !one.game.running()) {
+            one.settings.load();
+            after_game(one);
             show_focus_ = interactive_ && SDL_HasGamepad();  // (back from the game with a gamepad in hand)
+            one.was_running = false;
+            if (multi_.mode >= 0 && multi_.at < multi_.games.size() && multi_.games[multi_.at] == which) {
+                multi_after(one.game.exit_code() == collection_->multi[static_cast<size_t>(multi_.mode)].next_code);
+            }
         }
-        one->was_running = one->game.running();
+        one.was_running = one.game.running();
     }
 #ifdef LAUNCHER_UPDATE_REPO
     // The new version installed: it is started, and this one quits (not for pictures, which start nothing)
@@ -1109,7 +1125,8 @@ void App::sidebar(float height) {
     ImGui::SetCursorScreenPos(origin + ImVec2(px(24), px(50)));
     // (a collection's subtitle may take two lines, or more in a narrow sidebar)
     ui::text(collection_ ? collection_->subtitle : about_.subtitle, Font::Regular, ui::size::kDetail, p.secondary, collection_ ? px(inner) : 0.0f);
-    const char* own[] = {"Game", about_.features_name, "Controllers", "Games", "", ""};
+    const char* own[] = {"Game", about_.features_name, "Controllers", "Games", "", "Multi game", ""};
+    float fixed = static_cast<float>(fixed_pages());
     float top = std::max(collection_ ? px(108) : px(100), ImGui::GetCursorScreenPos().y - origin.y + px(24));
     float step = px(38);
     // (a collection's games' pages under a gap and a heading)
@@ -1117,7 +1134,7 @@ void App::sidebar(float height) {
     // Where a row is in the list, and on the screen: the list scrolls when it is longer than the room for it (a
     // collection of many games, a small window), with the mouse wheel, and to keep the row the ring is on, or the
     // page shown, in view
-    auto row_y = [&](float index) { return top + index * step + (collection_ && index > 2.5f ? games_gap : 0.0f); };
+    auto row_y = [&](float index) { return top + index * step + (collection_ && index > fixed - 0.5f ? games_gap : 0.0f); };
     int count = page_count();
     float view_top = top - px(4);
     float view_bottom = height - px(56);
@@ -1156,7 +1173,7 @@ void App::sidebar(float height) {
         dropped = dragging_;
         dragging_ = -1;
     }
-    float drag_at = std::clamp(mouse_y + scroll - drag_grab_, row_y(3.0f), row_y(static_cast<float>(2 + games)));  // (in the list)
+    float drag_at = std::clamp(mouse_y + scroll - drag_grab_, row_y(fixed), row_y(fixed - 1.0f + static_cast<float>(games)));  // (in the list)
     size_t shown_game = 0;
     bool dragging_shown = dragging_ >= 0 && own_page(page_, &shown_game) == Page::Title && static_cast<int>(shown_game) == dragging_;
     if (dragging_shown) {
@@ -1167,7 +1184,7 @@ void App::sidebar(float height) {
     ImVec2 pill = origin + ImVec2(px(20), at);
     ImGui::GetWindowDrawList()->AddRectFilled(pill, pill + ImVec2(px(inner), px(36)), p.control_hover, px(10));
     if (collection_) {
-        ImGui::SetCursorScreenPos(origin + ImVec2(px(24), row_y(3.0f) - scroll - px(26)));
+        ImGui::SetCursorScreenPos(origin + ImVec2(px(24), row_y(fixed) - scroll - px(26)));
         ui::text(titled().empty() ? "YOUR GAMES: NONE YET" : "YOUR GAMES", Font::Semibold, ui::size::kSmall, p.tertiary, px(inner));
     }
     // With the arrow keys or a gamepad: from a page, left goes to the row of the page shown and to no
@@ -1207,7 +1224,7 @@ void App::sidebar(float height) {
             }
             if (static_cast<int>(which) == dragging_) {
                 ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
-                move_to = static_cast<int>(std::floor((drag_at - row_y(3.0f)) / step + 0.5f));
+                move_to = static_cast<int>(std::floor((drag_at - row_y(fixed)) / step + 0.5f));
             }
         }
         if (focused == ImGui::GetItemID()) {
@@ -1289,6 +1306,9 @@ void App::page(float width, float height) {
         break;
     case Page::Title:
         title_page(which, content);
+        break;
+    case Page::Multi:
+        multi_page(content);
         break;
     case Page::Count:
         break;
@@ -1464,7 +1484,9 @@ void App::play_button(size_t which, float width) {
     } else if (!one.play_error.empty()) {
         ui::gap(10);
         ui::text(one.play_error.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
-    } else if (!one.game.running() && one.game.exit_code() != 0) {
+    } else if (!one.game.running() && one.game.exit_code() != 0 &&
+               !(collection_ && std::any_of(collection_->multi.begin(), collection_->multi.end(),
+                                            [&](const launcher::MultiMode& m) { return m.next_code == one.game.exit_code(); }))) {
         ui::gap(10);
         std::string text = "The game stopped with code " + std::to_string(one.game.exit_code()) + ".";
         ui::text(text.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
@@ -1747,6 +1769,228 @@ void App::title_page(size_t which, float width) {
     }
     feature_list(width, rows, "Nothing of its own: every feature it has is on the Features page.",
                  [&](const FeatureRow& feature, int value) { set_feature(one, feature.index, value); });
+}
+
+// ---- Multi game ------------------------------------------------------------------------------
+
+int App::multi_value(size_t mode, size_t choice) const {
+    const launcher::MultiMode& m = collection_->multi[mode];
+    const launcher::MultiChoice& c = m.choices[choice];
+    std::string value = prefs_.get(std::string("multi.") + m.key, c.key);
+    int chosen = value.empty() ? c.initial : std::atoi(value.c_str());
+    return std::clamp(chosen, 0, std::max(0, static_cast<int>(c.choices.size()) - 1));
+}
+
+std::vector<size_t> App::multi_games(size_t mode) const {
+    const launcher::MultiMode& m = collection_->multi[mode];
+    std::vector<size_t> list;
+    for (size_t which : titled()) {
+        if (std::any_of(m.games.begin(), m.games.end(), [&](const char* id) { return slots_[which]->id == id; })) {
+            list.push_back(which);
+        }
+    }
+    return list;
+}
+
+bool App::multi_chosen(size_t mode, size_t which) const {
+    std::stringstream ids(prefs_.get(std::string("multi.") + collection_->multi[mode].key, "off"));
+    for (std::string id; std::getline(ids, id, ',');) {
+        if (id == slots_[which]->id) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void App::set_multi_chosen(size_t mode, size_t which, bool chosen) {
+    const std::string section = std::string("multi.") + collection_->multi[mode].key;
+    std::stringstream ids(prefs_.get(section, "off"));
+    std::string off;
+    for (std::string id; std::getline(ids, id, ',');) {
+        if (!id.empty() && id != slots_[which]->id) {
+            off += (off.empty() ? "" : ",") + id;
+        }
+    }
+    if (!chosen) {
+        off += (off.empty() ? "" : ",") + slots_[which]->id;
+    }
+    prefs_.set(section, "off", off);
+    prefs_.save();
+}
+
+bool App::multi_shuffled(size_t mode) const {
+    return prefs_.get(std::string("multi.") + collection_->multi[mode].key, "order") == "1";
+}
+
+void App::start_multi(size_t mode) {
+    multi_ = MultiRun();
+    multi_message_.clear();
+    for (size_t which : multi_games(mode)) {
+        if (multi_chosen(mode, which)) {
+            multi_.games.push_back(which);
+        }
+    }
+    if (multi_.games.empty()) {
+        return;
+    }
+    if (multi_shuffled(mode)) {
+        std::shuffle(multi_.games.begin(), multi_.games.end(), std::mt19937(std::random_device()()));
+    }
+    multi_.mode = static_cast<int>(mode);
+    multi_play_next();
+}
+
+bool App::multi_play_next() {
+    const launcher::MultiMode& m = collection_->multi[static_cast<size_t>(multi_.mode)];
+    std::vector<int> values;
+    for (size_t choice = 0; choice < m.choices.size(); choice++) {
+        values.push_back(multi_value(static_cast<size_t>(multi_.mode), choice));
+    }
+    std::vector<std::string> extra = m.arguments ? m.arguments(values) : std::vector<std::string>();
+    // (a game that will not start, or is running already, is passed over)
+    for (size_t tries = 0; tries < multi_.games.size(); tries++) {
+        Slot& one = *slots_[multi_.games[multi_.at]];
+        if (!one.game.running()) {
+            play(multi_.games[multi_.at], extra);
+            if (one.game.running()) {
+                multi_.played++;
+                return true;
+            }
+        }
+        multi_.at = (multi_.at + 1) % multi_.games.size();
+    }
+    multi_message_ = "None of the games would start.";
+    multi_.mode = -1;
+    return false;
+}
+
+void App::multi_after(bool done) {
+    Slot& one = *slots_[multi_.games[multi_.at]];
+    if (!done) {
+        int code = one.game.exit_code();
+        multi_message_ = code == 0 ? one.name + " was quit: the run is over." : one.name + " stopped with code " + std::to_string(code) + ": the run is over.";
+        multi_.mode = -1;
+        return;
+    }
+    if (++multi_.at >= multi_.games.size()) {
+        // (round again: shuffled anew, not starting with the game just played)
+        multi_.at = 0;
+        if (multi_shuffled(static_cast<size_t>(multi_.mode)) && multi_.games.size() > 1) {
+            size_t last = multi_.games.back();
+            std::mt19937 random(std::random_device{}());
+            do {
+                std::shuffle(multi_.games.begin(), multi_.games.end(), random);
+            } while (multi_.games.front() == last);
+        }
+    }
+    multi_play_next();
+}
+
+void App::multi_page(float width) {
+    const ui::Palette& p = ui::palette();
+    layout::heading("Multi game", collection_->multi_intro, width);
+    if (multi_.mode >= 0) {
+        const launcher::MultiMode& m = collection_->multi[static_cast<size_t>(multi_.mode)];
+        layout::label("NOW PLAYING");
+        Card card(width);
+        const Slot& one = *slots_[multi_.games[multi_.at]];
+        std::string detail = one.name + ": game " + std::to_string(multi_.at + 1) + " of " + std::to_string(multi_.games.size()) +
+                             (multi_.played > multi_.games.size() ? " (round " + std::to_string((multi_.played - 1) / multi_.games.size() + 1) + ")" : "") +
+                             ". Quit the game (its menu's Quit game, or close its window) to stop, or stop after this game.";
+        row(width, m.title, detail.c_str(), 200.0f, 36.0f, [&] {
+            if (ui::button("Stop after this game", Kind::Secondary, 200.0f)) {
+                multi_.mode = -1;
+                multi_message_ = "Stopped: " + one.name + " is the last.";
+            }
+        });
+        card.end();
+        ui::gap(28);
+    } else if (!multi_message_.empty()) {
+        ui::text(multi_message_.c_str(), Font::Regular, ui::size::kDetail, p.secondary, width);
+        ui::gap(20);
+    }
+    for (size_t mode = 0; mode < collection_->multi.size(); mode++) {
+        ImGui::PushID(static_cast<int>(mode));
+        multi_card(mode, width);
+        ImGui::PopID();
+    }
+}
+
+void App::multi_card(size_t mode, float width) {
+    const ui::Palette& p = ui::palette();
+    const launcher::MultiMode& m = collection_->multi[mode];
+    const std::string section = std::string("multi.") + m.key;
+    std::string upper = m.title;
+    std::transform(upper.begin(), upper.end(), upper.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+    layout::label(upper.c_str());
+    ui::text(m.detail, Font::Regular, ui::size::kDetail, p.secondary, width);
+    ui::gap(12);
+    Card card(width);
+    bool first = true;
+    for (size_t choice = 0; choice < m.choices.size(); choice++) {
+        const launcher::MultiChoice& c = m.choices[choice];
+        if (c.shown_with) {
+            auto with = std::find_if(m.choices.begin(), m.choices.end(), [&](const launcher::MultiChoice& other) { return std::strcmp(other.key, c.shown_with) == 0; });
+            if (with != m.choices.end() && multi_value(mode, static_cast<size_t>(with - m.choices.begin())) != c.shown_value) {
+                continue;
+            }
+        }
+        if (!first) {
+            inset_separator(width);
+        }
+        first = false;
+        ImGui::PushID(c.key);
+        int chosen = multi_value(mode, choice);
+        row(width, c.title, c.detail, 190.0f, 36.0f, [&] {
+            if (ui::dropdown("##choice", c.choices, chosen, 190.0f)) {
+                prefs_.set(section, c.key, std::to_string(chosen));
+                prefs_.save();
+            }
+        });
+        ImGui::PopID();
+    }
+    if (!first) {
+        inset_separator(width);
+    }
+    int order = multi_shuffled(mode) ? 1 : 0;
+    static const std::vector<std::string> kOrders = {"As in the sidebar", "Shuffled"};
+    row(width, "Order of the games", "As the games are in the sidebar (drag them there to change it), or shuffled, anew each time round.", 190.0f, 36.0f, [&] {
+        if (ui::dropdown("##order", kOrders, order, 190.0f)) {
+            prefs_.set(section, "order", order ? "1" : "0");
+            prefs_.save();
+        }
+    });
+    card.end();
+    ui::gap(24);
+    layout::label("GAMES");
+    std::vector<size_t> games = multi_games(mode);
+    size_t chosen_count = 0;
+    if (games.empty()) {
+        ui::text("None of your games has it yet: choose the ROM set of a game that does on the Games page.", Font::Regular, ui::size::kDetail, p.secondary, width);
+    } else {
+        Card list(width);
+        for (size_t n = 0; n < games.size(); n++) {
+            if (n > 0) {
+                inset_separator(width);
+            }
+            bool on = multi_chosen(mode, games[n]);
+            chosen_count += on;
+            ImGui::PushID(slots_[games[n]]->id.c_str());
+            row(width, slots_[games[n]]->name.c_str(), nullptr, 42.0f, 24.0f, [&] {
+                if (ui::toggle("##on", on)) {
+                    set_multi_chosen(mode, games[n], !on);
+                }
+            });
+            ImGui::PopID();
+        }
+        list.end();
+    }
+    ui::gap(20);
+    std::string start = std::string(multi_.mode == static_cast<int>(mode) ? "Playing…" : "Start") + "###start";
+    if (ui::button(start.c_str(), Kind::Primary, 200.0f, multi_.mode < 0 && chosen_count > 0, 48.0f)) {
+        start_multi(mode);
+    }
+    ui::gap(36);
 }
 
 // ---- the game file, chosen with a gamepad --------------------------------------------------
