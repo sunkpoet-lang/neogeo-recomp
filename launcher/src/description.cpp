@@ -204,11 +204,9 @@ launcher::Description describe_game(const GameInfo& game) {
     for (const FeatureSwitch& one : switches) {
         d.display.push_back({keep(one.name), keep(one.title), keep(one.detail), false, nullptr});
     }
-#ifdef LAUNCHER_COLLECTION
-    d.bindings = shared_table().table;
-#else
+    // (its own table: a collection's game has the one every game shares, Collection::bindings, unless it is given a
+    // layout of its own on the Controllers page)
     d.bindings = port::MakeBoundTable(*game.players ? atoi(game.players) : 2, game.buttons, false).table;
-#endif
     d.controls_heading = "WHILE PLAYING";
     d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (forAll ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   " + (forAll ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
     return d;
@@ -273,6 +271,7 @@ const launcher::Collection& launcher::describe_collection() {
         for (const GameInfo& game : kGames) {
             c.games.push_back({game.id, game.name, game.id, "", describe_game(game)});
         }
+        c.bindings = shared_table().table;
         return c;
     }();
     return about;

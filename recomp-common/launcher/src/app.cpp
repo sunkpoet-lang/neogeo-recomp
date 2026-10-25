@@ -317,7 +317,14 @@ App::App(SDL_Window* window)
             break;
         }
     }
-    bindings_ = recomp::LoadBindings(slots_[first]->settings.path().string(), about_.bindings);
+    bindings_ = recomp::LoadBindings(slots_[first]->settings.path().string(), shared_table());
+    // (and each game's own, for those given one)
+    own_bindings_.resize(slots_.size());
+    for (size_t which = 0; which < slots_.size(); which++) {
+        if (own_layout(which)) {
+            own_bindings_[which] = recomp::LoadBindings(slots_[which]->settings.path().string(), slots_[which]->about->bindings);
+        }
+    }
 #ifdef LAUNCHER_UPDATE_REPO
 #ifdef _WIN32
     const char* launcher_name = LAUNCHER_GAME_EXE "-launcher.exe";
@@ -1791,42 +1798,112 @@ std::string key_label(SDL_Scancode key) {
 
 }  // namespace
 
-// (a collection's: the same for every game, each with the actions it has)
-void App::save_bindings() {
-    const recomp::BindTable& table = about_.bindings;
-    for (auto& one : slots_) {
-        for (int player = 0; player < table.players; player++) {
-            for (int action = 0; action < table.count; action++) {
-                one->settings.set(recomp::BindingSection(false, player), table.actions[action].name, recomp::KeyText(bindings_.key[player][action]));
-                one->settings.set(recomp::BindingSection(true, player), table.actions[action].name, recomp::PadText(bindings_.pad[player][action]));
+const recomp::BindTable& App::shared_table() const {
+    return collection_ && collection_->bindings.count > 0 ? collection_->bindings : about_.bindings;
+}
+
+bool App::has_own_layout(size_t which) const {
+    return collection_ && which < slots_.size() && slots_[which]->about->bindings.count > 0;
+}
+
+bool App::own_layout(size_t which) const {
+    return has_own_layout(which) && prefs_.get("controls", slots_[which]->id) == "own";
+}
+
+// A game given a layout of its own starts from what every game has (each of its actions as the shared action of
+// that name is, or as its own usual layout has it where there is none); one given back has every game's again
+void App::set_own_layout(size_t which, bool own) {
+    if (!has_own_layout(which) || own == own_layout(which)) {
+        return;
+    }
+    Slot& one = *slots_[which];
+    prefs_.set("controls", one.id, own ? "own" : "");
+    prefs_.save();
+    if (own) {
+        const recomp::BindTable& table = one.about->bindings;
+        const recomp::BindTable& shared = shared_table();
+        recomp::Bindings& b = own_bindings_[which];
+        b = recomp::DefaultBindings(table);
+        for (int action = 0; action < table.count; action++) {
+            for (int other = 0; other < shared.count; other++) {
+                if (std::strcmp(table.actions[action].name, shared.actions[other].name) == 0) {
+                    for (int player = 0; player < table.players && player < shared.players; player++) {
+                        b.key[player][action] = bindings_.key[player][other];
+                        b.pad[player][action] = bindings_.pad[player][other];
+                    }
+                }
             }
         }
-        one->settings.save();
+        write_bindings(one, table, b);
+    } else {
+        write_bindings(one, shared_table(), bindings_);
+    }
+}
+
+const recomp::BindTable& App::bind_table() const {
+    return bind_slot_ >= 0 && own_layout(static_cast<size_t>(bind_slot_)) ? slots_[static_cast<size_t>(bind_slot_)]->about->bindings : shared_table();
+}
+
+recomp::Bindings& App::bind_layout() {
+    return bind_slot_ >= 0 && own_layout(static_cast<size_t>(bind_slot_)) ? own_bindings_[static_cast<size_t>(bind_slot_)] : bindings_;
+}
+
+// One game's settings.ini given a layout (a game's own: what the shared table has that it has not got is "none",
+// so that the game, which reads the shared table, has only these)
+void App::write_bindings(Slot& slot, const recomp::BindTable& table, const recomp::Bindings& bindings) {
+    const recomp::BindTable& shared = shared_table();
+    for (int player = 0; player < shared.players; player++) {
+        for (int other = 0; collection_ && &table != &shared && other < shared.count; other++) {
+            slot.settings.set(recomp::BindingSection(false, player), shared.actions[other].name, "none");
+            slot.settings.set(recomp::BindingSection(true, player), shared.actions[other].name, "none");
+        }
+    }
+    for (int player = 0; player < table.players; player++) {
+        for (int action = 0; action < table.count; action++) {
+            slot.settings.set(recomp::BindingSection(false, player), table.actions[action].name, recomp::KeyText(bindings.key[player][action]));
+            slot.settings.set(recomp::BindingSection(true, player), table.actions[action].name, recomp::PadText(bindings.pad[player][action]));
+        }
+    }
+    slot.settings.save();
+}
+
+// The layout the Controllers page shows, kept: every game's (a collection's: in each game's settings.ini, but
+// those given their own), or one game's own
+void App::save_bindings() {
+    if (bind_slot_ >= 0 && own_layout(static_cast<size_t>(bind_slot_))) {
+        write_bindings(*slots_[static_cast<size_t>(bind_slot_)], bind_table(), bind_layout());
+        return;
+    }
+    for (size_t which = 0; which < slots_.size(); which++) {
+        if (!own_layout(which)) {
+            write_bindings(*slots_[which], shared_table(), bindings_);
+        }
     }
 }
 
 // A key or a gamepad input is given to an action. Whatever had it before gets what the action had (for the
 // same player: the two change places), so nothing is ever on two actions. A key is one player's only.
 void App::bind(int player, bool gamepad, int action, SDL_Scancode key, recomp::PadInput input) {
-    const recomp::BindTable& table = about_.bindings;
+    const recomp::BindTable& table = bind_table();
+    recomp::Bindings& b = bind_layout();
     if (gamepad) {
-        recomp::PadInput was = bindings_.pad[player][action];
+        recomp::PadInput was = b.pad[player][action];
         for (int other = 0; other < table.count; other++) {
-            if (other != action && input != recomp::PadInput{} && bindings_.pad[player][other] == input) {
-                bindings_.pad[player][other] = was;
+            if (other != action && input != recomp::PadInput{} && b.pad[player][other] == input) {
+                b.pad[player][other] = was;
             }
         }
-        bindings_.pad[player][action] = input;
+        b.pad[player][action] = input;
     } else {
-        SDL_Scancode was = bindings_.key[player][action];
+        SDL_Scancode was = b.key[player][action];
         for (int who = 0; who < table.players; who++) {
             for (int other = 0; other < table.count; other++) {
-                if ((who != player || other != action) && key != SDL_SCANCODE_UNKNOWN && bindings_.key[who][other] == key) {
-                    bindings_.key[who][other] = who == player ? was : SDL_SCANCODE_UNKNOWN;
+                if ((who != player || other != action) && key != SDL_SCANCODE_UNKNOWN && b.key[who][other] == key) {
+                    b.key[who][other] = who == player ? was : SDL_SCANCODE_UNKNOWN;
                 }
             }
         }
-        bindings_.key[player][action] = key;
+        b.key[player][action] = key;
     }
     save_bindings();
 }
@@ -1929,8 +2006,10 @@ void App::controllers_page(float width) {
     }
     SDL_free(pads);
 
-    const recomp::BindTable& table = about_.bindings;
-    if (table.count > 0) {
+    if (bind_slot_ >= static_cast<int>(slots_.size()) || (bind_slot_ >= 0 && !slots_[static_cast<size_t>(bind_slot_)]->has_program())) {
+        bind_slot_ = -1;
+    }
+    if (shared_table().count > 0) {
         // Every gamepad is opened (and stays open while the launcher runs), so that its buttons are heard
         // when one is being chosen below.
         {
@@ -1947,86 +2026,132 @@ void App::controllers_page(float width) {
         // What each key and button does (bindings.h; the game reads the same settings.ini).
         ui::text("BUTTONS", Font::Semibold, ui::size::kDetail, p.secondary);
         ui::gap(10);
-        if (capture_action_ >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            capture_action_ = -1;  // (a click anywhere: not waiting any more; on another button, waiting for that one)
+        // A collection's: every game's layout, or a game's, which may be one of its own
+        std::vector<size_t> own_able;
+        for (size_t which = 0; which < slots_.size(); which++) {
+            if (has_own_layout(which) && slots_[which]->has_program()) {
+                own_able.push_back(which);
+            }
         }
-        for (int player = 0; table.players > 1 && player < table.players; player++) {
-            if (player > 0) {
+        if (!own_able.empty()) {
+            Card games(width);
+            std::vector<std::string> labels = {"Every game"};
+            int index = 0;
+            for (size_t i = 0; i < own_able.size(); i++) {
+                labels.push_back(slots_[own_able[i]]->name + (own_layout(own_able[i]) ? "  (its own)" : ""));
+                index = bind_slot_ == static_cast<int>(own_able[i]) ? static_cast<int>(i) + 1 : index;
+            }
+            row(width, "Layout for", "Every game has the same keys and buttons, unless it is given a layout of its own.", 280.0f, 36.0f, [&] {
+                if (ui::dropdown("##layout-for", labels, index, 280.0f)) {
+                    bind_slot_ = index == 0 ? -1 : static_cast<int>(own_able[static_cast<size_t>(index - 1)]);
+                    capture_action_ = -1;
+                }
+            });
+            if (bind_slot_ >= 0) {
+                const size_t which = static_cast<size_t>(bind_slot_);
+                const bool own = own_layout(which);
+                inset_separator(width);
+                row(width, "Its own layout",
+                    own ? "This game has keys and buttons of its own, with its own names for its buttons. Off: every game's again."
+                        : "Off: this game has every game's layout (Every game, above). On: keys and buttons of its own, starting as every game's are.",
+                    42.0f, 24.0f, [&] {
+                        if (ui::toggle("##own-layout", own)) {
+                            set_own_layout(which, !own);
+                            capture_action_ = -1;
+                        }
+                    });
+            }
+            games.end();
+            ui::gap(10);
+        }
+        // (a game with every game's layout: only its switch; the buttons are every game's, set there)
+        if (bind_slot_ < 0 || own_layout(static_cast<size_t>(bind_slot_))) {
+            const recomp::BindTable& table = bind_table();
+            recomp::Bindings& layout_shown = bind_layout();
+            bind_player_ = std::min(bind_player_, table.players - 1);
+            if (capture_action_ >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                capture_action_ = -1;  // (a click anywhere: not waiting any more; on another button, waiting for that one)
+            }
+            for (int player = 0; table.players > 1 && player < table.players; player++) {
+                if (player > 0) {
+                    ImGui::SameLine(0.0f, px(8));
+                }
+                std::string label = "Player " + std::to_string(player + 1);
+                if (ui::button(label.c_str(), bind_player_ == player ? Kind::Primary : Kind::Secondary, 110.0f)) {
+                    bind_player_ = player;
+                    capture_action_ = -1;
+                }
+            }
+            if (table.players > 1) {
                 ImGui::SameLine(0.0f, px(8));
             }
-            std::string label = "Player " + std::to_string(player + 1);
-            if (ui::button(label.c_str(), bind_player_ == player ? Kind::Primary : Kind::Secondary, 110.0f)) {
-                bind_player_ = player;
-                capture_action_ = -1;
-            }
-        }
-        if (table.players > 1) {
-            ImGui::SameLine(0.0f, px(8));
-        }
-        if (ui::button("Back to the usual layout", Kind::Ghost, 200.0f)) {
-            recomp::Bindings usual = recomp::DefaultBindings(table);
-            for (int action = 0; action < table.count; action++) {
-                bindings_.key[bind_player_][action] = usual.key[bind_player_][action];
-                bindings_.pad[bind_player_][action] = usual.pad[bind_player_][action];
-            }
-            // (a key the usual layout gives this player is taken from the others)
-            for (int who = 0; who < table.players; who++) {
-                for (int action = 0; who != bind_player_ && action < table.count; action++) {
-                    for (int other = 0; other < table.count; other++) {
-                        SDL_Scancode& theirs = bindings_.key[who][other];
-                        if (theirs != SDL_SCANCODE_UNKNOWN && theirs == bindings_.key[bind_player_][action]) {
-                            theirs = SDL_SCANCODE_UNKNOWN;
+            if (ui::button("Back to the usual layout", Kind::Ghost, 200.0f)) {
+                recomp::Bindings usual = recomp::DefaultBindings(table);
+                for (int action = 0; action < table.count; action++) {
+                    layout_shown.key[bind_player_][action] = usual.key[bind_player_][action];
+                    layout_shown.pad[bind_player_][action] = usual.pad[bind_player_][action];
+                }
+                // (a key the usual layout gives this player is taken from the others)
+                for (int who = 0; who < table.players; who++) {
+                    for (int action = 0; who != bind_player_ && action < table.count; action++) {
+                        for (int other = 0; other < table.count; other++) {
+                            SDL_Scancode& theirs = layout_shown.key[who][other];
+                            if (theirs != SDL_SCANCODE_UNKNOWN && theirs == layout_shown.key[bind_player_][action]) {
+                                theirs = SDL_SCANCODE_UNKNOWN;
+                            }
                         }
                     }
                 }
+                capture_action_ = -1;
+                save_bindings();
             }
-            capture_action_ = -1;
-            save_bindings();
-        }
-        ui::gap(10);
-        constexpr float kChip = 170.0f, kChipGap = 10.0f;
-        Card buttons(width);
-        static const char* const kNth[recomp::kBindMaxPlayers] = {"first", "second", "third", "fourth"};
-        const std::string whose = "Player " + std::to_string(bind_player_ + 1);
-        const std::string what = std::string("The keyboard and the ") + kNth[bind_player_] +
-                                 " gamepad. Click a button here, then press the key or the gamepad button for it.";
-        row(width, table.players < 2 ? "Buttons" : whose.c_str(),
-            table.players < 2 ? "The keyboard and the gamepad. Click a button here, then press the key or the gamepad button for it."
-                              : what.c_str(),
-            kChip * 2 + kChipGap, 18.0f, [&] {
-                ImVec2 at = ImGui::GetCursorScreenPos();
-                ui::text("Keyboard", Font::Semibold, ui::size::kDetail, p.secondary);
-                ImGui::SetCursorScreenPos(at + ImVec2(px(kChip + kChipGap), 0));
-                ui::text("Gamepad", Font::Semibold, ui::size::kDetail, p.secondary);
-            });
-        for (int action = 0; action < table.count; action++) {
-            inset_separator(width);
-            ImGui::PushID(action);
-            row(width, table.actions[action].title, "", kChip * 2 + kChipGap, 34.0f, [&] {
-                ImVec2 at = ImGui::GetCursorScreenPos();
-                for (int gamepad = 0; gamepad < 2; gamepad++) {
-                    bool waiting = capture_action_ == action && capture_gamepad_ == (gamepad != 0);
-                    std::string label = waiting ? (gamepad ? "Press a button..." : "Press a key...")
-                                        : gamepad ? pad_label(bindings_.pad[bind_player_][action])
-                                                  : key_label(bindings_.key[bind_player_][action]);
-                    ImRect rect;
-                    ImGui::SetCursorScreenPos(at + ImVec2(gamepad ? px(kChip + kChipGap) : 0.0f, 0));
-                    if (ui::key_chip(gamepad ? "##pad" : "##key", label.c_str(), waiting, kChip, rect)) {
-                        capture_action_ = action;
-                        capture_gamepad_ = gamepad != 0;
+            ui::gap(10);
+            constexpr float kChip = 170.0f, kChipGap = 10.0f;
+            Card buttons(width);
+            static const char* const kNth[recomp::kBindMaxPlayers] = {"first", "second", "third", "fourth"};
+            const std::string whose = "Player " + std::to_string(bind_player_ + 1);
+            const std::string what = std::string("The keyboard and the ") + kNth[bind_player_] +
+                                     " gamepad. Click a button here, then press the key or the gamepad button for it.";
+            row(width, table.players < 2 ? "Buttons" : whose.c_str(),
+                table.players < 2 ? "The keyboard and the gamepad. Click a button here, then press the key or the gamepad button for it."
+                                  : what.c_str(),
+                kChip * 2 + kChipGap, 18.0f, [&] {
+                    ImVec2 at = ImGui::GetCursorScreenPos();
+                    ui::text("Keyboard", Font::Semibold, ui::size::kDetail, p.secondary);
+                    ImGui::SetCursorScreenPos(at + ImVec2(px(kChip + kChipGap), 0));
+                    ui::text("Gamepad", Font::Semibold, ui::size::kDetail, p.secondary);
+                });
+            for (int action = 0; action < table.count; action++) {
+                inset_separator(width);
+                ImGui::PushID(action);
+                row(width, table.actions[action].title, "", kChip * 2 + kChipGap, 34.0f, [&] {
+                    ImVec2 at = ImGui::GetCursorScreenPos();
+                    for (int gamepad = 0; gamepad < 2; gamepad++) {
+                        bool waiting = capture_action_ == action && capture_gamepad_ == (gamepad != 0);
+                        std::string label = waiting ? (gamepad ? "Press a button..." : "Press a key...")
+                                            : gamepad ? pad_label(layout_shown.pad[bind_player_][action])
+                                                      : key_label(layout_shown.key[bind_player_][action]);
+                        ImRect rect;
+                        ImGui::SetCursorScreenPos(at + ImVec2(gamepad ? px(kChip + kChipGap) : 0.0f, 0));
+                        if (ui::key_chip(gamepad ? "##pad" : "##key", label.c_str(), waiting, kChip, rect)) {
+                            capture_action_ = action;
+                            capture_gamepad_ = gamepad != 0;
+                        }
                     }
-                }
-            });
-            ImGui::PopID();
-        }
-        buttons.end();
-        ui::gap(8);
-        ui::text("While a button waits: Esc leaves it as it was, Backspace leaves it with nothing. Giving a key or a button that is in use "
-                 "swaps the two. A gamepad's left stick always works as the directions.",
-                 Font::Regular, ui::size::kDetail, p.secondary, width);
-        ui::gap(24);
-        if (capture_action_ >= 0) {
-            ui::request_frames(2);
+                });
+                ImGui::PopID();
+            }
+            buttons.end();
+            ui::gap(8);
+            ui::text("While a button waits: Esc leaves it as it was, Backspace leaves it with nothing. Giving a key or a button that is in use "
+                     "swaps the two. A gamepad's left stick always works as the directions.",
+                     Font::Regular, ui::size::kDetail, p.secondary, width);
+            ui::gap(24);
+            if (capture_action_ >= 0) {
+                ui::request_frames(2);
+            }
+        } else {
+            ui::gap(14);
         }
     }
 
