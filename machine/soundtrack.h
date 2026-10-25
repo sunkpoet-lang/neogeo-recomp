@@ -31,7 +31,8 @@ public:
     // Which song numbers are music, read from the sound program's table of songs: `table` is where the entry of
     // song 0 is (four bytes a song: a three-byte address in the program, high byte first, then one more), `count`
     // how many entries to read; `musicBelow`, for a sound program whose songs' data do not say which are music
-    // (driver 1.71's music and effects begin alike): the songs below that number in the table are, the rest not.
+    // (driver 1.71's music and effects begin alike): the songs below that number are, the rest not (with an entry
+    // in the table or not: that driver plays some of its music, Zangief's theme among them, from elsewhere).
     // (Not kept with save states: the port sets them.)
     void FindMusic(const std::vector<uint8_t> &program, uint32_t table, uint32_t count, uint32_t musicBelow = 0);
     bool IsMusic(uint16_t song) const {
