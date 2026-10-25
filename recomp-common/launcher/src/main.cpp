@@ -19,6 +19,7 @@
 //   <id>-launcher --page ID                            (a collection's: opens on that game's page)
 // <ID>_HOME=folder (LAUNCHER_HOME_ENV) uses that folder instead of the player's (settings, launcher.ini; a
 // collection's games each in a folder named by its id in it).
+// portable.txt beside the launcher (on macOS beside the app) keeps the player's folders in user/ there (folders.h).
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -180,6 +181,10 @@ int main(int argc, char** argv) {
         }
     }
     SDL_SetAppMetadata(LAUNCHER_GAME_NAME, "0.1", LAUNCHER_APP_ID ".launcher");
+    if (!prepare_folders(screenshot_prefix.empty())) {  // (portable mode's folder; pictures for a test ask nothing)
+        SDL_Quit();
+        return 1;
+    }
     if (play) {
         // Straight into the game, e.g. from a Steam shortcut in Game Mode.
         int code = play_directly(play_id, extra);

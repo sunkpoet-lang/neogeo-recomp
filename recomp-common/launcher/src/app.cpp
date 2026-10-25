@@ -3,6 +3,7 @@
 #include "app.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -15,6 +16,7 @@
 #include <mach-o/dyld.h>
 #endif
 
+#include "folders.h"
 #include "layout.h"
 #include "steam.h"
 #include "ui.h"
@@ -86,15 +88,43 @@ std::filesystem::path program_path(const std::string& exe) {
 #endif
 }
 
-// The player's folder for a game (or a collection): named by it, or the folder a variable names (tests)
+// The system's folder for a game's (or a collection's) things, named by it (SDL_GetPrefPath makes it)
+std::filesystem::path system_folder(const char* name) {
+    char* path = SDL_GetPrefPath("", name);
+    std::filesystem::path folder = path ? std::filesystem::path(path) : base_path() / recomp::kPortableFolder / std::filesystem::u8path(name);
+    SDL_free(path);
+    return folder;
+}
+
+// The player's folder for a game (or a collection): named by it, in user/ beside the launcher in portable mode
+// (folders.h), or the folder a variable names (tests)
 std::filesystem::path player_folder(const char* name, const char* home_env) {
     if (const char* home = home_env && *home_env ? std::getenv(home_env) : nullptr; home && *home) {
         return home;
     }
-    char* path = SDL_GetPrefPath("", name);  // where the game keeps settings.ini too
-    std::filesystem::path folder = path ? std::filesystem::path(path) : base_path() / "user";
-    SDL_free(path);
-    return folder;
+    if (std::filesystem::path portable = recomp::PortableFolder(base_path()); !portable.empty()) {
+        return portable / std::filesystem::u8path(name);
+    }
+    return system_folder(name);  // where the game keeps settings.ini too
+}
+
+// A folder as a file:// URL, for the system to open
+std::string file_url(const std::filesystem::path& folder) {
+    std::string url = "file://";
+    std::string path = folder.generic_u8string();
+    if (path.empty() || path[0] != '/') {
+        url += '/';  // (file:///C:/...)
+    }
+    for (unsigned char c : path) {
+        if (std::isalnum(c) || std::strchr("/-_.~:", c)) {
+            url += static_cast<char>(c);
+        } else {
+            char escaped[4];
+            std::snprintf(escaped, sizeof escaped, "%%%02X", c);
+            url += escaped;
+        }
+    }
+    return url;
 }
 
 // A port's launcher's description, or a collection's (its first game's: what the games share, the controls)
@@ -204,6 +234,84 @@ std::string lower(std::string text) {
 static void say(SDL_MessageBoxFlags kind, const std::string& title, const std::string& message) {
     std::fprintf(stderr, "%s: %s\n", title.c_str(), message.c_str());
     SDL_ShowSimpleMessageBox(kind, title.c_str(), message.c_str(), nullptr);
+}
+
+bool prepare_folders(bool ask) {
+    if (const char* home = std::getenv(LAUNCHER_HOME_ENV); home && *home) {
+        return true;  // (a test's folder)
+    }
+    const std::filesystem::path portable = recomp::PortableFolder(base_path());
+    if (portable.empty()) {
+        return true;
+    }
+    std::error_code error;
+    const bool first = !std::filesystem::exists(portable, error);
+    std::filesystem::create_directories(portable, error);
+    // (a drive that is read-only, or a folder the player may not write to, such as Program Files)
+    const std::filesystem::path probe = portable / ".writable";
+    bool writable = !error && std::ofstream(probe).good();
+    std::filesystem::remove(probe, error);
+    if (!writable) {
+        say(SDL_MESSAGEBOX_ERROR, LAUNCHER_GAME_NAME,
+            "portable.txt is beside the launcher, so your settings and saves go in " + portable.u8string() +
+                ", but that folder cannot be written to.\n\nMove the launcher's folder somewhere you can write to (not a "
+                "read-only drive or Program Files), or take portable.txt away to keep them in your user folder.");
+        return false;
+    }
+    if (!first || !ask) {
+        return true;
+    }
+    // The first time: what the system's folders have may be copied here (never moved, never written over)
+    std::vector<std::pair<std::filesystem::path, std::filesystem::path>> copies;
+    auto consider = [&](const char* name) {
+        const std::filesystem::path to = portable / std::filesystem::u8path(name);
+        for (const auto& copy : copies) {
+            if (copy.second == to) {
+                return;
+            }
+        }
+        const std::filesystem::path from = system_folder(name);
+        std::error_code ignored;
+        if (std::filesystem::is_empty(from, ignored)) {
+            std::filesystem::remove(from, ignored);  // (made just now by asking where it is: it was not there)
+        } else if (!ignored) {
+            copies.push_back({from, to});
+        }
+    };
+    consider(LAUNCHER_GAME_NAME);
+    for (const Target& target : targets()) {
+        consider(target.name.c_str());
+    }
+    if (copies.empty()) {
+        return true;
+    }
+    std::string message = "portable.txt is beside the launcher: your settings, save states and the boards' memory are kept in " +
+                          portable.u8string() + " from now on.\n\nCopy what you have in your user folder there?\n";
+    for (const auto& copy : copies) {
+        message += "\n" + copy.first.u8string();
+    }
+    message += "\n\nNothing is taken away from it. Without portable.txt the launcher uses it again, as it was.";
+    const SDL_MessageBoxButtonData buttons[] = {
+        {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Copy them"},
+        {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Start afresh"},
+    };
+    const SDL_MessageBoxData box = {SDL_MESSAGEBOX_INFORMATION, nullptr, LAUNCHER_GAME_NAME, message.c_str(), 2, buttons, nullptr};
+    int chosen = 0;
+    if (!SDL_ShowMessageBox(&box, &chosen) || chosen != 1) {
+        return true;
+    }
+    std::string failed;
+    for (const auto& copy : copies) {
+        std::filesystem::copy(copy.first, copy.second,
+                              std::filesystem::copy_options::recursive | std::filesystem::copy_options::skip_existing, error);
+        if (error) {
+            failed += "\n" + copy.first.u8string() + ": " + error.message();
+        }
+    }
+    if (!failed.empty()) {
+        say(SDL_MESSAGEBOX_WARNING, LAUNCHER_GAME_NAME, "Not everything could be copied:" + failed);
+    }
+    return true;
 }
 
 int play_directly(const std::string& id, const std::vector<std::string>& extra) {
@@ -1393,6 +1501,7 @@ void App::game_page(float width) {
     display_cards(0, width);
     ui::gap(28);
     play_button(0, width);
+    files_card(width);
 #ifdef LAUNCHER_UPDATE_REPO
     update_card(width, false);
 #endif
@@ -1480,6 +1589,39 @@ void App::library_page(float width) {
             ui::text(text.c_str(), Font::Regular, ui::size::kDetail, p.danger, width);
         }
     }
+    files_card(width);
+}
+
+// Where the player's things are, and portable mode (folders.h)
+void App::files_card(float width) {
+    const ui::Palette& p = ui::palette();
+    const std::filesystem::path portable = recomp::PortableFolder(program_folder_);
+    const bool home = std::getenv(LAUNCHER_HOME_ENV) && *std::getenv(LAUNCHER_HOME_ENV);
+    // (a collection's games each have a folder beside its own)
+    const std::filesystem::path where = !portable.empty() && !home ? portable : folder_;
+    ui::gap(36);
+    ui::text("YOUR FILES", Font::Semibold, ui::size::kDetail, p.secondary);
+    ui::gap(10);
+    Card card(width);
+    std::string shown = ui::fit_start(where.u8string(), Font::Regular, ui::size::kDetail, width - px(18 * 2 + 110 + 24));
+    row(width, !portable.empty() && !home ? "Kept with the launcher (portable)" : "Kept in your user folder", shown.c_str(), 110.0f, 36.0f, [&] {
+        if (ui::button("Show", Kind::Secondary, 110.0f) && interactive_) {  // (pictures for a test open nothing)
+            SDL_OpenURL(file_url(where).c_str());
+        }
+    });
+    card.end();
+    ui::gap(10);
+#ifdef __APPLE__
+    const char* beside = "beside the app (in the folder it is in)";
+#else
+    const char* beside = "beside the launcher";
+#endif
+    const std::string about = !portable.empty() ? std::string("Settings, save states, each board's memory and the logs. Take portable.txt away from ") +
+                                                      beside + " to use your user folder again; nothing is moved."
+                                                : std::string("Settings, save states, each board's memory and the logs. To keep them with the launcher "
+                                                              "instead, on a drive you carry, put a file named portable.txt ") +
+                                                      beside + ".";
+    ui::text(about.c_str(), Font::Regular, ui::size::kDetail, p.secondary, width);
 }
 
 #ifdef LAUNCHER_UPDATE_REPO

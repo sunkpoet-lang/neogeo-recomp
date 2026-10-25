@@ -34,6 +34,11 @@ enum class Page { Game, Features, Controllers, Library, Title, Count };
 // own arguments for it; the exit code
 int play_directly(const std::string& id, const std::vector<std::string>& extra = {});
 
+// Portable mode (folders.h), before anything is read: its folder made, or the player told that it cannot be, and
+// false (the launcher then stops: their things never go elsewhere without their knowing). The first time, the
+// player is asked (`ask`) whether what the system's folders have is copied there; nothing is moved or written over.
+bool prepare_folders(bool ask);
+
 class App {
 public:
     App(SDL_Window* window);
@@ -171,6 +176,7 @@ private:
     void file_card(size_t which, float width);
     void display_cards(size_t which, float width);
     void play_button(size_t which, float width);
+    void files_card(float width);
 #ifdef LAUNCHER_UPDATE_REPO
     // Updates (update.h): the card on the first page, where it is drawn when there is a new version (`top`) or
     // at the page's end when there is not (`always`: at the top either way)
