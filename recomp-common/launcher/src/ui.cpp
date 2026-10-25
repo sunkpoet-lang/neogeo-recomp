@@ -475,9 +475,12 @@ bool nav_item(const char* label, bool active, float width, bool reachable) {
     float hover = animate(id + 1, hovered && !active ? 1.0f : 0.0f, 22.0f);
     float on = animate(id + 2, active ? 1.0f : 0.0f, 18.0f);
     window->DrawList->AddRectFilled(rect.Min, rect.Max, fade(p.control, hover * 0.6f), px(10));
-    push_font(on > 0.5f ? Font::Semibold : Font::Regular, size::kBody);
+    Font font = on > 0.5f ? Font::Semibold : Font::Regular;
+    std::string shown = fit_end(label, font, size::kBody, box.x - px(16));  // (a long name in a narrow sidebar)
+    push_font(font, size::kBody);
     float line = ImGui::GetFontSize();
-    window->DrawList->AddText(ImVec2(rect.Min.x + px(14), std::round(rect.Min.y + (box.y - line) * 0.5f)), mix(p.secondary, p.text, on), label);
+    window->DrawList->AddText(ImVec2(rect.Min.x + px(14), std::round(rect.Min.y + (box.y - line) * 0.5f)), mix(p.secondary, p.text, on),
+                              shown.c_str());
     pop_font();
     focus_ring(rect, id, px(10), true);
     return pressed;
@@ -555,6 +558,29 @@ std::string fit_start(const std::string& value, Font font, float value_size, flo
             cut++;
         }
         shown = "…" + value.substr(cut);
+        if (text_size(shown.c_str(), font, value_size).x <= width) {
+            break;
+        }
+    }
+    return shown;
+}
+
+std::string fit_end(const std::string& value, Font font, float value_size, float width) {
+    if (text_size(value.c_str(), font, value_size).x <= width) {
+        return value;
+    }
+    size_t keep = value.size();
+    std::string shown;
+    while (keep > 0) {
+        keep--;
+        while (keep > 0 && (static_cast<unsigned char>(value[keep]) & 0xC0) == 0x80) {
+            keep--;
+        }
+        shown = value.substr(0, keep);
+        while (!shown.empty() && shown.back() == ' ') {
+            shown.pop_back();
+        }
+        shown += "…";
         if (text_size(shown.c_str(), font, value_size).x <= width) {
             break;
         }

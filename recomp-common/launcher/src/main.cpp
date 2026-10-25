@@ -10,7 +10,9 @@
 //                                                       by one: u d l r arrow keys, e Enter, s Space, x Esc;
 //                                                       of a gamepad made for the test: U D L R the d-pad,
 //                                                       A B the buttons, [ ] the shoulders; 0-9 that page;
-//                                                       . a wait; f Ctrl+F; "text" typed)
+//                                                       . a wait; f Ctrl+F; "text" typed; the mouse:
+//                                                       @X,Y; moved there (in the window), ( and ) its
+//                                                       left button pressed and let go)
 //   <id>-launcher --play                               (straight into the game set up earlier)
 //   <id>-launcher --play ID                            (a collection's: straight into that game)
 //   <id>-launcher --play [ID] -- ARGS...               (and ARGS given to the game after the launcher's own)
@@ -90,6 +92,27 @@ struct Presser {
         event.text.text = text[c];
         SDL_PushEvent(&event);
     }
+    // The mouse: moved to a place in the window, its left button pressed or let go
+    void mouse_to(float x, float y) {
+        SDL_Event event{};
+        event.type = SDL_EVENT_MOUSE_MOTION;
+        event.motion.windowID = SDL_GetWindowID(window);
+        event.motion.x = mouse_x = x;
+        event.motion.y = mouse_y = y;
+        SDL_PushEvent(&event);
+    }
+    void mouse_button(bool down) {
+        SDL_Event event{};
+        event.type = down ? SDL_EVENT_MOUSE_BUTTON_DOWN : SDL_EVENT_MOUSE_BUTTON_UP;
+        event.button.windowID = SDL_GetWindowID(window);
+        event.button.button = SDL_BUTTON_LEFT;
+        event.button.down = down;
+        event.button.clicks = 1;
+        event.button.x = mouse_x;
+        event.button.y = mouse_y;
+        SDL_PushEvent(&event);
+    }
+    float mouse_x = 0.0f, mouse_y = 0.0f;
     void set(char key, bool down) {
         static const struct {
             char key;
@@ -171,14 +194,24 @@ int main(int argc, char** argv) {
     if (scale <= 0.0f) {
         scale = 1.0f;
     }
-    SDL_Window* window = SDL_CreateWindow(LAUNCHER_GAME_NAME, static_cast<int>(width * scale), static_cast<int>(height * scale),
+    // (no bigger than the screen: a small one, or one with large text, has less room than the launcher would take)
+    int window_width = static_cast<int>(width * scale), window_height = static_cast<int>(height * scale);
+    int least_width = static_cast<int>(600 * scale), least_height = static_cast<int>(400 * scale);
+    SDL_Rect usable;
+    if (SDL_GetDisplayUsableBounds(SDL_GetPrimaryDisplay(), &usable)) {
+        window_width = std::min(window_width, usable.w);
+        window_height = std::min(window_height, usable.h);
+        least_width = std::min(least_width, usable.w);
+        least_height = std::min(least_height, usable.h);
+    }
+    SDL_Window* window = SDL_CreateWindow(LAUNCHER_GAME_NAME, window_width, window_height,
                                           SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     SDL_Renderer* renderer = window ? SDL_CreateRenderer(window, nullptr) : nullptr;
     if (!renderer) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, LAUNCHER_GAME_NAME, SDL_GetError(), nullptr);
         return 1;
     }
-    SDL_SetWindowMinimumSize(window, static_cast<int>(800 * scale), static_cast<int>(540 * scale));
+    SDL_SetWindowMinimumSize(window, least_width, least_height);
     SDL_SetRenderVSync(renderer, 1);
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
@@ -267,12 +300,22 @@ int main(int argc, char** argv) {
                 } else if (step == 0) {
                     presser.type(key);
                 }
+            } else if (key == '@') {
+                float x = 0.0f, y = 0.0f;
+                if (step == 0 && std::sscanf(press.c_str() + press_at + 1, "%f,%f", &x, &y) == 2) {
+                    presser.mouse_to(x, y);
+                }
+            } else if (step == 0 && (key == '(' || key == ')')) {
+                presser.mouse_button(key == '(');
             } else if (step == 0 && key >= '0' && key <= '9') {
                 app.set_page(std::min(key - '0', app.page_count() - 1));
             } else if (step == 0) {
                 presser.set(key, true);
             } else if (step == 4) {
                 presser.set(key, false);
+            }
+            if (step == 7 && key == '@' && !typing) {
+                press_at = std::min(press.find(';', press_at), press.size() - 1);  // (past X,Y)
             }
             if (step == 7 && ++press_at == press.size()) {
                 shot_frames = -1;  // (and then the picture, as for a page)
