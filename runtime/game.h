@@ -102,8 +102,10 @@ struct Game {
     // one). Not given: never (the game's own code throughout).
     bool (*rewritesNeeded)() = nullptr;
     // For a custom soundtrack (machine/soundtrack.h): where the sound program's table of songs has song 0's entry,
-    // and how many entries it has (0: no custom soundtrack); and the names of the music, where they are known
-    uint32_t songTable = 0, songCount = 0;
+    // and how many entries it has (0: no custom soundtrack); and the names of the music, where they are known.
+    // musicBelow: for a sound program whose songs' data do not tell music from effects (machine/soundtrack.h), the
+    // songs below it are the music (0: told by their data)
+    uint32_t songTable = 0, songCount = 0, musicBelow = 0;
     std::vector<Song> songs;
 };
 Game &TheGame();

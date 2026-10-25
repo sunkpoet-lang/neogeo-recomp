@@ -9,7 +9,8 @@
 // program's version). The first two bytes are a song's number, or 0xFF and a command: 00 everything stops, 05 the
 // music stops, 06 and 07 its volume goes up or down to a level, 0C and 0D everything fades in or out. A song is
 // music when its data in the sound program starts with a 0 (sound/driver.cpp, StartMusic); the others are sound
-// effects, voices and single samples.
+// effects, voices and single samples. (A game whose sound program does not mark them so says below which number
+// its music is: Game::musicBelow.)
 //
 // When the game asks for a piece of music the player has a file for, the request is made "the music stops" before
 // the sound side sees it, so the board's music stops and nothing else changes: the game's own state is the same as
@@ -29,8 +30,11 @@ class Soundtrack {
 public:
     // Which song numbers are music, read from the sound program's table of songs: `table` is where the entry of
     // song 0 is (four bytes a song: a three-byte address in the program, high byte first, then one more), `count`
-    // how many entries to read. (Not kept with save states: the port sets them.)
-    void FindMusic(const std::vector<uint8_t> &program, uint32_t table, uint32_t count);
+    // how many entries to read; `musicBelow`, for a sound program whose songs' data do not say which are music
+    // (driver 1.71's music and effects begin alike): the songs below that number are, the rest not (with an entry
+    // in the table or not: that driver plays some of its music, Zangief's theme among them, from elsewhere).
+    // (Not kept with save states: the port sets them.)
+    void FindMusic(const std::vector<uint8_t> &program, uint32_t table, uint32_t count, uint32_t musicBelow = 0);
     bool IsMusic(uint16_t song) const {
         return song < m_music.size() && m_music[song];
     }
