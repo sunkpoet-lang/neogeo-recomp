@@ -21,7 +21,8 @@ void Soundtrack::FindMusic(const std::vector<uint8_t> &program, uint32_t table, 
             break;
         }
         const uint32_t at = (program[entry] << 16) | (program[entry + 1] << 8) | program[entry + 2];
-        if (at != 0 && at < program.size() && (musicBelow ? song < musicBelow : program[at] == 0)) {
+        // (below musicBelow, a song is music even with no entry here: driver 1.71 finds some of its music elsewhere)
+        if (musicBelow ? song < musicBelow : at != 0 && at < program.size() && program[at] == 0) {
             m_music[song] = true;
             m_songs.push_back(static_cast<uint16_t>(song));
         }
