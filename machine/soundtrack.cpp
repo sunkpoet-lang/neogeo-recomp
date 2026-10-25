@@ -12,7 +12,7 @@
 
 namespace cps2recomp {
 
-void Soundtrack::FindMusic(const std::vector<uint8_t> &program, uint32_t table, uint32_t count) {
+void Soundtrack::FindMusic(const std::vector<uint8_t> &program, uint32_t table, uint32_t count, uint32_t musicBelow) {
     m_music.assign(count, false);
     m_songs.clear();
     for (uint32_t song = 0; song < count; song++) {
@@ -21,7 +21,7 @@ void Soundtrack::FindMusic(const std::vector<uint8_t> &program, uint32_t table, 
             break;
         }
         const uint32_t at = (program[entry] << 16) | (program[entry + 1] << 8) | program[entry + 2];
-        if (at != 0 && at < program.size() && program[at] == 0) {
+        if (at != 0 && at < program.size() && (musicBelow ? song < musicBelow : program[at] == 0)) {
             m_music[song] = true;
             m_songs.push_back(static_cast<uint16_t>(song));
         }
