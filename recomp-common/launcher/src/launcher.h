@@ -158,8 +158,9 @@ const Description &describe();
 // Its pages: Games (each game's file, which the launcher can find in a folder the player chooses, or which is
 // dropped on the window; Play), Features (those that more than one of the games has, set for all of them at
 // once, and the preset), Controllers (the same keys and buttons for all of them, or a game's own for a game that is
-// given its own layout), and then a page for each game
-// whose file has been chosen: Play, its Display switches and the features that are that game's alone.
+// given its own layout), Multi game (with modes that play several of the games one after another: MultiMode), and then
+// a page for each game whose file has been chosen: Play, its Display switches and the features that are that game's
+// alone.
 //
 // Each game keeps its settings and saves in its own folder (named by its name, as a launcher of its own keeps
 // them), and its settings.ini has everything in it: the game started by itself, or from a Steam shortcut, plays
@@ -173,6 +174,35 @@ struct CollectionGame {
     Description description; // what a launcher of its own is told (its pages, if any, are not shown)
 };
 
+// A choice of a multi-game mode's: a row of its card on the Multi game page, kept in launcher.ini under
+// [multi.<the mode's key>]. One of `choices` (the first unless `initial` says), shown only while the choice
+// `shown_with` (another of the mode's, by key; nullptr: always) has the value `shown_value`.
+struct MultiChoice {
+    const char *key;
+    const char *title;
+    const char *detail;
+    std::vector<std::string> choices;
+    int initial = 0;
+    const char *shown_with = nullptr;
+    int shown_value = 0;
+};
+
+// A mode that plays several of a collection's games one after another, on its own page (Multi game). The player
+// chooses which of the games that have it are played, in the sidebar's order or shuffled, and the mode's choices;
+// Start starts the first with what its Play starts it with and the mode's arguments after that. A game that ends with
+// `next_code` has had its turn, and the next is started (after the last, the first again: shuffled anew); ended any
+// other way (the player quit it), the mode stops.
+struct MultiMode {
+    const char *key;                 // its section of launcher.ini: [multi.<key>]
+    const char *title;               // its card's heading, and Start's row
+    const char *detail;              // what it is
+    std::vector<const char *> games; // the ids of the games that have it
+    std::vector<MultiChoice> choices;
+    // The arguments for it, by the choices' values (in the order of `choices`)
+    std::function<std::vector<std::string>(const std::vector<int> &values)> arguments;
+    int next_code = 3;
+};
+
 struct Collection {
     const char *subtitle = "";
     const char *intro = "";       // the Games page's first lines
@@ -183,6 +213,9 @@ struct Collection {
     // description has a table of its own can be given a layout of its own on the Controllers page, with that
     // table's buttons and names; the shared table's actions its own has not got are "none" in its settings.ini.
     recomp::BindTable bindings;
+    // Modes that play several of the games one after another (none: no Multi game page)
+    std::vector<MultiMode> multi;
+    const char *multi_intro = "";  // the Multi game page's first lines
 };
 
 // A collection's own file defines this (and not describe()).
