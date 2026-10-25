@@ -130,9 +130,18 @@ private:
     void set_shared(size_t index, int value);
     void after_game(Slot& slot);  // (a collection's game has ended: what its menu changed is the others' too)
 
-    // Controls (bindings.h): what each player's keys and gamepad buttons do, kept in settings.ini.
+    // Controls (bindings.h): what each player's keys and gamepad buttons do, kept in settings.ini. A
+    // collection's are every game's, but for a game given a layout of its own (launcher.ini, [controls]: its id
+    // = own). The Controllers page shows every game's layout or one game's (bind_slot_), and these act on it.
+    const recomp::BindTable& shared_table() const;
+    bool has_own_layout(size_t which) const;  // (its description has a table to lay out)
+    bool own_layout(size_t which) const;
+    void set_own_layout(size_t which, bool own);
+    const recomp::BindTable& bind_table() const;
+    recomp::Bindings& bind_layout();
     void bind(int player, bool gamepad, int action, SDL_Scancode key, recomp::PadInput input);
     void save_bindings();
+    void write_bindings(Slot& slot, const recomp::BindTable& table, const recomp::Bindings& bindings);
     bool capture(const SDL_Event& event);
 
     // The game file chosen with a gamepad: a list of folders and files in the launcher's own window.
@@ -194,6 +203,8 @@ private:
 #endif
     int selected_pad_ = 0;
     recomp::Bindings bindings_{};  // (a collection's are every game's)
+    std::vector<recomp::Bindings> own_bindings_;  // (a collection's: each game's own layout, for those that have one)
+    int bind_slot_ = -1;          // whose layout the Controllers page shows: every game's (-1), or one game's
     int bind_player_ = 0;         // whose buttons the Controllers page shows
     int capture_action_ = -1;      // the action waiting for a key or a button to be pressed for it, or -1
     bool capture_gamepad_ = false; //   (a gamepad's, or the keyboard's)

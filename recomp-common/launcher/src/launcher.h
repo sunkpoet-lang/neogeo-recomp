@@ -157,7 +157,8 @@ const Description &describe();
 //
 // Its pages: Games (each game's file, which the launcher can find in a folder the player chooses, or which is
 // dropped on the window; Play), Features (those that more than one of the games has, set for all of them at
-// once, and the preset), Controllers (the same keys and buttons for all of them), and then a page for each game
+// once, and the preset), Controllers (the same keys and buttons for all of them, or a game's own for a game that is
+// given its own layout), and then a page for each game
 // whose file has been chosen: Play, its Display switches and the features that are that game's alone.
 //
 // Each game keeps its settings and saves in its own folder (named by its name, as a launcher of its own keeps
@@ -178,6 +179,10 @@ struct Collection {
     const char *find_title = "";  // the row that looks in a folder for every game's file, and what it says
     const char *find_detail = "";
     std::vector<CollectionGame> games;
+    // The keys and buttons every game shares (no actions: the first game's description's). A game whose
+    // description has a table of its own can be given a layout of its own on the Controllers page, with that
+    // table's buttons and names; the shared table's actions its own has not got are "none" in its settings.ini.
+    recomp::BindTable bindings;
 };
 
 // A collection's own file defines this (and not describe()).
