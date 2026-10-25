@@ -36,6 +36,8 @@ struct GameInfo {
     // Another set the game reads too (game.cfg's extra_set; empty: none). In a collection, the set chosen for the
     // game that is that set's is given to it (--rom2); else the game looks for it beside its own
     const char* extra_set;
+    // The Multi game page's modes it takes part in (game.cfg's multi: "endless")
+    const char* multi;
 };
 #ifdef LAUNCHER_COLLECTION
 const GameInfo* game_of_set(const char* set);
@@ -272,6 +274,40 @@ const launcher::Collection& launcher::describe_collection() {
             c.games.push_back({game.id, game.name, game.id, "", describe_game(game)});
         }
         c.bindings = shared_table().table;
+        // The Multi game page: the fighting games' endless battle (fight/battle.h), each game's every stage once and
+        // then the next game's (--multi endless:shuffle:SECONDS or endless:scroll:SPEED)
+        c.multi_intro = "Several games played one after another, as long as you like. Choose the games and how they are played, then Start.";
+        launcher::MultiMode endless;
+        endless.key = "endless";
+        endless.title = "Endless battle";
+        endless.detail = "Two fighters the game plays, on every stage of a game, and then on to the next game's. Touch the controls to take a "
+                         "fighter over; ten idle seconds give it back. The fighters are as each game's own Endless battle page has them.";
+        for (const GameInfo& game : kGames) {
+            if (std::string(game.multi).find("endless") != std::string::npos) {
+                endless.games.push_back(game.id);
+            }
+        }
+        endless.choices = {
+            {"stages", "Stages", "Shuffle: a game's stages in turn at random, each fading into the next. Scroll: they go by in order, and the fighters are carried along.",
+             {"Shuffle", "Scroll"}},
+            {"time", "Each stage for", "Shuffle: how long they fight on a stage before it fades into the next.",
+             {"30 seconds", "1 minute", "2 minutes", "3 minutes", "5 minutes"}, 1, "stages", 0},
+            {"speed", "Scroll speed", "Scroll: how fast the stages go by.", {"Slow", "Medium", "Fast"}, 1, "stages", 1},
+            {"screen", "Screen", "Full screen for every game, or each game in a window or full screen as its own Display switch has it.",
+             {"Full screen", "As each game is set"}},
+        };
+        endless.arguments = [](const std::vector<int>& values) {
+            static const int kSeconds[] = {30, 60, 120, 180, 300};
+            std::vector<std::string> args = {"--multi", values[0] == 1 ? "endless:scroll:" + std::to_string(values[2])
+                                                                       : "endless:shuffle:" + std::to_string(kSeconds[std::clamp(values[1], 0, 4)])};
+            if (values[3] == 0) {
+                args.push_back("--fullscreen");
+            }
+            return args;
+        };
+        if (!endless.games.empty()) {
+            c.multi.push_back(endless);
+        }
         return c;
     }();
     return about;
@@ -299,7 +335,7 @@ const launcher::Description& launcher::describe() {
     static const Description about = describe_game({LAUNCHER_GAME_EXE, LAUNCHER_GAME_NAME, LAUNCHER_ROM_SET, LAUNCHER_ROM_PARENT, LAUNCHER_ROM_NAME,
                                                     LAUNCHER_ROM_PROGRAM, LAUNCHER_ROM_GRAPHICS, LAUNCHER_ROM_SOUND_PROGRAM, LAUNCHER_ROM_SAMPLES,
                                                     LAUNCHER_ROM_KEY, LAUNCHER_DISPLAY_SWITCHES, LAUNCHER_PLAYERS, LAUNCHER_BUTTONS,
-                                                    LAUNCHER_BOARD, LAUNCHER_CPS_B, ""});
+                                                    LAUNCHER_BOARD, LAUNCHER_CPS_B, "", ""});
     return about;
 }
 

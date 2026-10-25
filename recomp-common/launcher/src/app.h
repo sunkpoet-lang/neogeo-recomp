@@ -27,8 +27,9 @@
 #endif
 
 // The launcher's own pages. A port's: Game, Features, Controllers. A collection's: Games (Library), Features and
-// Controllers (for all the games), then one page for each game whose file is chosen (Title).
-enum class Page { Game, Features, Controllers, Library, Title, Count };
+// Controllers (for all the games), Multi game (if it has modes that play several games: launcher.h, MultiMode), then
+// one page for each game whose file is chosen (Title).
+enum class Page { Game, Features, Controllers, Library, Title, Multi, Count };
 
 // --play: straight into the game set up earlier (a collection's: --play ID), with `extra` after the launcher's
 // own arguments for it; the exit code
@@ -49,7 +50,7 @@ public:
     // The pages in the sidebar's order: the port's own, then the launcher's
     int page_count() const;
     void set_page(int page) { page_ = page; }
-    // A collection's: the page of the game with this id (--page ID), if it has one
+    // A collection's: the page of the game with this id (--page ID), if it has one; "multi": the Multi game page
     void set_page(const std::string& id);
     bool busy() const;
     bool any_running() const;
@@ -111,6 +112,8 @@ private:
     // The collection's games that have a page of their own (their program here, their file chosen and usable), in
     // the player's order
     std::vector<size_t> titled() const;
+    // The collection's pages before its games': Games, Features, Controllers and, with modes for it, Multi game
+    int fixed_pages() const;
     // A collection's games in the player's order: launcher.ini, [games] order (their ids; a game not in it comes
     // after those that are, in the collection's order). The player changes it by dragging a game's row in the
     // sidebar, or with Move up and Move down on the game's page.
@@ -120,7 +123,7 @@ private:
     // Game file.
     void choose_game_file(size_t which);
     void use_game_file(size_t which, const std::string& path);
-    void play(size_t which);
+    void play(size_t which, const std::vector<std::string>& extra = {});
     // A collection's: every game's file looked for in a folder (on a thread), or a file or folder given to
     // whichever game takes it
     void find_in(const std::string& path);
@@ -177,6 +180,30 @@ private:
     void display_cards(size_t which, float width);
     void play_button(size_t which, float width);
     void files_card(float width);
+
+    // The Multi game page (a collection's MultiModes): a mode's choices and games, and the run of one
+    void multi_page(float width);
+    void multi_card(size_t mode, float width);
+    int multi_value(size_t mode, size_t choice) const;  // (launcher.ini, [multi.<key>])
+    // The mode's games the player can play (each with a page of its own), in the sidebar's order, and whether each is
+    // chosen (launcher.ini, [multi.<key>] off: the ids of those that are not)
+    std::vector<size_t> multi_games(size_t mode) const;
+    bool multi_chosen(size_t mode, size_t which) const;
+    void set_multi_chosen(size_t mode, size_t which, bool chosen);
+    bool multi_shuffled(size_t mode) const;
+    void start_multi(size_t mode);
+    // The game whose turn it was has ended: the next one's turn (`done`: it ended with the mode's next_code), or the
+    // run is over
+    void multi_after(bool done);
+    bool multi_play_next();  // (the next of the run's games that will start; false: none would)
+    struct MultiRun {
+        int mode = -1;               // the mode running (-1: none)
+        std::vector<size_t> games;   // in the order they are played
+        size_t at = 0;               // whose turn it is
+        size_t played = 0;           // turns had
+    };
+    MultiRun multi_;
+    std::string multi_message_;      // why the last run stopped
 #ifdef LAUNCHER_UPDATE_REPO
     // Updates (update.h): the card on the first page, where it is drawn when there is a new version (`top`) or
     // at the page's end when there is not (`always`: at the top either way)

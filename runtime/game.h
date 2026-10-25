@@ -149,6 +149,16 @@ void SetRunningAhead(bool on);
 void SetSlowMotion(int by);
 int SlowMotion();
 
+// The launcher's Multi game page starts each game it plays in turn with --multi MODE:CHOICES (fight/battle.h has
+// "endless"): what this one was started with ("": none). When the game's sources are done with it, they end the
+// program with kNextGame, and the launcher starts the next game; any other ending (the player quit) stops it.
+constexpr int kNextGame = 3;
+void SetMultiGame(const std::string &spec);
+const std::string &MultiGame();
+// The game's sources end the program, with this exit code: the window closes after the frame
+void EndProgram(int code);
+int ProgramEnded(); // (-1: not asked)
+
 // The readout: lines of text the game's sources want shown over the picture while it plays (a training
 // display and the like). The port draws each as a small panel.
 struct HudLine {
