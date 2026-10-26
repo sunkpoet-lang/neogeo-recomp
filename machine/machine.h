@@ -139,6 +139,10 @@ public:
     uint64_t dmaCounted = 0; // (CPS2RECOMP_BUS_LOG: the DMA's clocks since the last frame)
     // The game's music from the player's files (machine/soundtrack.h): sees the game's sound requests
     Soundtrack soundtrack;
+    // A request left for the sound side as the game leaves one (sixteen bytes, the last written last), not seen by
+    // the soundtrack: for the music switched over by the player. Only when the last request has been taken (the
+    // sixteenth byte back to FF); false when not yet, to be tried again
+    bool LeaveSoundRequest(const uint8_t request[16]);
 
     // Each player's Button bits (a game has two, three or four: the board's three- and four-player wiring is
     // there for every game, and a two-player game never reads it)

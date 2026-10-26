@@ -61,6 +61,14 @@ public:
         int32_t allStep = 0;
     };
     State state;
+    // The last piece of music the game asked for, file or not, as it asked for it (for the music switched over while
+    // it plays: the board asked for it again, or its file started where the game is in it)
+    struct Last {
+        uint8_t request[16] = {}; // the request as the game left it
+        int32_t song = -1;        // (-1: none, or the music stopped since)
+        uint32_t frames = 0;      // frames since it was asked for
+    };
+    Last last;
 
     // The game has left a request (the shared memory's first sixteen bytes): looked at, and changed when it asks
     // for music the player has a file for
@@ -70,6 +78,7 @@ public:
     void Frame();
     void Reset() {
         state = State{};
+        last = Last{};
     }
     void Serialize(Archive &ar);
 
