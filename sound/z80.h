@@ -56,6 +56,12 @@ public:
     void RaiseInterrupt() {
         m_interrupt = true;
     }
+    // ... or a level one (the classic CPS-1's, from its YM2151): taken whenever it is up and interrupts are on, and
+    // taking it does not lower it
+    void SetInterruptLine(bool up) {
+        m_level = true;
+        m_interrupt = up;
+    }
     // One instruction or interrupt; the clock cycles it took (not added to `cycles`)
     unsigned Step();
     // Runs until `cycles` reaches `until` (a little past it: to the end of the instruction or block)
@@ -167,6 +173,7 @@ public:
 
 private:
     bool m_interrupt = false;
+    bool m_level = false;   // (SetInterruptLine)
     bool m_afterEI = false; // (interrupts are taken one instruction after EI)
     unsigned m_cycles = 0;
     bool m_jumped = false;  // the instruction went somewhere the translator cannot follow

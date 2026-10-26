@@ -401,7 +401,9 @@ unsigned Z80::TakeInterrupt() {
     if (!(m_interrupt && iff1 && !m_afterEI)) {
         return 0;
     }
-    m_interrupt = false;
+    if (!m_level) {
+        m_interrupt = false;
+    }
     halted = false;
     iff1 = iff2 = false;
     refresh++;

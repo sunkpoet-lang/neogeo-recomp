@@ -16,6 +16,7 @@
 #include "../sound/qsound.h"
 #include "../sound/z80.h"
 #include "../video/video.h"
+#include "cps1_sound.h"
 #include "eeprom.h"
 #include "m68k.h"
 #include "romset.h"
@@ -187,7 +188,7 @@ public:
     }
     void Write(uint16_t address, uint8_t value) override;
     bool ChangesMapping(uint16_t address) override {
-        return address == 0xD003;
+        return address == (m_classic ? 0xF004 : 0xD003);
     }
     uint32_t Mapping() override {
         return m_soundBank;
@@ -235,6 +236,16 @@ private:
     uint64_t m_soundInterruptAt = 0; // ... of its next interrupt
     uint64_t m_sampleCount = 0;      // sound samples made
     uint64_t m_sampleAt = 0;         // the Z80's cycle count at which the next is due
+    // The classic CPS-1's sound side (none on other boards): its chips, the Z80's own memory, the two latches the
+    // 68000 writes requests to, and what is left over in turning the 8 MHz of a line into the Z80's 3.579545 MHz
+    std::unique_ptr<Cps1Sound> m_classic;
+    uint8_t m_classicRam[0x800] = {};
+    uint8_t m_latch[2] = {};
+    uint64_t m_classicFraction = 0;
+    bool m_logClassic = false; // (CPS2RECOMP_SOUND_COMMANDS: the latches and the OKI's commands)
+    void RunClassicSound(int cycles);
+    uint8_t ReadClassic(uint16_t address);
+    void WriteClassic(uint16_t address, uint8_t value);
 
     void RunLine();
     int LineCycles() const;

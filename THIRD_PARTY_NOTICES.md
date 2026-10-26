@@ -85,6 +85,43 @@ archives carry them in `licenses/sound-decoders.txt`.
 | `third_party/dr_mp3.h` | dr_libs `dr_mp3` 0.7.4 (the same commit), by David Reid, after minimp3 by lieff | Public domain, or MIT No Attribution |
 | `third_party/dr_wav.h` | dr_libs `dr_wav` 0.14.6 (the same commit), by David Reid | Public domain, or MIT No Attribution |
 
+### ymfm (BSD-3-Clause) — this fork only
+
+The sound of the classic CPS-1 board (Street Fighter II Champion Edition and Hyper Fighting) plays its
+YM2151 with [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles (commit 81aec25), the FM chips'
+emulation MAME uses. Its OPM files are kept unchanged in `third_party/`: `ymfm.h`, `ymfm_fm.h`,
+`ymfm_fm.ipp`, `ymfm_opm.h` and `ymfm_opm.cpp`. This is an emulator's code, which upstream's
+`CONTRIBUTING.md` (rule 4) does not take: it lives only in this fork's `sf2-sonido` branch. **BSD-3-Clause**:
+
+```
+Copyright (c) 2021, Aaron Giles
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted
+provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions
+   and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of
+   conditions and the following disclaimer in the documentation and/or other materials provided
+   with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors may be used to
+   endorse or promote products derived from this software without specific prior written
+   permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+The OKI MSM6295 of the same board (`sound/okim6295.cpp`, `okim6295.h`) was written for this fork from the chip's
+data sheet: the ADPCM steps and the sample table as the chip defines them.
+
 ## Downloaded at build time
 
 None of these is stored in this repository.
