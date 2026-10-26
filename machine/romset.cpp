@@ -228,10 +228,47 @@ namespace {
     }
 } // namespace
 
+bool ParseGfxMap(const char *text, Board &board) {
+    board.gfxMap.clear();
+    std::fill(std::begin(board.gfxBanks), std::end(board.gfxBanks), 0u);
+    std::istringstream words(text);
+    std::string word;
+    unsigned banks = 0;
+    while (words >> word && word != "|") {
+        if (banks == 4) {
+            return false;
+        }
+        board.gfxBanks[banks++] = static_cast<uint32_t>(strtoul(word.c_str(), nullptr, 16));
+    }
+    while (words >> word) {
+        GfxRange range;
+        unsigned long start, end, bank;
+        char kind[16];
+        if (sscanf(word.c_str(), "%15[a-z0-9]:%lx-%lx:%lu", kind, &start, &end, &bank) != 4 || bank >= banks || end < start) {
+            return false;
+        }
+        const std::string name = kind;
+        range.kinds = name == "objects" ? GfxRange::kObjects
+                      : name == "scroll1" ? GfxRange::kScroll1
+                      : name == "scroll2" ? GfxRange::kScroll2
+                      : name == "scroll3" ? GfxRange::kScroll3
+                                          : 0;
+        if (!range.kinds) {
+            return false;
+        }
+        range.start = static_cast<uint32_t>(start);
+        range.end = static_cast<uint32_t>(end);
+        range.bank = static_cast<unsigned>(bank);
+        board.gfxMap.push_back(range);
+    }
+    return true;
+}
+
 RomList ParseRomList(const char *program, const char *graphics, const char *soundProgram, const char *samples,
                      const char *key, const char *set, const char *parent, const char *board, const char *cpsB) {
     RomList list;
-    list.board.cps1 = std::string(board) == "cps1";
+    list.board.cps1 = std::string(board) == "cps1" || std::string(board) == "cps1-classic";
+    list.board.qsound = std::string(board) != "cps1-classic";
     if (list.board.cps1) {
         // (cps_b: layer control, four priority masks, palette control, three enable bits; hex bytes)
         unsigned values[9];
@@ -381,9 +418,10 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
         set.soundProgram.insert(set.soundProgram.end(), data.begin(), data.end());
     }
 
-    // A CPS-1's sound program is enciphered (Kabuki): its key is worked out from the program itself (kabuki.h)
+    // A CPS-1's sound program is enciphered (Kabuki): its key is worked out from the program itself (kabuki.h). The
+    // classic CPS-1's is not
     set.soundOpcodes.clear();
-    if (list.board.cps1) {
+    if (list.board.cps1 && list.board.qsound) {
         KabukiKey kabuki;
         if (set.soundProgram.size() < 0x8000 || !FindKabukiKey(set.soundProgram.data(), set.soundProgram.size(), kabuki)) {
             error = "the sound program's cipher could not be worked out (is it the right ROM set?)";

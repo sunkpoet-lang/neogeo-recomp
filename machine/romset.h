@@ -16,13 +16,32 @@ namespace cps2recomp {
 // enciphered with Kabuki). A CPS-1's CPS-B chip has its registers where the game's chip has them (game.cfg's
 // `cps_b`, the byte offsets as MAME's table of the chips has them: layer control, the four priority masks, palette
 // control, then the bits of the layer control that switch scroll screens 1-3 on). The CPS-2's are the defaults.
+// `board = cps1-classic` is a CPS-1 with no QSound (Street Fighter II's): its Z80's program is not enciphered, and
+// as long as the toolkit has no YM2151 and OKI MSM6295 for it the Z80 stays stopped and the game plays silent.
+// A CPS-1's graphics mapper (the PAL that maps each kind of tile's numbers to the graphics ROMs: game.cfg's
+// `gfx_map`, as MAME's tables have them): the banks' sizes, then ranges of a kind's tile numbers (in 64-byte units:
+// an 8-pixel tile's number, a 16-pixel one's times 2, a 32-pixel one's times 8) and the bank they are in. With none,
+// tile numbers are where the ROMs have them (Cadillacs and Dinosaurs).
+struct GfxRange {
+    enum : uint8_t { kObjects = 1, kScroll1 = 2, kScroll2 = 4, kScroll3 = 8 };
+    uint8_t kinds = 0;
+    uint32_t start = 0, end = 0;
+    unsigned bank = 0;
+};
+
 struct Board {
     bool cps1 = false;
+    bool qsound = true; // (false: the classic CPS-1's sound, which the toolkit does not have yet)
     uint8_t layerControl = 0x26;
     uint8_t priority[4] = {0x28, 0x2A, 0x2C, 0x2E};
     uint8_t paletteControl = 0x30;
     uint8_t enable[3] = {0x02, 0x04, 0x08};
+    uint32_t gfxBanks[4] = {};
+    std::vector<GfxRange> gfxMap;
 };
+// game.cfg's `gfx_map`: the banks' sizes (hex, up to four), "|", then kind:start-end:bank for each range, the kind
+// one of objects, scroll1, scroll2, scroll3 (hex). "": none. False if it cannot be read.
+bool ParseGfxMap(const char *text, Board &board);
 
 struct RomSet {
     // The 68000's ROM, as bytes in the order the CPU sees them: as it is on the chips (what a data read
