@@ -89,8 +89,8 @@ archives carry them in `licenses/sound-decoders.txt`.
 
 The sound of the classic CPS-1 board (Street Fighter II Champion Edition and Hyper Fighting) plays its
 YM2151 with [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles (commit 81aec25), the FM chips'
-emulation MAME uses. Its OPM files are kept unchanged in `third_party/`: `ymfm.h`, `ymfm_fm.h`,
-`ymfm_fm.ipp`, `ymfm_opm.h` and `ymfm_opm.cpp`. This is an emulator's code, which upstream's
+emulation MAME uses. Its OPM files are kept unchanged: `third_party/ymfm.h`, `third_party/ymfm_fm.h`,
+`third_party/ymfm_fm.ipp`, `third_party/ymfm_opm.h` and `third_party/ymfm_opm.cpp`. This is an emulator's code, which upstream's
 `CONTRIBUTING.md` (rule 4) does not take: it lives only in this fork's `sf2-sonido` branch. **BSD-3-Clause**:
 
 ```

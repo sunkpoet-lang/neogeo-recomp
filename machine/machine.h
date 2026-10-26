@@ -53,7 +53,7 @@ class Machine final : public M68KBus, public Z80Bus {
 public:
     static constexpr int kLines = 262, kBlankingLine = 240;
     static constexpr int kCpuCyclesPerLine = 1024; // 16 MHz, 512 pixel clocks of 8 MHz a line
-    static constexpr int kCps1CpuCyclesPerLine = 768; // (a CPS-1 with QSound: 12 MHz)
+    static constexpr int kCps1CpuCyclesPerLine = 768; // (a CPS-1 at 12 MHz; at 10 MHz, 640: Board::cpuClock)
     static constexpr int kSoundCyclesPerLine = 512; // 8 MHz
     // For tests: the 68000 this many times as fast as the board's, so that the game is never short of time in
     // a frame (runs whose code takes different amounts of time can then be compared picture by picture)

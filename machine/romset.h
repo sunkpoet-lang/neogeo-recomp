@@ -38,6 +38,10 @@ struct Board {
     uint8_t enable[3] = {0x02, 0x04, 0x08};
     uint32_t gfxBanks[4] = {};
     std::vector<GfxRange> gfxMap;
+    // (a CPS-1) its 68000's clock in MHz, 10 or 12 (game.cfg's cpu_clock), and its three banks of DIP switches, A, B
+    // and C (game.cfg's dip; a bit 1: the switch off)
+    int cpuClock = 12;
+    uint8_t dip[3] = {0xFF, 0xFF, 0xFF};
 };
 // game.cfg's `gfx_map`: the banks' sizes (hex, up to four), "|", then kind:start-end:bank for each range, the kind
 // one of objects, scroll1, scroll2, scroll3 (hex). "": none. False if it cannot be read.
@@ -69,6 +73,13 @@ struct RomSet {
 struct RomFile {
     std::string name;
     uint32_t crc = 0;
+    // (program) its 16-bit words are high byte first, as the 68000 reads them ("name:crc/be"; without it, low byte
+    // first)
+    bool highFirst = false;
+    // Files whose bytes are interleaved, written "a:crc+b:crc...": in the program, a pair whose first gives the even
+    // bytes and second the odd; in the graphics, eight files that each give one byte of the 64-bit words. Empty: one
+    // file, this one.
+    std::vector<RomFile> parts;
 };
 // The set's files by part, from game.cfg's lists ("name:crc name:crc ...")
 struct RomList {

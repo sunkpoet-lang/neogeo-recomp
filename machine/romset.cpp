@@ -20,18 +20,36 @@
 namespace cps2recomp {
 
 namespace {
+    RomFile ParseFile(const std::string &item) {
+        const size_t colon = item.find(':');
+        RomFile file;
+        file.name = item.substr(0, colon);
+        if (colon != std::string::npos) {
+            char *end;
+            file.crc = static_cast<uint32_t>(strtoul(item.c_str() + colon + 1, &end, 16));
+            file.highFirst = strcmp(end, "/be") == 0;
+        }
+        return file;
+    }
+
+    // "name:crc name:crc ...", where a word may join several files with '+' (RomFile::parts)
     std::vector<RomFile> ParseFiles(const char *text) {
         std::vector<RomFile> files;
         std::istringstream in(text);
         std::string item;
         while (in >> item) {
-            const size_t colon = item.find(':');
-            RomFile file;
-            file.name = item.substr(0, colon);
-            if (colon != std::string::npos) {
-                file.crc = static_cast<uint32_t>(strtoul(item.c_str() + colon + 1, nullptr, 16));
+            if (item.find('+') == std::string::npos) {
+                files.push_back(ParseFile(item));
+                continue;
             }
-            files.push_back(file);
+            RomFile joined;
+            for (size_t at = 0; at <= item.size();) {
+                const size_t plus = std::min(item.find('+', at), item.size());
+                joined.parts.push_back(ParseFile(item.substr(at, plus - at)));
+                at = plus + 1;
+            }
+            joined.name = joined.parts[0].name;
+            files.push_back(joined);
         }
         return files;
     }
@@ -174,7 +192,10 @@ namespace {
             }
         }
         if (places.folder.empty()) {
-            error = "the set has no " + file.name + " (it may be in the parent set's zip, which should be beside this one)";
+            char crc[16];
+            snprintf(crc, sizeof(crc), "%08x", file.crc);
+            error = "the set has no " + file.name + (file.crc ? std::string(" (CRC32 ") + crc + ")" : std::string()) +
+                    " (it may be in the parent set's zip, which should be beside this one)";
             return false;
         }
         const std::string path = places.folder + "/" + file.name;
@@ -343,15 +364,35 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
         }
     }
 
-    // Program: the files hold each 16-bit word low byte first
+    // Program: each file holds 16-bit words low byte first (or high byte first: RomFile::highFirst); a pair of files,
+    // the even bytes and the odd ones
     set.program.clear();
     for (const RomFile &file : list.program) {
+        if (file.parts.size() == 2) {
+            std::vector<uint8_t> odd;
+            if (!ReadFile(folder, file.parts[0], data, error) || !ReadFile(folder, file.parts[1], odd, error)) {
+                return false;
+            }
+            if (odd.size() != data.size()) {
+                error = "program files of different sizes in a pair";
+                return false;
+            }
+            for (size_t i = 0; i < data.size(); i++) {
+                set.program.push_back(data[i]);
+                set.program.push_back(odd[i]);
+            }
+            continue;
+        }
+        if (!file.parts.empty()) {
+            error = "game.cfg: the program joins files only in pairs";
+            return false;
+        }
         if (!ReadFile(folder, file, data, error)) {
             return false;
         }
         for (size_t i = 0; i + 1 < data.size(); i += 2) {
-            set.program.push_back(data[i + 1]);
-            set.program.push_back(data[i]);
+            set.program.push_back(data[file.highFirst ? i : i + 1]);
+            set.program.push_back(data[file.highFirst ? i + 1 : i]);
         }
     }
 
@@ -378,9 +419,45 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
         }
     }
 
-    // Graphics: four files side by side make 64-bit words, two bytes from each
+    // Graphics: four files side by side make 64-bit words, two bytes from each; or eight joined files, one byte from
+    // each
     set.graphics.assign(list.graphicsBase, 0);
-    for (size_t group = 0; group + 3 < list.graphics.size(); group += 4) {
+    for (size_t group = 0; group < list.graphics.size();) {
+        if (!list.graphics[group].parts.empty()) {
+            const std::vector<RomFile> &parts = list.graphics[group].parts;
+            if (parts.size() != 8) {
+                error = "game.cfg: the graphics join files only in eights";
+                return false;
+            }
+            std::vector<uint8_t> files[8];
+            for (int n = 0; n < 8; n++) {
+                if (!ReadFile(folder, parts[n], files[n], error)) {
+                    return false;
+                }
+                if (files[n].size() != files[0].size()) {
+                    error = "graphics files of different sizes";
+                    return false;
+                }
+            }
+            const size_t base = set.graphics.size();
+            set.graphics.resize(base + files[0].size() * 8);
+            for (size_t i = 0; i < files[0].size(); i++) {
+                for (int n = 0; n < 8; n++) {
+                    set.graphics[base + i * 8 + n] = files[n][i];
+                }
+            }
+            group++;
+            continue;
+        }
+        if (group + 3 >= list.graphics.size()) {
+            break; // (as before: a group of four not finished is left out)
+        }
+        for (size_t n = 1; n < 4; n++) {
+            if (!list.graphics[group + n].parts.empty()) {
+                error = "game.cfg: eight joined graphics files in the middle of a group of four";
+                return false;
+            }
+        }
         std::vector<uint8_t> files[4];
         for (int n = 0; n < 4; n++) {
             if (!ReadFile(folder, list.graphics[group + n], files[n], error)) {
@@ -399,6 +476,7 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
                 set.graphics[base + i * 4 + n * 2 + 1] = files[n][i + 1];
             }
         }
+        group += 4;
     }
     if (!list.board.cps1) { // (a CPS-2's graphics ROMs have their tiles in another order)
         const size_t bank = 0x200000;
