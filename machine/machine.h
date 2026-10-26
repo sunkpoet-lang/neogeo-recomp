@@ -150,6 +150,12 @@ public:
     static constexpr int kMaxPlayers = 4;
     uint16_t players[kMaxPlayers] = {};
     bool serviceButton = false, testSwitch = false;
+    // The DIP switches, banks A, B and C (a bit 1: the switch off), as the 68000 reads them: the board's (game.cfg's
+    // dip, DipAsSet) unless the port sets them (the Board page's choices, before every frame; not in save states)
+    uint8_t dip[3] = {0xFF, 0xFF, 0xFF};
+    const uint8_t *DipAsSet() const {
+        return m_roms.board.dip;
+    }
 
     M68K cpu;
     Z80 soundCpu;
