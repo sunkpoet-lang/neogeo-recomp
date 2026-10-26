@@ -199,6 +199,9 @@ int SoundtrackPlayer::Open(const std::string &folder, Soundtrack &tap, bool shuf
             if (own->count("volume")) {
                 file.volume = std::clamp(atoi(own->at("volume").c_str()), 0, 400);
             }
+            if (own->count("start")) {
+                file.start = std::max(Seconds(Trim(own->at("start"))), 0.0);
+            }
             if (own->count("loop")) {
                 const std::string loop = Lower(own->at("loop"));
                 const size_t dash = loop.find('-');
@@ -268,7 +271,16 @@ void SoundtrackPlayer::Start(int32_t song) {
     }
     m_rate = m_decoder->rate;
     m_once = file.once;
-    m_loopStart = 0;
+    m_start = static_cast<uint64_t>(file.start * m_rate);
+    if (m_decoder->length && m_start >= m_decoder->length) {
+        m_start = 0; // (past the end: from the start)
+    }
+    if (m_start && !m_decoder->Seek(m_start)) {
+        m_start = 0;
+        m_decoder->Seek(0);
+    }
+    m_at = m_start;
+    m_loopStart = m_start;
     m_loopEnd = 0;
     if (file.loopStart >= 0 && file.loopEnd > file.loopStart) {
         m_loopStart = static_cast<uint64_t>(file.loopStart * m_rate);
@@ -286,16 +298,17 @@ void SoundtrackPlayer::Start(int32_t song) {
 }
 
 uint64_t SoundtrackPlayer::Place(uint64_t made) const {
-    if (m_once || m_loopEnd == 0 || made < m_loopEnd) {
-        return made;
+    const uint64_t at = m_start + made;
+    if (m_once || m_loopEnd == 0 || at < m_loopEnd) {
+        return at;
     }
-    return m_loopStart + (made - m_loopStart) % (m_loopEnd - m_loopStart);
+    return m_loopStart + (at - m_loopStart) % (m_loopEnd - m_loopStart);
 }
 
 void SoundtrackPlayer::SeekTo(uint64_t made) {
     m_made = made;
     m_at = Place(made);
-    m_ended = (m_once && m_loopEnd && made >= m_loopEnd) || !m_decoder->Seek(m_at);
+    m_ended = (m_once && m_loopEnd && m_start + made >= m_loopEnd) || !m_decoder->Seek(m_at);
 }
 
 void SoundtrackPlayer::Make(const Soundtrack::State &state, bool heard, std::vector<float> &out) {

@@ -50,8 +50,12 @@ void Soundtrack::Request(uint8_t *shared, uint64_t frame) {
             state.song = -1;
             state.allLevel = kFull;
             state.allStep = 0;
+            last.song = -1;
             break;
-        case 0x05: state.song = -1; break; // the music stops
+        case 0x05: // the music stops
+            state.song = -1;
+            last.song = -1;
+            break;
         case 0x06:                         // the music's volume goes up to a level, or (07) down to one
         case 0x07: {
             const bool down = shared[1] == 0x07;
@@ -83,6 +87,9 @@ void Soundtrack::Request(uint8_t *shared, uint64_t frame) {
     if (!IsMusic(song)) {
         return;
     }
+    memcpy(last.request, shared, sizeof(last.request));
+    last.song = song;
+    last.frames = 0;
     if (!Replaced(song)) {
         state.song = -1; // (the board's own)
         return;
@@ -101,6 +108,9 @@ void Soundtrack::Request(uint8_t *shared, uint64_t frame) {
 void Soundtrack::Frame() {
     if (state.song >= 0) {
         state.frames++;
+    }
+    if (last.song >= 0) {
+        last.frames++;
     }
     if (state.step) {
         const int64_t level = static_cast<int64_t>(state.level) + state.step;
@@ -124,6 +134,11 @@ void Soundtrack::Frame() {
 void Soundtrack::Serialize(Archive &ar) {
     ar.Mark(0x534F4E47);
     ar.Pod(state);
+    if (ar.version == 0 || ar.version >= 8) { // (8: the last music asked for; before, none known)
+        ar.Pod(last);
+    } else {
+        last = Last{};
+    }
 }
 
 } // namespace cps2recomp

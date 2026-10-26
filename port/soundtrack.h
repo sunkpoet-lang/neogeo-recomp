@@ -15,13 +15,15 @@
 //   file = 05 Ryu's Theme.flac
 //   loop = 0:12.5 - 2:47.25     ; the part that repeats: start - end (minutes:seconds, or seconds); "no": played once
 //   volume = 90
+//   start = 1:00.4              ; where in the file the song starts (else 0): one file can hold two songs, a stage's
+//                               ; tune and its later version, say ([ryu] loop = 0 - 60.4; [ryu_later] start = 60.4)
 //
 // A folder with no file named for a song is a playlist instead: its files play one after another, each to its end,
 // in their names' order ("2 ..." before "10 ...") or shuffled, in place of all the game's music, and from the first
 // again after the last. It goes on through the game's screens, and stops only while the game is held.
 //
 // Without a loop, a file repeats from its LOOPSTART tag (and LOOPEND or LOOPLENGTH, in samples) where it has one,
-// or whole; a song the board plays once (a fanfare, a game over) is played once.
+// or from its start (the whole of it, with none); a song the board plays once (a fanfare, a game over) is played once.
 #pragma once
 
 #include "../machine/soundtrack.h"
@@ -79,6 +81,7 @@ private:
         double loopStart = -1, loopEnd = -1; // seconds (-1: from the file's tags, or the whole of it)
         bool once = false;                   // played once, not repeated
         int volume = 100;
+        double start = 0;                    // seconds: where in the file the song starts
     };
     std::vector<File> m_files; // by song number (path "": none)
     std::unique_ptr<Decoder> m_decoder;
@@ -87,6 +90,7 @@ private:
     uint64_t m_made = 0;           // samples made since the song started (counting each repeat)
     uint64_t m_at = 0;             // the decoder's place in the file
     uint64_t m_loopStart = 0, m_loopEnd = 0; // in samples (end 0: the file's end, when it is found)
+    uint64_t m_start = 0;          // in samples: where the song starts in the file
     bool m_once = false, m_ended = false;
     float m_gain = 0;              // (the last sample's: the next frame's starts there)
     int m_rate = 0;

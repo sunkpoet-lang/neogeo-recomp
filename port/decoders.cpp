@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <map>
+#include <vector>
 
 #define STB_VORBIS_NO_PUSHDATA_API
 #include "../third_party/stb_vorbis.c"
@@ -97,8 +99,9 @@ namespace {
                 drmp3_uninit(&m);
             }
         }
+        uint64_t skew = 0; // (see Mp3Index)
         bool Seek(uint64_t sample) override {
-            return drmp3_seek_to_pcm_frame(&m, sample);
+            return drmp3_seek_to_pcm_frame(&m, sample >= skew ? sample - skew : sample);
         }
         size_t Read(float *out, size_t samples) override {
             return static_cast<size_t>(drmp3_read_pcm_frames_f32(&m, samples, out));
@@ -172,6 +175,40 @@ namespace {
         return d;
     }
 
+    // An MP3's seek table and length, worked out the first time the file is opened (a few milliseconds: a scan of
+    // its frames) and kept: without one, a seek decodes the file from its start up to the place, which for a minute
+    // in is longer than a frame (a song started part way into its file, or picked up mid-song, would hold the game)
+    struct Mp3Index {
+        std::vector<drmp3_seek_point> points;
+        drmp3_uint64 length = 0;
+        drmp3_uint64 skew = 0; // (samples a seek with the table lands past the place asked for)
+    };
+    const Mp3Index &IndexOf(drmp3 &m, const std::string &path) {
+        static std::map<std::pair<std::string, uintmax_t>, Mp3Index> kept;
+        std::error_code error;
+        const auto key = std::make_pair(path, std::filesystem::file_size(PathOf(path), error));
+        auto it = kept.find(key);
+        if (it == kept.end()) {
+            Mp3Index index;
+            drmp3_uint64 frames = 0;
+            if (drmp3_get_mp3_and_pcm_frame_count(&m, &frames, &index.length)) {
+                drmp3_uint32 count = static_cast<drmp3_uint32>(frames);
+                index.points.resize(count);
+                if (count && drmp3_calculate_seek_points(&m, &count, index.points.data())) {
+                    index.points.resize(count);
+                    // (the scan counts an information frame (Xing, LAME) at the start as a frame of samples, where
+                    // decoding gives none for it: a seek with the table lands that much too far, so it is asked
+                    // for that much sooner)
+                    index.skew = index.points.empty() ? 0 : index.points[0].pcmFrameIndex;
+                } else {
+                    index.points.clear();
+                }
+            }
+            it = kept.emplace(key, std::move(index)).first;
+        }
+        return it->second;
+    }
+
     std::unique_ptr<Decoder> OpenMp3(const std::string &path) {
         auto d = std::make_unique<Mp3>();
 #ifdef _WIN32
@@ -184,6 +221,15 @@ namespace {
         }
         d->rate = static_cast<int>(d->m.sampleRate);
         d->channels = static_cast<int>(d->m.channels);
+        const Mp3Index &index = IndexOf(d->m, path);
+        if (!index.points.empty()) {
+            // (the table is kept, and never changed, for as long as the program runs)
+            drmp3_bind_seek_table(&d->m, static_cast<drmp3_uint32>(index.points.size()),
+                                  const_cast<drmp3_seek_point *>(index.points.data()));
+            d->skew = index.skew;
+        }
+        d->length = index.length;
+        drmp3_seek_to_pcm_frame(&d->m, 0); // (back to the start after the scan)
         return d;
     }
 
