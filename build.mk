@@ -43,6 +43,8 @@ SHARES := $(shell $(CFG) sources $(GAME))
 # Another set the game reads (game.cfg's extra_set: characters of another game taken in, tools/graft.py)
 EXTRA_SET := $(shell $(CFG) extra_set $(GAME))
 HOOK_SOURCES := games/$(GAME)/src$(foreach g,$(SHARES),:games/$(g)/src)
+# (the shared files the game leaves out: game.cfg's sources_leave_out; and its own of the same name stand for them)
+LEAVE_OUT := $(shell $(CFG) sources_leave_out $(GAME))
 
 PROGRAM := $(WORK)/program.bin
 ENTRIES := $(WORK)/entries.txt
@@ -74,7 +76,7 @@ gen:
 		python3 $(CR)/tools/recomp.py --program $(PROGRAM) --entries $(ENTRIES) --out $(GEN) \
 			--limit $(shell $(CFG) code_end $(GAME)) --list $(WORK)/program.lst \
 			--guess $(WORK)/guessed.txt --data $(PROGRAM).data \
-			--hook-sources "$(HOOK_SOURCES)" --places games/$(GAME)/family.h --hooks $(GEN)/graft_data_hooks.txt; \
+			--hook-sources "$(HOOK_SOURCES)" --hook-skip "$(LEAVE_OUT)" --places games/$(GAME)/family.h --hooks $(GEN)/graft_data_hooks.txt; \
 	fi
 	@if [ -f $(PROGRAM).z80 ]; then \
 		python3 $(CR)/tools/recompz80.py --program $(PROGRAM).z80 --entries $(ENTRIES).z80 --out $(GEN) \

@@ -345,6 +345,8 @@ def main():
     ap.add_argument("--hook-sources", default=None,
                     help="the game's sources (folders, with %s between): translated code stops by for a hook wherever they say "
                          "AddHook(0x...) or AddRewrite(0x...)" % os.pathsep)
+    ap.add_argument("--hook-skip", default="",
+                    help="files of the shared sources the game leaves out (game.cfg's sources_leave_out)")
     ap.add_argument("--hooks", default=None,
                     help="more places translated code stops by for a hook (a file of them, hex, one a line)")
     ap.add_argument("--places", default=None,
@@ -362,7 +364,10 @@ def main():
             if line:
                 entries.append(int(line, 16))
     hooks = set()
-    folders = [d for d in (args.hook_sources or "").split(os.pathsep) if d and os.path.isdir(d)]
+    # (the folders apart by ":" as the Makefile writes them, or by the system's separator: ";" for a Windows Python;
+    # never at a drive's colon, "D:/")
+    import re as _re
+    folders = [d for d in _re.split(r"[:;](?![/\\])", args.hook_sources or "") if d and os.path.isdir(d)]
     if folders:
         # AddHook(0x1234, ...), AddRewrite(kName, ...) or HookAt(0x1234), with "kName = 0x1234" somewhere in the sources;
         # a place may be At(0x1234): where that place of the game the sources were written for is in this one
@@ -382,8 +387,12 @@ def main():
             if value not in places:
                 sys.exit("recomp: the sources name At(0x%06X), and %s does not say where that is" % (value, args.places))
             return places[value]
-        texts = [open(os.path.join(d, name)).read() for d in folders for name in sorted(os.listdir(d))
-                 if name.endswith((".cpp", ".h"))]
+        # (a file of the first folder's, the game's own, stands for the shared one of the same name; and the shared
+        # files the game leaves out are not read)
+        skip = set((args.hook_skip or "").split())
+        own = set(os.listdir(folders[0])) if folders else set()
+        texts = [open(os.path.join(d, name)).read() for i, d in enumerate(folders) for name in sorted(os.listdir(d))
+                 if name.endswith((".cpp", ".h")) and (i == 0 or (name not in skip and name not in own))]
         names = {}
         if args.places and os.path.exists(args.places):
             # (a game's family.h may name places of its own, written as they are: hooks the sources make there)
