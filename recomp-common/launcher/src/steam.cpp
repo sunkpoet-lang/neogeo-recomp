@@ -5,6 +5,8 @@
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <iterator>
 #include <filesystem>
 #include <fstream>
 #include <vector>
@@ -12,6 +14,12 @@
 #ifdef __linux__
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
+#ifdef _WIN32
+#include <windows.h>
+#include <objbase.h>
+#include <shlobj.h>
+#include <shobjidl.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -161,6 +169,71 @@ bool add_to_steam(std::string& message, const std::string& name, const std::stri
     (void)entry;
     (void)play;
     message = "Adding to Steam from here works on Linux and Steam Deck.";
+    return false;
+#endif
+}
+
+bool can_add_to_desktop() {
+#ifdef _WIN32
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool add_to_desktop(std::string& message, const std::string& name, const std::string& play, const fs::path& icon) {
+#ifdef _WIN32
+    wchar_t self[MAX_PATH * 4];
+    DWORD length = GetModuleFileNameW(nullptr, self, static_cast<DWORD>(std::size(self)));
+    if (length == 0 || length >= std::size(self)) {
+        message = "Can't tell where the launcher is.";
+        return false;
+    }
+    fs::path launcher(self);
+    PWSTR desktop_path = nullptr;
+    if (FAILED(SHGetKnownFolderPath(FOLDERID_Desktop, 0, nullptr, &desktop_path))) {
+        message = "Can't find the desktop.";
+        return false;
+    }
+    fs::path desktop(desktop_path);
+    CoTaskMemFree(desktop_path);
+    // (a file name can't have these)
+    std::string file_name;
+    for (char c : name) {
+        file_name += std::strchr("<>:\"/\\|?*", c) ? ' ' : c;
+    }
+    fs::path link = desktop / fs::u8path(file_name + ".lnk");
+    bool initialized = SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED));
+    bool saved = false;
+    IShellLinkW* shortcut = nullptr;
+    if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast<void**>(&shortcut)))) {
+        shortcut->SetPath(launcher.wstring().c_str());
+        shortcut->SetArguments(fs::u8path(play).wstring().c_str());
+        shortcut->SetWorkingDirectory(launcher.parent_path().wstring().c_str());
+        shortcut->SetDescription(fs::u8path("Play " + name).wstring().c_str());
+        std::error_code error;
+        shortcut->SetIconLocation((fs::exists(icon, error) ? icon : launcher).wstring().c_str(), 0);
+        IPersistFile* file = nullptr;
+        if (SUCCEEDED(shortcut->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&file)))) {
+            saved = SUCCEEDED(file->Save(link.wstring().c_str(), TRUE));
+            file->Release();
+        }
+        shortcut->Release();
+    }
+    if (initialized) {
+        CoUninitialize();
+    }
+    if (!saved) {
+        message = "Can't make the shortcut on the desktop.";
+        return false;
+    }
+    message = "Added \"" + file_name + "\" to the desktop: it starts the game straight away. If you move this folder, add it again.";
+    return true;
+#else
+    (void)name;
+    (void)play;
+    (void)icon;
+    message = "Shortcuts on the desktop are made here on Windows.";
     return false;
 #endif
 }

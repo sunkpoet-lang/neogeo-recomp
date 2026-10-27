@@ -3,6 +3,7 @@
 #pragma once
 // Adding the game to Steam (Linux, e.g. Steam Deck), so it can be played from Game Mode.
 
+#include <filesystem>
 #include <string>
 
 // Whether this system can add non-Steam games from here (Linux with Steam installed).
@@ -14,3 +15,10 @@ bool add_to_steam(std::string& message);
 // A collection's game: its entry (named `name`, the file `entry`.desktop, the launcher with `play`, as
 // "--play ID") and, if it is not there yet, the collection's launcher's.
 bool add_to_steam(std::string& message, const std::string& name, const std::string& entry, const std::string& play);
+
+// Whether this system can put a shortcut on the desktop from here (Windows).
+bool can_add_to_desktop();
+
+// A shortcut on the desktop named `name` that starts the launcher with `play` ("--play ID": straight into the
+// game), with the icon of `icon` (the game's program). `message` says what happened.
+bool add_to_desktop(std::string& message, const std::string& name, const std::string& play, const std::filesystem::path& icon);

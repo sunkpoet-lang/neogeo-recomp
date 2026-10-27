@@ -239,6 +239,8 @@ private:
     bool focus_search_ = false;      // Ctrl+F (or Cmd+F): into the search box
 
     std::string steam_message_;  // what Add to Steam did
+    std::string desktop_message_;     // what Add shortcut did,
+    std::string desktop_message_id_;  // and for which game
 #ifdef LAUNCHER_UPDATE_REPO
     std::unique_ptr<launcher::Updater> updater_;
     bool relaunched_ = false;  // (the new version has been started: this one quits)

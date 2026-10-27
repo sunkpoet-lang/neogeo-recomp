@@ -1512,6 +1512,25 @@ void App::play_button(size_t which, float width) {
         });
         card.end();
     }
+    // Windows: a shortcut on the desktop, straight into the game with the game's icon.
+    static const bool desktop = can_add_to_desktop();
+    if (desktop) {
+        ui::gap(28);
+        ui::text("DESKTOP", Font::Semibold, ui::size::kDetail, p.secondary);
+        ui::gap(10);
+        Card card(width);
+        std::string name = collection_ ? one.name : std::string(LAUNCHER_GAME_NAME);
+        std::string detail = desktop_message_id_ == one.id && !desktop_message_.empty()
+                                 ? desktop_message_
+                                 : "Puts \"" + name + "\" on your desktop: a double click starts the game straight away, with its own icon.";
+        row(width, "Shortcut on the desktop", detail.c_str(), 150.0f, 36.0f, [&] {
+            if (ui::button("Add shortcut", Kind::Secondary, 150.0f, file_ok && have_program)) {
+                desktop_message_id_ = one.id;
+                add_to_desktop(desktop_message_, name, collection_ ? "--play " + one.id : std::string("--play"), one.program());
+            }
+        });
+        card.end();
+    }
 }
 
 void App::game_page(float width) {
