@@ -13,6 +13,7 @@
 #include "../../port/bindings.h"
 
 #include <algorithm>
+#include <cctype>
 #include <deque>
 #include <filesystem>
 #include <string>
@@ -258,6 +259,99 @@ const GameInfo* game_of_set(const char* set) {
     }
     return nullptr;
 }
+
+// Killer Instinct 1 and 2 are not ports of this toolkit's: they play in UltraCombo (github.com/thefixinhixon/UltraCombo),
+// a native port of their own with its menu, controls and game files (in its run folder). The collection starts it through
+// a program of the game's name beside the launcher (ultracombo_bridge.cpp: kinst, kinst2), whose "game file" is the
+// player's UltraCombo.exe.
+struct UltraComboGame {
+    const char *id, *name, *game;            // --play ID, as the player reads it, UltraCombo's --game
+    std::vector<const char*> boot, disk;     // in its run folder: a boot ROM of these, and a disk of these
+};
+const std::vector<UltraComboGame>& ultracombo_games() {
+    static const std::vector<UltraComboGame> games = {
+        {"kinst", "Killer Instinct", "ki1", {"ki-l15d.u98", "ki-l14.u98"}, {"kinst.chd", "kinst/kinst.chd", "kinst.raw"}},
+        {"kinst2", "Killer Instinct 2", "ki2", {"ki2-l14.u98"}, {"kinst2.chd", "kinst2/kinst2.chd", "kinst2.raw"}},
+    };
+    return games;
+}
+
+// UltraCombo.exe, with the game's files in its run folder
+launcher::FileCheck check_ultracombo(const UltraComboGame& game, const std::string& path) {
+    launcher::FileCheck check;
+    std::error_code error;
+    const std::filesystem::path program(path);
+    if (path.empty() || !std::filesystem::is_regular_file(program, error)) {
+        check.message = "It isn't there any more.";
+        return check;
+    }
+    std::string name = program.filename().string();
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    if (name != "ultracombo.exe" && name != "ultracombo") {
+        check.message = "Not UltraCombo: choose its UltraCombo.exe.";
+        return check;
+    }
+    const std::filesystem::path run = program.parent_path() / "run";
+    auto any_of = [&](const std::vector<const char*>& files) {
+        return std::any_of(files.begin(), files.end(), [&](const char* file) { return std::filesystem::exists(run / file, error); });
+    };
+    if (any_of(game.boot) && any_of(game.disk)) {
+        check.result = launcher::FileCheck::Result::Good;
+        check.message = keep(std::string("UltraCombo, with ") + game.name + "'s files in its run folder");
+    } else {
+        check.result = launcher::FileCheck::Result::Usable;
+        check.message = keep(std::string("UltraCombo, but ") + game.name + "'s files weren't found in its run folder (" + game.boot[0] + ", " +
+                             game.disk[0] + " and the sound ROMs): put them there, as run/PUT-GAME-FILES-HERE.txt says.");
+    }
+    return check;
+}
+
+// UltraCombo beside the launcher or one folder up (D:\CPS2\UltraCombo beside D:\CPS2\CPS2Recomp), in its own folder or not
+std::vector<std::filesystem::path> ultracombo_candidates(const std::filesystem::path& folder) {
+    std::vector<std::filesystem::path> list;
+    std::filesystem::path at = folder;
+    for (int up = 0; up < 3 && !at.empty(); up++, at = at.parent_path()) {
+        list.push_back(at / "UltraCombo.exe");
+        list.push_back(at / "UltraCombo" / "UltraCombo.exe");
+        if (at == at.parent_path()) {
+            break;
+        }
+    }
+    return list;
+}
+
+launcher::Description describe_ultracombo(const UltraComboGame& game) {
+    launcher::Description d;
+    d.subtitle = "UltraCombo";
+    d.original = "in the arcade";
+    d.file_heading = "ULTRACOMBO";
+    d.file_intro = keep(std::string(game.name) + " plays in UltraCombo, a native port of its own (github.com/thefixinhixon/UltraCombo): choose its "
+                        "UltraCombo.exe. Its game files (MAME's " + game.id + " set and its CHD) go in UltraCombo's run folder. The first time, it "
+                        "takes a moment to prepare the game for this PC.\n\nWhile playing, Esc or F1 opens UltraCombo's menu: shaders, controls, "
+                        "training mode, save states and netplay. Its settings are its own: this launcher's Features and Controllers pages don't reach it.");
+    d.file_empty = "None chosen. Drop UltraCombo.exe here, or choose it.";
+    d.file_not_set_up = "UltraCombo isn't chosen yet. Open the launcher (without --play) once to choose its UltraCombo.exe.";
+    d.file_filter = {"UltraCombo (UltraCombo.exe)", "exe"};
+    d.file_key = "ultracombo";
+    d.check = [game](const std::string& path) { return check_ultracombo(game, path); };
+    d.find_nearby = [game](const std::filesystem::path& folder) {
+        for (const std::filesystem::path& one : ultracombo_candidates(folder)) {
+            if (check_ultracombo(game, one.string()).usable()) {
+                return one.string();
+            }
+        }
+        return std::string();
+    };
+    d.candidates = [](const std::filesystem::path& folder) { return ultracombo_candidates(folder); };
+    d.arguments = [](const launcher::Launch& launch) { return std::vector<std::string>{"--rom", launch.file}; };
+    d.mute_argument = nullptr;  // (UltraCombo's menu has the volume: M mutes)
+    d.bindings = port::MakeBoundTable(2, "", false).table;
+    d.controls_heading = "WHILE PLAYING";
+    d.controls = {{"Keys", "UltraCombo's own (its menu changes them): arrows and A S D / Z X C for player 1, I J K L and T Y U / G H B for player 2, "
+                           "1 / 2: Start, 5 / 6: coin (it plays in free play)   Esc or F1: menu   F4: training mode   F5 / F7: save and load a state   "
+                           "Backspace (hold): rewind   F11: full screen   F12: screenshot"}};
+    return d;
+}
 }  // namespace
 
 const launcher::Collection& launcher::describe_collection() {
@@ -272,6 +366,9 @@ const launcher::Collection& launcher::describe_collection() {
         c.find_detail = "Finds each game's ROM set in a folder of them, by the set's name (sfa2u.zip, say).";
         for (const GameInfo& game : kGames) {
             c.games.push_back({game.id, game.name, game.id, "", describe_game(game)});
+        }
+        for (const UltraComboGame& game : ultracombo_games()) {
+            c.games.push_back({game.id, game.name, game.id, "", describe_ultracombo(game)});
         }
         c.bindings = shared_table().table;
         // The Multi game page: the fighting games' endless battle (fight/battle.h), each game's every stage once and
