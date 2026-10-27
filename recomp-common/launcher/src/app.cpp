@@ -336,8 +336,14 @@ int play_directly(const std::string& id, const std::vector<std::string>& extra) 
     recomp::Ini prefs(player_folder(LAUNCHER_GAME_NAME, LAUNCHER_HOME_ENV) / "launcher.ini");
     prefs.load();
     if (about.game_page && !about.check(prefs.get(target->file_section, about.file_key)).usable()) {
-        say(SDL_MESSAGEBOX_INFORMATION, target->name, about.file_not_set_up);
-        return 1;
+        // (nothing usable remembered, e.g. the folder was moved or the USB drive has another letter: one near the
+        // program, as the game's page finds it)
+        std::string nearby = about.find_nearby ? about.find_nearby(base_path()) : std::string();
+        if (nearby.empty() || !about.check(nearby).usable()) {
+            say(SDL_MESSAGEBOX_INFORMATION, target->name, about.file_not_set_up);
+            return 1;
+        }
+        prefs.set(target->file_section, about.file_key, nearby);
     }
     GameProcess game;
     std::string message;
