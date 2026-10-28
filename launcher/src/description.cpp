@@ -231,6 +231,14 @@ launcher::Description describe_game(const GameInfo& game) {
     // layout of its own on the Controllers page)
     d.bindings = port::MakeBoundTable(*game.players ? atoi(game.players) : 2, game.buttons, false).table;
     d.controls_heading = "WHILE PLAYING";
+    // Online play (port/neogeo_online.h): every Neo Geo game has its own, through the tunnel beside the launcher (the
+    // ONLINE card: the host's game waits on 7845, the other's joins the tunnel's port)
+    if (!strcmp(game.board, "neogeo")) {
+        d.online.port = 7845;
+        d.online.arguments = [](const std::string& address) {
+            return address.empty() ? std::vector<std::string>{"--host", "7845"} : std::vector<std::string>{"--join", address};
+        };
+    }
     d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (forAll ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   " + (forAll ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
     return d;
 }

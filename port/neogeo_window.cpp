@@ -42,13 +42,15 @@ namespace {
 #else
     constexpr const char *kExeSuffix = "";
 #endif
-    // The game was started by the collection's launcher (cps2recomp-launcher beside it, and no launcher of its own)
+    // The game was started by the collection's launcher (neogeo-recomp-launcher, or cps2recomp-launcher, beside it,
+    // and no launcher of its own)
     bool InCollection() {
         static const bool collection = [] {
             const char *base = SDL_GetBasePath();
             std::error_code missing;
             return base && !std::filesystem::exists(std::string(base) + GAME_ID "-launcher" + kExeSuffix, missing) &&
-                   std::filesystem::exists(std::string(base) + "cps2recomp-launcher" + kExeSuffix, missing);
+                   (std::filesystem::exists(std::string(base) + "neogeo-recomp-launcher" + kExeSuffix, missing) ||
+                    std::filesystem::exists(std::string(base) + "cps2recomp-launcher" + kExeSuffix, missing));
         }();
         return collection;
     }

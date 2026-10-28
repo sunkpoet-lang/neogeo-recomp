@@ -6,6 +6,7 @@
 # description.cpp), in build/collection/ with each game's program beside it. The games are built first (make games);
 # one that is not built is left out, and the launcher does not show it. Run from the repository's top (make collection).
 #   B=folder           where (build/collection)
+#   TUNNEL=program     the online tunnel (cps-tunel) to put beside the launcher, for the games' ONLINE card (none: no card)
 set -eu
 B=${B:-build/collection}
 games=""
@@ -25,4 +26,8 @@ cmake -S launcher -B "$B/launcher" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_R
     -DGAME_NAME="Neo Geo Recomp" -DGAME_EXE=neogeo-recomp -DAPP_ID=io.github.sunkpoet-lang.neogeo-recomp \
     -DHOME_ENV=NEOGEORECOMP_HOME -DDISCLAIMER="Not affiliated with SNK." ${CMAKE_ARGS:-} > /dev/null
 cmake --build "$B/launcher"
+if [ -n "${TUNNEL:-}" ]; then
+    case "$TUNNEL" in *.exe) cp -p "$TUNNEL" "$B/cps-tunel.exe" ;; *) cp -p "$TUNNEL" "$B/cps-tunel" ;; esac
+    echo "tunnel: $TUNNEL"
+fi
 echo "built $B/neogeo-recomp-launcher"
