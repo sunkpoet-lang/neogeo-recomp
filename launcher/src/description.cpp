@@ -40,7 +40,7 @@ struct GameInfo {
     const char* extra_set;
     // The Multi game page's modes it takes part in (game.cfg's multi: "endless")
     const char* multi;
-    // (this fork) A Neo Geo game's (board "neogeo"): its fix layer's files, and the system's set and files (game.cfg's
+    // A Neo Geo game's (board "neogeo"): its fix layer's files, and the system's set and files (game.cfg's
     // fix, bios and bios_set; machine/romset.h, NeoGeoList)
     const char *fix, *bios, *bios_set;
 };
@@ -71,7 +71,7 @@ launcher::FileCheck check_rom_set(const GameInfo& game, const std::string& path)
         check.message = "It isn't there any more.";
         return check;
     }
-    // (this fork) A Neo Geo game: its cartridge and the system's set beside it, read as the game reads them
+    // A Neo Geo game: its cartridge and the system's set beside it, read as the game reads them
     if (!strcmp(game.board, "neogeo")) {
         const cps2recomp::NeoGeoList list = cps2recomp::ParseNeoGeoList(game.program, game.fix, game.sound_program, game.samples,
                                                                         game.graphics, game.bios, game.rom_set, game.rom_parent,
@@ -281,29 +281,14 @@ const GameInfo* game_of_set(const char* set) {
 }
 
 // Games that are not ports of this toolkit's, each played in a program of its own that keeps its own menu, controls and
-// game files: Killer Instinct 1 and 2 in UltraCombo (github.com/thefixinhixon/UltraCombo), a native port, with the files
-// in its run folder; Street Fighter III 3rd Strike in FBNeo (github.com/finalburnneo/FBNeo), an arcade emulator, with
-// the sets in its roms folder. The collection starts the program through one of the game's id beside the launcher
-// (outside_bridge.cpp: kinst, kinst2, sfiii3), whose "game file" is the player's copy of that program.
+// game files, started through a program of the game's id beside the launcher whose "game file" is the player's copy of
+// that program. None in this collection yet; the mechanism is cps2recomp's, kept as it is.
 struct OutsideProgram {
     const char *title, *exe, *folder;        // as the player reads it, its file, the folder it is kept in
     const char *what, *url, *files_folder;   // "a native port of its own", where it comes from, where the game's files go
     const char *menu;                        // what its menu has, and its keys (the Controllers page here doesn't reach them)
     const char *keys;
 };
-const OutsideProgram kUltraCombo = {
-    "UltraCombo", "UltraCombo.exe", "UltraCombo", "a native port of its own", "github.com/thefixinhixon/UltraCombo", "run",
-    "While playing, Esc or F1 opens UltraCombo's menu: shaders, controls, training mode, save states and netplay. The first time, it takes a "
-    "moment to prepare the game for this PC.",
-    "UltraCombo's own (its menu changes them): arrows and A S D / Z X C for player 1, I J K L and T Y U / G H B for player 2, 1 / 2: Start, "
-    "5 / 6: coin (it plays in free play)   Esc or F1: menu   F4: training mode   F5 / F7: save and load a state   Backspace (hold): rewind   "
-    "F11: full screen   F12: screenshot"};
-const OutsideProgram kFBNeo = {
-    "FBNeo", "fbneo64.exe", "FBNeo", "an arcade emulator", "github.com/finalburnneo/FBNeo", "roms",
-    "FBNeo's menus (Game, Input, Video, Audio) are over the picture: its keys are set in Input > Map game inputs.",
-    "FBNeo's own (Input > Map game inputs changes them): arrows, then the punches and kicks on the keys it shows there, 1: Start, 5: coin   "
-    "Alt+Enter: full screen   F12: screenshot"};
-
 struct OutsideGame {
     const char *id, *name;                   // --play ID, as the player reads it
     const OutsideProgram *program;
@@ -312,11 +297,8 @@ struct OutsideGame {
     int netplay_port = 0;                    // the program's own online play (UltraCombo's --host/--join), 0: none
 };
 const std::vector<OutsideGame>& outside_games() {
-    static const std::vector<OutsideGame> games = {
-        {"kinst", "Killer Instinct", &kUltraCombo, "kinst set and its CHD", {"ki-l15d.u98", "ki-l14.u98"}, {"kinst.chd", "kinst/kinst.chd", "kinst.raw"}, 7845},
-        {"kinst2", "Killer Instinct 2", &kUltraCombo, "kinst2 set and its CHD", {"ki2-l14.u98"}, {"kinst2.chd", "kinst2/kinst2.chd", "kinst2.raw"}, 7845},
-        {"sfiii3", "Street Fighter III 3rd Strike", &kFBNeo, "sfiii3nr1 set, with sfiii3 beside it", {"sfiii3nr1.zip"}, {"sfiii3.zip"}},
-    };
+    // (none in this collection yet: the mechanism is kept for games that play in a program of their own)
+    static const std::vector<OutsideGame> games;
     return games;
 }
 
@@ -412,13 +394,13 @@ launcher::Description describe_outside(const OutsideGame& game) {
 const launcher::Collection& launcher::describe_collection() {
     static const Collection about = [] {
         Collection c;
-        c.subtitle = "Capcom CPS-1 and CPS-2 arcade games, native";
-        c.intro = "Each game needs your own copy of it: its arcade ROM set (a CPS-2 game's with its key file). Show the launcher the folder you keep them in, "
+        c.subtitle = "Neo Geo MVS arcade games, native";
+        c.intro = "Each game needs your own copy of it: its arcade ROM set, with the Neo Geo's system set (neogeo.zip) beside it. Show the launcher the folder you keep them in, "
                   "or drop a set (or the folder) on this window. The sets stay where they are: the launcher only reads them.\n\n"
                   "While playing, Esc or F1 on the keyboard, or the left stick's click (or Start and Select together) on a gamepad, "
                   "opens the in-game menu.";
         c.find_title = "Look in a folder";
-        c.find_detail = "Finds each game's ROM set in a folder of them, by the set's name (sfa2u.zip, say).";
+        c.find_detail = "Finds each game's ROM set in a folder of them, by the set's name (kof97.zip, say).";
         for (const GameInfo& game : kGames) {
             c.games.push_back({game.id, game.name, game.id, "", describe_game(game)});
         }

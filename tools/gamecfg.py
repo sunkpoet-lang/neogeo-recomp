@@ -31,7 +31,7 @@ def load(game=None):
 # What the collection's launcher is told of each game (launcher/src/description.cpp, GameInfo), in its order
 COLLECTION_KEYS = ["id", "name", "rom_set", "rom_parent", "rom_name", "program", "graphics", "sound_program", "samples", "key", "display",
                    "players", "buttons", "board", "cps_b", "extra_set", "multi",
-                   # (this fork: a Neo Geo game's fix layer, and the system's files and set)
+                   # (a Neo Geo game's fix layer, and the system's files and set)
                    "fix", "bios", "bios_set"]
 
 
