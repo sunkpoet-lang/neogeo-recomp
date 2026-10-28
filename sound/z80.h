@@ -62,6 +62,9 @@ public:
         m_level = true;
         m_interrupt = up;
     }
+    // The non-maskable interrupt, taken at once (between instructions: the board calls it on the line's rising edge):
+    // the PC pushed, on to 0x66, interrupts off until RETN. (The Neo Geo's sound commands; no Capcom board uses it.)
+    void Nmi();
     // One instruction or interrupt; the clock cycles it took (not added to `cycles`)
     unsigned Step();
     // Runs until `cycles` reaches `until` (a little past it: to the end of the instruction or block)

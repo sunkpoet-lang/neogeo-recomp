@@ -397,6 +397,16 @@ bool Z80::BlockCompare(int step, bool repeat) {
 // --- running ---
 
 // Takes the interrupt if the line is up and interrupts are on; the cycles that took (0: none taken)
+void Z80::Nmi() {
+    halted = false;
+    iff2 = iff1;
+    iff1 = false;
+    refresh++;
+    Push(pc);
+    pc = 0x0066;
+    cycles += 11;
+}
+
 unsigned Z80::TakeInterrupt() {
     if (!(m_interrupt && iff1 && !m_afterEI)) {
         return 0;
