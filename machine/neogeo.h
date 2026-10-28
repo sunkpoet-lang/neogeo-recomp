@@ -8,14 +8,15 @@
 //
 // Interrupts, as the board gives them: vertical blanking (level 1) at line 240, the display position timer (level 2)
 // when the program has set it, and the cold boot one (level 3) at power-on; each stays up until the program
-// acknowledges it at 0x3C000C. The YM2610 is not here yet: the Z80 runs its program and answers the 68000's commands,
-// and its sound chip's registers take writes and say "not busy", so the game plays silent.
+// acknowledges it at 0x3C000C. The Z80 runs its program, answers the 68000's commands and plays the YM2610
+// (machine/neogeo_sound.h), whose timers interrupt it.
 //
 // Like the CPS boards (machine/machine.h), not a model of the board's timing: a line is a fixed amount of CPU time.
 // The map and the registers follow MAME's driver (src/mame/snk/neogeo.cpp, BSD-3-Clause).
 #pragma once
 
 #include "m68k.h"
+#include "neogeo_sound.h"
 #include "romset.h"
 
 #include "../sound/z80.h"
@@ -47,7 +48,9 @@ public:
         kA = 0x010, kB = 0x020, kC = 0x040, kD = 0x080,
         kStart = 0x100, kSelect = 0x200, kCoin = 0x400, kService = 0x800, kTest = 0x1000,
     };
+    // A coin, however short, is held for kCoinFrames from when it is pressed: the system ROM does not count a shorter one
     uint16_t players[2] = {};
+    static constexpr int kCoinFrames = 40;
     // The MVS's eight DIP switches (a bit 0: the switch on); a new board has them all off
     uint8_t dip = 0xFF;
 
@@ -59,6 +62,10 @@ public:
     }
     const uint32_t *Picture() const {
         return m_video.Picture();
+    }
+    // The sound chip: what it has made (NeoGeoSound::made, taken by the frontend) and its rate
+    NeoGeoSound &Sound() {
+        return m_sound;
     }
     // Save states and the hash of the whole state (68000, Z80, memories, registers, video)
     void Serialize(Archive &ar);
@@ -100,6 +107,7 @@ private:
 
     NeoGeoRoms m_roms;
     NeoGeoVideo m_video;
+    NeoGeoSound m_sound;
     M68K m_cpu;
     Z80 m_z80;
 
@@ -111,6 +119,9 @@ private:
     uint8_t m_z80Banks[4] = {};  // the windows at 0xF000, 0xE000, 0xC000, 0x8000 (2, 4, 8, 16 KB)
     uint8_t m_command = 0, m_reply = 0;
     bool m_commandPending = false, m_nmiEnabled = false, m_nmiLine = false;
+
+    // The coins as the board sees them: frames each is still held, and whether it was pressed the frame before
+    uint8_t m_coinHeld[2] = {}, m_coinBefore[2] = {};
 
     // Interrupts and the display position timer
     bool m_blankPending = false, m_timerPending = false, m_coldPending = false;

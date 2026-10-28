@@ -42,6 +42,7 @@ namespace {
 NeoGeo::NeoGeo(NeoGeoRoms roms)
     : m_roms(std::move(roms))
     , m_video(VideoSources(m_roms))
+    , m_sound(m_roms.samples)
     , m_cpu(*this)
     , m_z80(*this)
     , m_ram(0x10000)
@@ -81,6 +82,7 @@ void NeoGeo::Reset(bool hard) {
     m_timerAt = 0;
     m_cpu.Reset(hard);
     m_z80.Reset();
+    m_sound.Reset();
     m_lineStart = m_cpu.cycles;
     m_lastKick = m_cpu.cycles;
     UpdateInterrupts();
@@ -89,6 +91,20 @@ void NeoGeo::Reset(bool hard) {
 // --- the frame ---
 
 void NeoGeo::RunFrame() {
+    // A coin pressed now is held for kCoinFrames, however short the press (the system ROM ignores a short one)
+    for (int p = 0; p < 2; p++) {
+        const bool pressed = players[p] & kCoin;
+        if (pressed && !m_coinBefore[p]) {
+            m_coinHeld[p] = kCoinFrames;
+        }
+        m_coinBefore[p] = pressed;
+        if (m_coinHeld[p]) {
+            players[p] |= kCoin;
+            m_coinHeld[p]--;
+        } else {
+            players[p] &= ~kCoin;
+        }
+    }
     for (int line = 0; line < kLines; line++) {
         m_line = line;
         if (line == kBlankLine) {
@@ -103,9 +119,12 @@ void NeoGeo::RunFrame() {
         }
         const uint64_t end = m_lineStart + kCpuPerLine;
         RunUntil(end);
-        // The Z80 at a third of the 68000's clock, to the same point
+        // The Z80 at a third of the 68000's clock, to the same point, and the YM2610 with it (at twice the Z80's clock),
+        // its interrupt line where the Z80 sees it
         while (m_z80.cycles < end / 3) {
             m_z80.cycles += m_z80.Step();
+            m_sound.RunTo(m_z80.cycles * 2);
+            m_z80.SetInterruptLine(m_sound.Interrupt());
         }
         m_video.RenderLine(line);
         m_lineStart = end;
@@ -516,7 +535,8 @@ uint8_t NeoGeo::In(uint16_t port) {
         return m_command;
     }
     if (low >= 0x04 && low <= 0x07) {
-        return 0x00; // the YM2610, silent: never busy, no timer flags
+        m_sound.RunTo(m_z80.cycles * 2);
+        return m_sound.Read(low - 0x04);
     }
     if ((low & 0x0F) >= 0x08 && (low & 0x0F) <= 0x0B) {
         m_z80Banks[low & 3] = static_cast<uint8_t>(port >> 8); // (a bank chosen by reading: the port's high byte)
@@ -535,8 +555,11 @@ void NeoGeo::Out(uint16_t port, uint8_t value) {
         UpdateNmi();
     } else if (low == 0x0C) {
         m_reply = value;
+    } else if (low >= 0x04 && low <= 0x07) {
+        m_sound.RunTo(m_z80.cycles * 2);
+        m_sound.Write(low - 0x04, value);
+        m_z80.SetInterruptLine(m_sound.Interrupt());
     }
-    // (0x04-0x07: the YM2610's registers, which take the writes and do nothing yet)
 }
 
 // --- state ---
@@ -546,6 +569,7 @@ void NeoGeo::Serialize(Archive &ar) {
     m_cpu.Serialize(ar);
     m_z80.Serialize(ar);
     m_video.Serialize(ar);
+    m_sound.Serialize(ar);
     ar.Vec(m_ram);
     ar.Vec(m_backupRam);
     ar.Vec(m_z80Ram);
@@ -575,6 +599,8 @@ void NeoGeo::Serialize(Archive &ar) {
     ar.Pod(m_pulseHalf);
     ar.Pod(players);
     ar.Pod(dip);
+    ar.Pod(m_coinHeld);
+    ar.Pod(m_coinBefore);
     if (!ar.Saving()) {
         UpdateInterrupts();
     }
