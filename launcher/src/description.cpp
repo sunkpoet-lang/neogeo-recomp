@@ -335,7 +335,7 @@ launcher::FileCheck check_outside(const OutsideGame& game, const std::string& pa
     return check;
 }
 
-// The program beside the launcher or up to two folders up (D:\CPS2\UltraCombo beside D:\CPS2\CPS2Recomp), in its own folder or not
+// The program beside the launcher or up to two folders up (another port's folder beside this one), in its own folder or not
 std::vector<std::filesystem::path> outside_candidates(const OutsideProgram& p, const std::filesystem::path& folder) {
     std::vector<std::filesystem::path> list;
     std::filesystem::path at = folder;
