@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 #include "soundtrack.h"
 
-#include "../machine/machine.h"
 #include "../runtime/game.h"
 #include "decoders.h"
 
@@ -325,7 +324,7 @@ void SoundtrackPlayer::Make(const Soundtrack::State &state, bool heard, std::vec
         return;
     }
     // Where the game is in the song: its frames since the start, in samples
-    const uint64_t due = static_cast<uint64_t>(state.frames * (static_cast<double>(m_rate) / cps2recomp::Machine::kFramesPerSecond));
+    const uint64_t due = static_cast<uint64_t>(state.frames * (static_cast<double>(m_rate) / framesPerSecond));
     if (!heard) {
         m_made = UINT64_MAX; // (the next call starts where the game is then)
         return;
@@ -413,7 +412,7 @@ void SoundtrackPlayer::Playlist(const Soundtrack::State &state, bool heard, std:
             return;
         }
     }
-    m_carry += m_rate / cps2recomp::Machine::kFramesPerSecond;
+    m_carry += m_rate / framesPerSecond;
     size_t wanted = static_cast<size_t>(m_carry);
     m_carry -= static_cast<double>(wanted);
     const float gain = static_cast<float>(volume / 100.0 * (state.allLevel / double(Soundtrack::kFull)));

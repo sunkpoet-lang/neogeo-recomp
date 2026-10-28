@@ -34,9 +34,9 @@ if (NOT GAME_BOARD MATCHES "neogeo")
     message(FATAL_ERROR "${GAME}: game.cfg does not say board = neogeo")
 endif ()
 
-# ymfm's YM2610 (third_party/, unchanged: other projects' code, compiled as it is)
+# ymfm's YM2610 and the sound files' decoders (third_party/, unchanged: other projects' code, compiled as it is)
 set(YMFM_OPN third_party/ymfm_opn.cpp third_party/ymfm_ssg.cpp third_party/ymfm_adpcm.cpp)
-set_source_files_properties(${YMFM_OPN} PROPERTIES COMPILE_OPTIONS "-w")
+set_source_files_properties(${YMFM_OPN} port/decoders.cpp PROPERTIES COMPILE_OPTIONS "-w")
 # The game's own sources (games/<id>/src: runtime/neogeo_game.h); without any, nothing is added
 file(GLOB NEOGEO_GAME_SOURCES CONFIGURE_DEPENDS "${GAME_DIR}/src/*.cpp")
 if (NOT NEOGEO_GAME_SOURCES)
@@ -46,6 +46,7 @@ add_executable(${GAME} port/neogeo_main.cpp port/neogeo_port.cpp port/neogeo_win
     port/hud.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/neogeo_game.cpp
     machine/neogeo.cpp machine/neogeo_sound.cpp video/neogeo_video.cpp machine/m68k.cpp sound/z80.cpp machine/romset.cpp
     machine/kabuki.cpp machine/cps2crypt.cpp runtime/no_blocks.cpp runtime/no_z80_blocks.cpp ${YMFM_OPN}
+    machine/soundtrack.cpp port/soundtrack.cpp port/decoders.cpp
     ${NEOGEO_GAME_SOURCES})
 target_include_directories(${GAME} PRIVATE runtime port machine "${WORK_DIR}/gen" "${GAME_DIR}")
 target_link_libraries(${GAME} PRIVATE SDL3::SDL3 ZLIB::ZLIB)

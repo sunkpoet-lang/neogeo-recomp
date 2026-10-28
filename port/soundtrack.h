@@ -74,6 +74,7 @@ public:
         return m_rate;
     }
     int volume = 100; // (percent) every song
+    double framesPerSecond = 60; // the game's frames a second (the board's: the port sets it)
 
 private:
     struct File {

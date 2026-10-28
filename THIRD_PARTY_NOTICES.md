@@ -54,6 +54,19 @@ Copyright (c) Paul Leaman, Andreas Naive, Nicola Salmoria, Charles MacDonald, wi
 above). It comes with cps2recomp's set reader (`machine/romset.cpp`), which the Neo Geo shares and which still reads
 CPS sets; `romset.cpp`'s `Unshuffle` and `DecodeKey` follow MAME's `src/mame/capcom/cps2.cpp`.
 
+### Sound file decoders (public domain, or MIT / MIT-0)
+
+The custom soundtrack (`port/soundtrack.cpp`, from cps2recomp) reads the player's music files with four single-file
+decoders, kept unchanged in `third_party/` and compiled by `port/decoders.cpp`. Each is offered under either of two
+licences, the first being the public domain; the licence statements are at the end of each file.
+
+| File | Project | Licence |
+| --- | --- | --- |
+| `third_party/stb_vorbis.c` | [stb](https://github.com/nothings/stb) `stb_vorbis` 1.22 (commit 2c980bb), by Sean Barrett | Public domain, or MIT |
+| `third_party/dr_flac.h` | [dr_libs](https://github.com/mackron/dr_libs) `dr_flac` 0.13.4 (commit dfe8377), by David Reid | Public domain, or MIT No Attribution |
+| `third_party/dr_mp3.h` | dr_libs `dr_mp3` 0.7.4 (the same commit), by David Reid, after minimp3 by lieff | Public domain, or MIT No Attribution |
+| `third_party/dr_wav.h` | dr_libs `dr_wav` 0.14.6 (the same commit), by David Reid | Public domain, or MIT No Attribution |
+
 ### recomp-common (GPL-3.0) and wiiparty-recomp (GPL-3.0-or-later)
 
 `recomp-common/` is a copy of [recomp-common](https://github.com/tmcleroy/recomp-common) (the in-game menu, the
