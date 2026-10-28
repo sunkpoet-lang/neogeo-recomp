@@ -2,55 +2,62 @@
 
 ## Why
 
-Los juegos de Neo Geo del fork (empezando por KOF '97, change `neogeo-boot`) son lo que más se juega en línea en la
-comunidad, y aquí el juego en línea es nuestro: no hay un autor al que esperar, como con los juegos de Capcom (que
-siguen el netplay de Tommy, tmcleroy/cps2recomp#70). Ya existe todo lo de alrededor: el túnel `cps-tunel` (Iroh, código
-largo, directo o por el relay de n0, hasta 8 invitados) y la tarjeta ONLINE del launcher, probados con Killer Instinct
-entre dos casas.
+The Neo Geo's fighting games are what the community plays online most, and online play here is ours to build: there
+is no upstream to wait for. The pieces around it already exist:
+- the tunnel `cps-tunel` (Iroh, a long code, direct or through n0's relay), tested with Killer Instinct between two
+  homes;
+- the launcher's ONLINE card.
+
+KOF '97 is now ready for rollback: its runs repeat frame for frame, its whole state saves and loads, and it runs
+about seven times faster than the board needs, which leaves room to replay frames.
 
 ## What Changes
 
-- **Rollback con GekkoNet** (HeatXD/GekkoNet, BSD-2-Clause, C/C++20), fijado a un commit: la sesión guarda y carga el
-  estado de la placa (`NeoGeo::Serialize`), avanza un cuadro con las entradas de los dos jugadores (`players[2]`,
-  `RunFrame`) y compara `StateHash` para detectar desincronizaciones. Retraso de entrada y predicción ajustables.
-- **La conexión por el túnel**: el juego usa el adaptador UDP de GekkoNet hacia `127.0.0.1`, y `cps-tunel` lleva ese
-  tráfico como hoy lleva el de UltraCombo. Nada de puertos que abrir ni servidor. (Un adaptador propio que hable con el
-  túnel sin UDP local queda para después, si hace falta.)
-- **Línea de comandos**: `--host [PUERTO]` y `--join HOST:PUERTO`, el mismo contrato que UltraCombo, para que la tarjeta
-  ONLINE arranque los juegos de Neo Geo igual que KI.
-- **Espectadores**: un amigo entra a la sala a mirar, también a mitad de la pelea (GekkoNet carga un estado confirmado);
-  nunca detiene ni termina la pelea de los dos jugadores.
-- **Replays**: cada reta en línea se guarda (entradas, estado inicial, versión y juego, con los checksums por cuadro), se
-  ve después y, sin ventana, sirve para hacer video.
-- **Seguro contra desync**: antes de habilitar un juego en línea pasa la sesión de estrés de GekkoNet (rebobina una y
-  otra vez en una sola PC); en línea se apagan los save states, la cámara lenta y los trucos; los dos lados comparan
-  versión, juego y set de ROM antes de empezar.
-- **Lecciones de SF4 Ember** (la misma separación juego + Iroh): la tolerancia de desconexión de la sesión queda por
-  debajo de la inactividad del túnel (8 s) y cada paquete se trata como no confiable.
+- **Rollback with GekkoNet** (HeatXD/GekkoNet, BSD-2-Clause), pinned to a release tag and fetched at build time.
+  - The session saves and loads the board's state and runs frames with both players' inputs.
+  - It compares each frame's checksum between the players to catch desyncs.
+  - Input delay is adjustable.
+- **A network adapter of our own** for GekkoNet, using plain UDP sockets: the host learns the guest's address from
+  the first packet. That's how the tunnel works, since the host's game sees the tunnel's local socket and not a known
+  address. Without it, two programs on one PC, or two on a LAN, still connect directly.
+- **Command line**:
+  - `--host [PORT]` (default 7845) and `--join HOST:PORT`, the same contract as UltraCombo, so the ONLINE card and
+    the tunnel start Neo Geo games the same way they start KI;
+  - `--delay N` for the input delay;
+  - `--stress`: GekkoNet's stress session on one PC, which rolls back every frame and checks that the state comes
+    out the same.
+- **What's off online**: save states, slow motion and frame stepping, the menu's reset and cheats, and the
+  features that change the game.
+- **Before playing**: both sides check they have the same game, set and version. A desync or a lost connection is
+  said on screen, and the program ends cleanly.
+- **The window shows** "waiting for the other player" until the session starts, and the ping and rollback count in
+  the corner.
 
-Fuera de alcance:
-- Los juegos de Capcom (siguen el netplay de upstream, change `capcom-online` de ForkAde) y Killer Instinct (el de
-  UltraCombo).
-- Lobby, salas públicas y servidor propio.
-- Más de dos jugadores.
+Out of scope here (later changes):
+- spectators and replays (GekkoNet has both);
+- the ONLINE card and the tunnel inside the launcher (the command line already fits them);
+- more than two players, lobbies, matchmaking;
+- the Capcom games (they follow upstream's netplay) and Killer Instinct (UltraCombo's).
 
 ## Capabilities
 
 ### New Capabilities
-- `neogeo-netplay`: la sesión en línea de los juegos de Neo Geo: conectar como anfitrión o invitado por el túnel, el
-  rollback, qué se apaga en línea, la verificación entre jugadores y la detección de desync.
-- `neogeo-spectators-replays`: mirar una reta como espectador y guardar, ver y reproducir sin ventana las retas en línea.
+- `neogeo-netplay`: a two-player online session for Neo Geo games. Covers hosting or joining, rollback, what is off
+  online, the checks between the players, desync detection, and the stress test.
 
 ### Modified Capabilities
-<!-- Ninguna en openspec/specs. Depende de neogeo-board (change neogeo-boot, sin archivar) y de la ventana del port de
-Neo Geo, que llega en un paso anterior a este. -->
+<!-- none: the port's other behaviour stays as neogeo-port-frontend says when not online -->
 
 ## Impact
 
-- **Orden**: después de `neogeo-boot` (la placa), la traducción a C++ y la ventana del port de Neo Geo; en línea sin
-  ventana se puede probar antes, con dos `neogeo-run` y dos túneles, como se probó KI.
-- **Dependencia nueva**: GekkoNet por FetchContent (con su ASIO para el adaptador UDP), solo en los juegos de Neo Geo.
-- **Código**: el ciclo en línea del port de Neo Geo, un módulo de sesión, `games/kof97/game.cfg` (si está habilitado en
-  línea).
-- **Launcher (fork) y ForkAde**: la tarjeta ONLINE en los juegos de Neo Geo, con su puerto; el paquete y sus
-  instrucciones.
+- New:
+  - `port/neogeo_online.{h,cpp}`: the session, the adapter and the loop;
+  - GekkoNet through CMake's FetchContent, built with `NO_ASIO_BUILD` (our adapter replaces asio's), linked
+    statically, with ws2_32 on Windows.
+- Changed:
+  - `port/neogeo_main.cpp`: the options;
+  - `port/neogeo_window.cpp`: frames come from the session when online, with the waiting screen and stats;
+  - `port/neogeo_port.cpp`: a state in memory for the session; what is off online.
+- `THIRD_PARTY_NOTICES.md`: GekkoNet (BSD-2-Clause) and zpp_bits, which it carries (MIT).
+- The custom soundtrack (`neogeo-soundtrack`) was designed to leave the board untouched, so it can be on for one
+  player and off for the other.
