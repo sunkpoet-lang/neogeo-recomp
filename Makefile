@@ -1,76 +1,44 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
+# Part of neogeo-recomp.
 #
-# The toolkit and its games. A game is a folder under games/ (game.cfg, its sources, movies, checks); its ROM
-# set is the player's own, in rom/<id>/ unless ROM says where (never part of the repository).
+# The games and the collection. A game is a folder under games/ (game.cfg, its sources); its ROM set and the Neo Geo's
+# system set (neogeo.zip) are the player's own, never part of the repository.
 #
-# One game, as GAME=<id> (build.mk has the targets):
-#   make GAME=<id>                  translate its code and build it (on macOS its launcher and app bundle too)
-#   make GAME=<id> explore          find its code by made-up play (a fresh tree needs this once)
-#   make GAME=<id> check | check-blocks | check-rewrites | check-release | check-widescreen
+#   make GAME=<id>        build one game: build/<id>/<id>      (make GAME=kof97)
+#   make games            build every game
+#   make collection       the collection's launcher with every game beside it (build/collection/)
+#   make clean
 #
-# Every game, and the collection (one launcher for all of them):
-#   make games          build every game whose ROM set is in rom/<id>/
-#   make collection     the collection's launcher, with the games built beside it (build/collection/)
-#   make collection-app macOS app bundle of the collection (build/collection/<Name>.app)
-#
-# The toolkit's own checks, none of which needs a game:
-#   make audit      nothing from a game, no keys, no personal paths (tools/audit.sh)
-#   make example    the program with no translated code and the launcher, for the stand-in game in example/
-#   make smoke      start what make example built (tools/ci_smoke.sh)
-#   make check      the audit, the copy of recomp-common, and the smoke test
+# Then: build/kof97/kof97 --rom /path/to/kof97.zip   (neogeo.zip beside it), or --headless for the checks
+# (games/kof97/README.md).
 
 GAMES := $(notdir $(patsubst %/game.cfg,%,$(wildcard games/*/game.cfg)))
+CFG := python3 tools/gamecfg.py
 
 ifdef GAME
 
-CR := .
-ROM ?= rom/$(GAME)
-export ROM
-include build.mk
+.PHONY: all clean
+all:
+	@mkdir -p work/$(GAME)/gen
+	@$(CFG) --header work/$(GAME)/gen/game_info.h $(GAME)
+	@cmake -S . -B build/$(GAME) -G Ninja -DCMAKE_BUILD_TYPE=Release -DGAME=$(GAME) > /dev/null
+	@ninja -C build/$(GAME) $(GAME)
 
-# The build with no translated code (the interpreters; what CI builds) against the translated build
-.PHONY: check-release
-check-release: port
-	@tools/check_release.sh $(FRAMES)
-
-# The game's own check of its widescreen
-.PHONY: check-widescreen
-check-widescreen: port
-	@games/$(GAME)/check_widescreen.sh
+clean:
+	rm -rf build/$(GAME) work/$(GAME)
 
 else
 
-.PHONY: check audit example smoke check-common clean games collection collection-app
-check: audit check-common smoke
+.PHONY: all games collection clean
+all: games
 
-audit:
-	@tools/audit.sh
-
-check-common:
-	@tools/sync-common.sh --check
-
-example:
-	@$(MAKE) --no-print-directory -C example NO_APP=1
-	@$(MAKE) --no-print-directory -C example launcher
-
-smoke: example
-	@tools/ci_smoke.sh
-
-# (each game whose ROM set is here; the others are left out, and said so)
 games:
-	@for g in $(GAMES); do \
-		if [ -e rom/$$g ]; then $(MAKE) --no-print-directory GAME=$$g NO_APP=1 port || exit 1; \
-		else echo "$$g: no ROM set in rom/$$g, not built"; fi; \
-	done
+	@for g in $(GAMES); do $(MAKE) --no-print-directory GAME=$$g || exit 1; done
 
 collection: games
 	@tools/collection.sh
 
-collection-app: collection
-	@tools/make_app.sh --collection
-
 clean:
-	rm -rf example/build example/work
+	rm -rf build work
 
 endif
