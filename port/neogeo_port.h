@@ -10,6 +10,7 @@
 
 #include "../machine/neogeo.h"
 #include "menu.h"
+#include "neogeo_online.h"
 
 #include <cstdint>
 #include <memory>
@@ -30,6 +31,7 @@ struct NeoGeoOptions {
     bool headless = false, mute = false, fullscreen = false, stats = false;
     int scale = 0;             // --scale: the window this many times the board's lines (0: the Display page's)
     std::string renderer;      // --renderer sdl|gpu
+    OnlineOptions online;      // --host, --join, --delay, --stress (neogeo_online.h)
 };
 
 struct NeoGeoPort {
@@ -43,6 +45,9 @@ struct NeoGeoPort {
     bool test = false;  // the operator's test switch (F2)
     Menu menu;
     int coinFrames = 0, start2Frames = 0, testFrames = 0; // (the menu's coin, player 2's Start, test switch)
+    // Online (neogeo_online.h): no stopping, slowing, save states, reset or test switch, and the menu's coin goes
+    // through the session as this player's
+    bool online = false;
 
     // Loads the set, the sources and the settings; false with a message
     bool Init(std::string &error);

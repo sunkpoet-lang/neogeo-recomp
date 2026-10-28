@@ -5,15 +5,15 @@
 
 ## 2. The session
 
-- [ ] 2.1 `port/neogeo_online.{h,cpp}`: the session (game or stress), Save/Load/Advance events on the board, the checksum, `state_size` measured
-- [ ] 2.2 The UDP adapter: one non-blocking socket, the host learns its peer from the first packet, the "NGO" prefix, the hello with game, set fingerprint and version
-- [ ] 2.3 Options: `--host [PORT]`, `--join HOST:PORT`, `--delay N`, `--stress`; online sessions start from a fresh backup RAM and don't write it back
+- [x] 2.1 `port/neogeo_online.{h,cpp}`: the session (game or stress), Save/Load/Advance events on the board, the checksum, `state_size` measured
+- [x] 2.2 The UDP adapter: one non-blocking socket, the host learns its peer from the first packet, the "NGO" prefix, the hello with game, set fingerprint and version
+- [x] 2.3 Options: `--host [PORT]`, `--join HOST:PORT`, `--delay N`, `--stress`; online sessions start from a fresh backup RAM and don't write it back
 
 ## 3. Headless and the stress test
 
-- [ ] 3.1 The headless loop runs the session: `--stress` with `--script` inputs; `--host`/`--join` without a window for tests
-- [ ] 3.2 Stress: KOF '97 over 6000 frames (attract mode, a credit, a fight) reports no difference
-- [ ] 3.3 Two headless programs on one PC (`--host`, `--join 127.0.0.1`), with scripted inputs on each side: they connect, play 3000 frames, and their hash logs match frame for frame
+- [x] 3.1 The headless loop runs the session: `--stress` with `--script` inputs; `--host`/`--join` without a window for tests
+- [x] 3.2 Stress: KOF '97 over 6000 frames (attract mode, a credit, a fight) reports no difference
+- [x] 3.3 Two headless programs on one PC (`--host`, `--join 127.0.0.1`), with scripted inputs on each side: they connect, play 3000 frames with no desync, and end with the same state hash (a frame's hash may be from a prediction, so the logs are compared by GekkoNet's confirmed checksums, not line by line)
 
 ## 4. The window
 

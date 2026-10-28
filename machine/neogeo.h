@@ -90,6 +90,10 @@ public:
     std::vector<uint8_t> &BackupRam() {
         return m_backupRam;
     }
+    // The ROMs as loaded (online play checks both players have the same)
+    const NeoGeoRoms &Roms() const {
+        return m_roms;
+    }
 
     // Save states and the hash of the whole state (68000, Z80, memories, registers, video)
     void Serialize(Archive &ar);

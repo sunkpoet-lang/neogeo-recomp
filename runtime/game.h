@@ -96,6 +96,9 @@ struct Game {
     // A training session is on (the game's own idea of one): the training aids (kFeatureTraining) work only then.
     // Not given: they work everywhere.
     bool (*inTraining)() = nullptr;
+    // Online play is on (neogeo-recomp's port/neogeo_online.h): the game's own features (kFeatureOwn: its cheats and
+    // modes) read as off, since each player's choices must not change the board both share
+    bool online = false;
     // With the board's timing (the port's arcade_timing feature) the game's own code runs in place of the readable
     // rewrites, whose time is only what their originals' takes without the board's waits: unless this says the
     // rewrites are needed now (training mode, a mode of the sources' own, widescreen, a cheat that works inside

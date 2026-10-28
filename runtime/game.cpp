@@ -181,6 +181,14 @@ int FeatureValue(const char *name) {
     if (it == g_on.end() || it->second == 0) {
         return 0;
     }
+    // (online, the game's own: off)
+    if (TheGame().online) {
+        for (const Feature &feature : TheGame().features) {
+            if ((feature.flags & kFeatureOwn) && it->first == feature.name) {
+                return 0;
+            }
+        }
+    }
     // (a training aid, outside a training session: off)
     if (TheGame().inTraining && g_aids.count(it->first) && !TheGame().inTraining()) {
         return 0;

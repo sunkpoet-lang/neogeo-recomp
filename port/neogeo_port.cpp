@@ -118,7 +118,13 @@ bool NeoGeoPort::Init(std::string &error) {
     // The backup RAM as the last run left it (a game started by the launcher: its saves folder); the tests start
     // with none, as a new board
     std::vector<uint8_t> backup;
-    if (!opt.savesPath.empty() && ReadFile(BackupPath(), backup) && backup.size() == board->BackupRam().size()) {
+    // (online, both boards start as new ones do, setting themselves up: each player's backup RAM is their own)
+    const bool online = opt.online.mode != OnlineOptions::Mode::Off;
+    if (online && !opt.stateLoad.empty()) {
+        error = "a state can't be loaded to play online";
+        return false;
+    }
+    if (!online && !opt.savesPath.empty() && ReadFile(BackupPath(), backup) && backup.size() == board->BackupRam().size()) {
         board->BackupRam() = backup;
     }
     if (!opt.stateLoad.empty() && !LoadState(opt.stateLoad, error)) {
@@ -157,17 +163,20 @@ void NeoGeoPort::RunFrame(const uint16_t players[2]) {
         menu.Close();
     }
     uint16_t now[2] = {players[0], players[1]};
-    if (coinFrames > 0) {
-        coinFrames--;
-        now[0] |= NeoGeo::kCoin;
-    }
-    if (start2Frames > 0) {
-        start2Frames--;
-        now[1] |= NeoGeo::kStart;
-    }
-    if (testFrames > 0 || test) {
-        testFrames = std::max(0, testFrames - 1);
-        now[0] |= NeoGeo::kTest;
+    // (online, the frame is the session's, with both players' controls as they were: nothing of this side's added)
+    if (!online) {
+        if (coinFrames > 0) {
+            coinFrames--;
+            now[0] |= NeoGeo::kCoin;
+        }
+        if (start2Frames > 0) {
+            start2Frames--;
+            now[1] |= NeoGeo::kStart;
+        }
+        if (testFrames > 0 || test) {
+            testFrames = std::max(0, testFrames - 1);
+            now[0] |= NeoGeo::kTest;
+        }
     }
     board->players[0] = now[0];
     board->players[1] = now[1];
@@ -182,6 +191,9 @@ void NeoGeoPort::RunFrame(const uint16_t players[2]) {
 }
 
 void NeoGeoPort::Key(char key) {
+    if (online) {
+        return; // (both boards run on together: no stopping or slowing)
+    }
     switch (key) {
     case 'p':
         paused = !paused;
@@ -241,6 +253,11 @@ bool NeoGeoPort::Tick(const uint16_t players[2]) {
 void NeoGeoPort::MenuAct(Menu::Action action) {
     std::string error;
     const std::string path = StatePath(menu.Slot());
+    if (online && (action == Menu::Action::Save || action == Menu::Action::Load || action == Menu::Action::Reset ||
+                   action == Menu::Action::Test || action == Menu::Action::Start2 || action == Menu::Action::Command)) {
+        menu.Note("Not while playing online.");
+        return;
+    }
     switch (action) {
     case Menu::Action::None: return;
     case Menu::Action::Coin:
@@ -376,7 +393,8 @@ bool NeoGeoPort::LoadState(const std::string &path, std::string &error) {
 }
 
 void NeoGeoPort::Finish() {
-    if (!opt.savesPath.empty() && board) {
+    // (not after playing online: the player's own backup RAM was not in it)
+    if (!opt.savesPath.empty() && board && opt.online.mode == OnlineOptions::Mode::Off) {
         WriteFile(BackupPath(), board->BackupRam());
     }
 }

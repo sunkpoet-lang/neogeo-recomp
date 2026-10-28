@@ -58,9 +58,13 @@ add_executable(${GAME} port/neogeo_main.cpp port/neogeo_port.cpp port/neogeo_win
     port/hud.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/neogeo_game.cpp
     machine/neogeo.cpp machine/neogeo_sound.cpp video/neogeo_video.cpp machine/m68k.cpp sound/z80.cpp machine/romset.cpp
     machine/kabuki.cpp machine/cps2crypt.cpp runtime/no_blocks.cpp runtime/no_z80_blocks.cpp ${YMFM_OPN}
-    machine/soundtrack.cpp port/soundtrack.cpp port/decoders.cpp
+    machine/soundtrack.cpp port/soundtrack.cpp port/decoders.cpp port/neogeo_online.cpp
     ${NEOGEO_GAME_SOURCES})
 target_include_directories(${GAME} PRIVATE runtime port machine "${WORK_DIR}/gen" "${GAME_DIR}")
+# (the version both players of an online session must have: VERSION's)
+file(STRINGS "${CMAKE_SOURCE_DIR}/VERSION" NEOGEO_RECOMP_VERSION LIMIT_COUNT 1)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/VERSION")
+target_compile_definitions(${GAME} PRIVATE NEOGEO_RECOMP_VERSION="${NEOGEO_RECOMP_VERSION}")
 target_link_libraries(${GAME} PRIVATE SDL3::SDL3 ZLIB::ZLIB GekkoNet)
 if (WIN32)
     target_link_libraries(${GAME} PRIVATE ws2_32)

@@ -7,6 +7,8 @@
 //
 //   <game> [--rom FILE_OR_FOLDER] [--eeprom FILE] [--settings FILE] [--features A,-B] [--fullscreen] [--mute]
 //          [--scale N] [--renderer sdl|gpu]
+//   <game> --host [PORT] | --join HOST:PORT [--delay N]   (online: neogeo_online.h; with --headless too, for tests)
+//   <game> --stress [--delay N]            (GekkoNet's stress session: rolled back every frame, the checksums compared)
 //   <game> --list-features                 (for the launcher: the optional features, one a line)
 //   <game> --headless [--rom ...] [--frames N] [--shot-every N] [--shot-dir DIR] [--hash-log FILE] [--audio-dump FILE]
 //          [--script "FRAME:BUTTON:FRAMES,..."] [--state-save FRAME:FILE] [--state-load FILE] [--menu FRAME:KEYS[:PNG]]
@@ -33,6 +35,7 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 using namespace cps2recomp;
@@ -165,6 +168,23 @@ int main(int argc, char **argv) {
             o.stateLoad = next();
         } else if (a == "--stats") {
             o.stats = true;
+        } else if (a == "--host") {
+            o.online.mode = port::OnlineOptions::Mode::Host;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                o.online.port = static_cast<uint16_t>(atoi(next()));
+            }
+        } else if (a == "--join") {
+            const std::string v = next();
+            const size_t colon = v.rfind(':');
+            o.online.mode = port::OnlineOptions::Mode::Join;
+            o.online.host = v.substr(0, colon);
+            if (colon != std::string::npos) {
+                o.online.port = static_cast<uint16_t>(atoi(v.c_str() + colon + 1));
+            }
+        } else if (a == "--delay") {
+            o.online.delay = atoi(next());
+        } else if (a == "--stress") {
+            o.online.mode = port::OnlineOptions::Mode::Stress;
         } else if (a == "--list-features") {
             // For the launcher: one optional feature per line (recomp-common/settings.h), not those whose switch is on
             // its first page (game.h, kFeatureFirstPage)
@@ -197,6 +217,12 @@ int main(int argc, char **argv) {
         port.Finish();
         return code;
     }
+    port::NeoGeoOnline online;
+    const bool isOnline = o.online.mode != port::OnlineOptions::Mode::Off;
+    if (isOnline && !online.Start(port, o.online, error)) {
+        fprintf(stderr, "%s: %s\n", GAME_NAME, error.c_str());
+        return 1;
+    }
 
     // With no window: the frames asked for, as fast as they go
     NeoGeo &board = *port.board;
@@ -209,14 +235,31 @@ int main(int argc, char **argv) {
     const uint64_t frames = o.frames ? o.frames : 600;
     // (by ticks, as the window goes: --keys can stop the game; a run stopped for good still ends)
     while (!port.quit && board.Frames() - first < frames && port.tick < (frames + 60) * 64) {
-        const uint64_t frame = board.Frames() + 1; // (the frame about to be run, counting from 1)
+        uint64_t frame = board.Frames() + 1; // (the frame about to be run, counting from 1)
         uint16_t players[2] = {};
         for (const Press &p : presses) {
             if (frame >= p.frame && frame < p.frame + p.frames) {
                 players[p.player] |= p.bits;
             }
         }
-        if (!port.Tick(players)) {
+        if (isOnline) {
+            // Online: the script's player 1 is this side's controls (its player 2's, too, with --join), the session runs
+            // the frames; a tick a frame's time, so that the two sides keep pace
+            const bool joined = o.online.mode == port::OnlineOptions::Mode::Join;
+            const uint16_t local[2] = {static_cast<uint16_t>(joined ? players[0] | players[1] : players[0]), players[1]};
+            const int shown = online.Tick(local);
+            if (online.GetStatus() == port::NeoGeoOnline::Status::Ended) {
+                break;
+            }
+            if (o.online.mode != port::OnlineOptions::Mode::Stress) {
+                std::this_thread::sleep_for(std::chrono::microseconds(online.FramesAhead() > 1.0f ? 17200 : 16900));
+            }
+            port.tick++;
+            if (shown == 0) {
+                continue;
+            }
+            frame = board.Frames();
+        } else if (!port.Tick(players)) {
             continue; // (stopped by --keys: p; o goes on by a frame)
         }
         if (sound.keep) {
@@ -253,5 +296,11 @@ int main(int argc, char **argv) {
     }
     fprintf(stderr, "state hash %08x at frame %llu\n", board.StateHash(), static_cast<unsigned long long>(board.Frames()));
     port.Finish();
+    if (isOnline) {
+        if (!online.Message().empty()) {
+            fprintf(stderr, "online: %s\n", online.Message().c_str());
+        }
+        return online.Failed() ? 3 : 0;
+    }
     return 0;
 }
