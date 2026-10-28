@@ -15,6 +15,11 @@ games=""
 mkdir -p "$B"
 for cfg in games/*/game.cfg; do
     id=$(basename "$(dirname "$cfg")")
+    # (this fork's Neo Geo games are not the launcher's own: each is a program of its own it starts through a bridge,
+    # launcher/src/description.cpp)
+    if grep -q '^board[[:space:]]*=[[:space:]]*neogeo' "$cfg"; then
+        continue
+    fi
     games="$games${games:+;}$id"
     from=build/$id/$id
     [ -n "${NO_GAME_CODE:-}" ] && from=build/$id-nocode/$id

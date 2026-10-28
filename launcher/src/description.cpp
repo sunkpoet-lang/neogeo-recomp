@@ -283,6 +283,13 @@ const OutsideProgram kFBNeo = {
     "FBNeo's menus (Game, Input, Video, Audio) are over the picture: its keys are set in Input > Map game inputs.",
     "FBNeo's own (Input > Map game inputs changes them): arrows, then the punches and kicks on the keys it shows there, 1: Start, 5: coin   "
     "Alt+Enter: full screen   F12: screenshot"};
+// (this fork) The Neo Geo games, each a program of the fork's own Neo Geo port (machine/neogeo.h), kept in a NeoGeo folder
+// with the sets (the game's and the system's, neogeo.zip) in its roms folder
+const OutsideProgram kKof97NeoGeo = {
+    "the Neo Geo port", "kof97-neogeo.exe", "NeoGeo", "this collection's own native Neo Geo port", "github.com/sunkpoet-lang/cps2recomp", "roms",
+    "No menu yet: it plays as the arcade board does, in a window. The first time, the board sets itself up and restarts once.",
+    "Player 1: arrows, A / S: buttons A and C, Z / X: B and D, 1: Start, 5: coin   Player 2: I J K L, T / Y: A and C, G / H: B and D, "
+    "2: Start, 6: coin   Gamepads: West A, South B, North C, East D, Start, Back: coin   F11: full screen   F12: screenshot   Esc: quit"};
 
 struct OutsideGame {
     const char *id, *name;                   // --play ID, as the player reads it
@@ -296,6 +303,8 @@ const std::vector<OutsideGame>& outside_games() {
         {"kinst", "Killer Instinct", &kUltraCombo, "kinst set and its CHD", {"ki-l15d.u98", "ki-l14.u98"}, {"kinst.chd", "kinst/kinst.chd", "kinst.raw"}, 7845},
         {"kinst2", "Killer Instinct 2", &kUltraCombo, "kinst2 set and its CHD", {"ki2-l14.u98"}, {"kinst2.chd", "kinst2/kinst2.chd", "kinst2.raw"}, 7845},
         {"sfiii3", "Street Fighter III 3rd Strike", &kFBNeo, "sfiii3nr1 set, with sfiii3 beside it", {"sfiii3nr1.zip"}, {"sfiii3.zip"}},
+        {"kof97", "The King of Fighters '97", &kKof97NeoGeo, "kof97 set, with neogeo.zip (the Neo Geo's system ROMs) beside it",
+         {"kof97.zip"}, {"neogeo.zip"}},
     };
     return games;
 }
