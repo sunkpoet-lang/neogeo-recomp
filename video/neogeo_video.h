@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Part of cps2recomp (the user's fork: the Neo Geo board).
+// Part of neogeo-recomp.
 //
 // The Neo Geo's video chip, the LSPC: no tilemaps, only sprites (vertical strips of 16x16 tiles, up to 381, any of them
 // shrunk) and a fixed layer of 8x8 tiles on top. Its memory (64 K words) is reached through three registers: an

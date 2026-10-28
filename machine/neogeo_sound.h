@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Part of cps2recomp (the user's fork: the Neo Geo board).
+// Part of neogeo-recomp.
 //
 // The Neo Geo's sound chip, a YM2610 at 8 MHz: FM, the SSG, ADPCM-A and ADPCM-B, played from the cartridge's V samples.
 // The chip is ymfm's (third_party/ymfm_opn.*, Aaron Giles, BSD-3-Clause), unchanged; this is what it is wired to on the

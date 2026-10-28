@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Part of cps2recomp (the user's fork: the Neo Geo board).
+// Part of neogeo-recomp.
 //
 // What a Neo Geo game's own sources (games/<id>/src) do with the board. Everything that does not touch it is the same
 // as for a Capcom game, in the same registry (runtime/game.h, TheGame()): the menu's pages, the features and their

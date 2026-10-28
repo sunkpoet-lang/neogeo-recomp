@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Part of cps2recomp (the user's fork: the Neo Geo board).
+// Part of neogeo-recomp.
 //
 // A Neo Geo game's port: the board (machine/neogeo.h) with what every port of the collection has around it, from the
 // pieces that do not depend on a board: the game's sources and features (runtime/game.h, runtime/neogeo_game.h) and

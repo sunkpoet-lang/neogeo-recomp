@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Part of cps2recomp (the user's fork: the Neo Geo board).
+// Part of neogeo-recomp.
 //
 // The King of Fighters '97's own sources (runtime/neogeo_game.h). For now one cheat, which shows the way in for the
 // training mode to come (openspec change neogeo-training).

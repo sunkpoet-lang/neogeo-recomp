@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Part of cps2recomp (the user's fork: the Neo Geo board).
+// Part of neogeo-recomp.
 //
 // A Neo Geo game (game.cfg's board = neogeo): its port (neogeo_port.h) in a window (neogeo_window.cpp), or with no
 // window for the checks (--headless: pictures as PNG files, a hash of the whole state each frame, input from a script,

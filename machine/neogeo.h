@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Part of cps2recomp (the user's fork: the Neo Geo board).
+// Part of neogeo-recomp.
 //
 // The Neo Geo MVS as a game's code needs it: the 68000 and what it is wired to (the cartridge's program, with its
 // second part in 1 MB banks at 0x200000; the work RAM; the system ROM at 0xC00000; the backup RAM; the inputs; the
