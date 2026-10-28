@@ -1,7 +1,7 @@
 ## 1. GekkoNet in the build
 
-- [ ] 1.1 FetchContent GekkoNet at tag `v20261024222910-9da2363`, `GekkoLib` only, `NO_ASIO_BUILD`, static; link it (and ws2_32 on Windows) to the Neo Geo games; build `kof97` and check the hash at frame 3000 is still `7ef55b19`
-- [ ] 1.2 `THIRD_PARTY_NOTICES.md`: GekkoNet (BSD-2-Clause) and zpp_bits (MIT), fetched at build time
+- [x] 1.1 FetchContent GekkoNet at tag `v20261024222910-9da2363`, `GekkoLib` only, `NO_ASIO_BUILD`, static; link it (and ws2_32 on Windows) to the Neo Geo games; build `kof97` and check the hash at frame 3000 is still `7ef55b19`
+- [x] 1.2 `THIRD_PARTY_NOTICES.md`: GekkoNet (BSD-2-Clause) and zpp_bits (MIT), fetched at build time
 
 ## 2. The session
 

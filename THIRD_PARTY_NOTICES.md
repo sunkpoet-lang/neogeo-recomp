@@ -92,6 +92,8 @@ None of these is stored in this repository.
 | [SDL 3](https://libsdl.org) | zlib. Copyright (C) 1997-2026 Sam Lantinga | Window, input, audio, GPU (game and launcher); the system's where there is one |
 | [Dear ImGui](https://github.com/ocornut/imgui) 1.92.9b | MIT. Copyright (c) 2014-2026 Omar Cornut | The launcher's interface, compiled into the launcher |
 | [Inter](https://rsms.me/inter/) 4.1 | SIL Open Font License 1.1. Copyright (c) 2016 The Inter Project Authors | The launcher's font, compiled into the launcher |
+| [GekkoNet](https://github.com/HeatXD/GekkoNet) (release v20261024222910-9da2363) | BSD-2-Clause. Copyright (c) 2024-2026, Jamie Meyer | Online play's rollback and its messages, compiled into the games (without its asio) |
+| [zpp_bits](https://github.com/eyalz800/zpp_bits), carried by GekkoNet | MIT. Copyright (c) 2021 Eyal Z | GekkoNet's packing of its messages |
 | [zlib](https://zlib.net) | zlib. Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler | Reading a ROM set's archive, screenshots (PNG); the system's |
 
 ## Tools used to build (not included in builds)
