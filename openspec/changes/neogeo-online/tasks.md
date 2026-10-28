@@ -17,9 +17,9 @@
 
 ## 4. The window
 
-- [ ] 4.1 `RunNeoGeoWindow` online: the waiting screen, frames from the session, rolled-back frames neither shown nor heard, pacing by frames ahead
+- [x] 4.1 `RunNeoGeoWindow` online: the waiting screen, frames from the session, rolled-back frames neither shown nor heard, pacing by frames ahead
 - [ ] 4.2 What is off online: keys, the menu's rows, the cheats; the menu doesn't stop the game
-- [ ] 4.3 The ping, delay and rollbacks in a corner; the desync and "the other player left" messages
+- [x] 4.3 The ping, delay and rollbacks in a corner; the desync and "the other player left" messages
 - [ ] 4.4 Two KOF windows on one PC, one with the keyboard and one with the stick: a full fight with no desync
 
 ## 5. Through the tunnel (with the user)

@@ -10,7 +10,9 @@
 
 #include "../machine/machine.h"
 #include "../runtime/game.h"
+#include "../recomp-common/text.h"
 #include "bindings.h"
+#include "neogeo_online.h"
 #include "neogeo_port.h"
 #include "present.h"
 
@@ -133,6 +135,27 @@ namespace {
         const int columns = shape == Shape::Arcade ? 384 : NeoGeoVideo::kWidth;
         return FitPicture(width, height, columns, NeoGeoVideo::kHeight, shape, DisplayScaling());
     }
+
+    // Online: what the session says (waiting, connecting, a desync, the other player gone) in the middle, and while
+    // playing the ping, delay and rollbacks in a corner
+    void DrawOnline(std::vector<uint32_t> &pixels, const NeoGeoOnline &online) {
+        constexpr int kWidth = NeoGeoVideo::kWidth, kHeight = NeoGeoVideo::kHeight;
+        const recomp::text::Canvas canvas{pixels.data(), kWidth, kHeight};
+        const std::string &message = online.Message();
+        if (!message.empty()) {
+            const float width = recomp::text::TextWidth(message.c_str(), 1);
+            const float x = (kWidth - width) / 2, y = kHeight / 2 - 6;
+            canvas.Fill(x - 6, y - 5, width + 12, 18, {20, 22, 30, 230});
+            const recomp::text::Color colour = online.Failed() ? recomp::text::Color{255, 120, 110, 255} : recomp::text::Color{255, 255, 255, 255};
+            canvas.Text(x, y, 1, 0, colour, message.c_str());
+        }
+        const std::string stats = online.Stats();
+        if (!stats.empty()) {
+            const float width = recomp::text::TextWidth(stats.c_str(), 1);
+            canvas.Fill(kWidth - width - 6, 1, width + 4, 11, {20, 22, 30, 160});
+            canvas.Text(kWidth - width - 4, 2, 1, 0, {200, 220, 255, 255}, stats.c_str());
+        }
+    }
 } // namespace
 
 int RunNeoGeoWindow(NeoGeoPort &port) {
@@ -175,6 +198,21 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     sound.keep = audio != nullptr;
     bool silent = false;
 
+    // Online (neogeo_online.h): the session runs the frames, with this side's controls as its player's
+    NeoGeoOnline online;
+    const bool isOnline = port.opt.online.mode != OnlineOptions::Mode::Off;
+    if (isOnline) {
+        std::string error;
+        if (!online.Start(port, port.opt.online, error)) {
+            fprintf(stderr, "online: %s\n", error.c_str());
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, GAME_TITLE, ("Online: " + error).c_str(), window);
+            return 1;
+        }
+        const OnlineOptions::Mode mode = port.opt.online.mode;
+        const char *who = mode == OnlineOptions::Mode::Host ? "player 1" : mode == OnlineOptions::Mode::Join ? "player 2" : "stress test";
+        SDL_SetWindowTitle(window, (std::string(GAME_TITLE) + " - online, " + who).c_str());
+    }
+
     std::vector<SDL_Gamepad *> gamepads;
     std::vector<uint32_t> menuBase, menuPicture, shown;
     uint32_t menuWidth = 0, menuHeight = 0;
@@ -200,6 +238,33 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     };
     const double kFrameNs = 1e9 * NeoGeo::kLines * NeoGeo::kCpuPerLine / 12000000.0; // (59.19 a second)
     uint64_t nextFrame = SDL_GetTicksNS();
+    auto feedAudio = [&](bool ran, int slowBy) {
+            if (audio && silent != port.menu.muted) {
+                silent = port.menu.muted;
+                SDL_SetAudioStreamGain(audio, silent ? 0.0f : 1.0f);
+            }
+            if (audio && ran && !sound.made.empty()) {
+                double waiting = SDL_GetAudioStreamQueued(audio) / (4.0 * NeoGeoSound::SampleRate()) * slowBy;
+                if (waiting > kAudioMost) {
+                    SDL_ClearAudioStream(audio);
+                    waiting = 0;
+                }
+                const double ratio = (1.0 + std::clamp((waiting - kAudioWaiting) * 0.5, -0.02, 0.02)) / slowBy;
+                SDL_SetAudioStreamFrequencyRatio(audio, static_cast<float>(ratio));
+                SDL_PutAudioStreamData(audio, sound.made.data(), static_cast<int>(sound.made.size() * sizeof(int16_t)));
+            }
+            sound.made.clear();
+    };
+    // A frame's time, against the clock (online, a touch longer while this side is ahead of the other's)
+    auto pace = [&]() {
+        nextFrame += static_cast<uint64_t>(kFrameNs * (isOnline && online.FramesAhead() > 1.0f ? 1.016 : 1.0));
+        const uint64_t now = SDL_GetTicksNS();
+        if (nextFrame > now) {
+            SDL_DelayPrecise(nextFrame - now);
+        } else if (now - nextFrame > 100000000ull) {
+            nextFrame = now;
+        }
+    };
     bool running = true;
     while (running && !port.quit && (port.opt.frames == 0 || port.frame < port.opt.frames)) {
         SDL_Event ev;
@@ -331,41 +396,38 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                 port.menu.Draw(menuPicture.data(), static_cast<int>(menuWidth), static_cast<int>(menuHeight));
             }
             presenter.Show(menuPicture.data(), static_cast<int>(menuWidth), static_cast<int>(menuHeight), where);
+            if (isOnline) {
+                // (online, the game goes on behind the menu, with this side's controls let go)
+                const uint16_t none[2] = {};
+                feedAudio(online.Tick(none) > 0, 1);
+                pace();
+                continue;
+            }
             SDL_Delay(8);
             nextFrame = SDL_GetTicksNS();
             continue;
         }
 
         const uint16_t withService[2] = {static_cast<uint16_t>(players[0] | service), players[1]};
-        const int slowBy = port.paused ? 1 : port.menu.SlowBy();
-        const bool ran = port.Tick(withService);
+        const int slowBy = port.paused || isOnline ? 1 : port.menu.SlowBy();
+        bool ran;
+        if (isOnline) {
+            // (this side's player: the keyboard's two players' keys and the gamepads together; the stress test's two)
+            const bool stress = port.opt.online.mode == OnlineOptions::Mode::Stress;
+            const uint16_t local[2] = {static_cast<uint16_t>(stress ? players[0] : players[0] | players[1]), stress ? players[1] : uint16_t{0}};
+            ran = online.Tick(local) > 0;
+        } else {
+            ran = port.Tick(withService);
+        }
 
-        if (audio && silent != port.menu.muted) {
-            silent = port.menu.muted;
-            SDL_SetAudioStreamGain(audio, silent ? 0.0f : 1.0f);
-        }
-        if (audio && ran && !sound.made.empty()) {
-            double waiting = SDL_GetAudioStreamQueued(audio) / (4.0 * NeoGeoSound::SampleRate()) * slowBy;
-            if (waiting > kAudioMost) {
-                SDL_ClearAudioStream(audio);
-                waiting = 0;
-            }
-            const double ratio = (1.0 + std::clamp((waiting - kAudioWaiting) * 0.5, -0.02, 0.02)) / slowBy;
-            SDL_SetAudioStreamFrequencyRatio(audio, static_cast<float>(ratio));
-            SDL_PutAudioStreamData(audio, sound.made.data(), static_cast<int>(sound.made.size() * sizeof(int16_t)));
-        }
-        sound.made.clear();
+        feedAudio(ran, slowBy);
 
         port.Shown(shown);
-        presenter.Show(shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, where);
-
-        nextFrame += static_cast<uint64_t>(kFrameNs);
-        const uint64_t now = SDL_GetTicksNS();
-        if (nextFrame > now) {
-            SDL_DelayPrecise(nextFrame - now);
-        } else if (now - nextFrame > 100000000ull) {
-            nextFrame = now;
+        if (isOnline) {
+            DrawOnline(shown, online);
         }
+        presenter.Show(shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, where);
+        pace();
     }
     for (SDL_Gamepad *gp : gamepads) {
         SDL_CloseGamepad(gp);
