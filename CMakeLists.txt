@@ -24,16 +24,31 @@ else ()
 endif ()
 find_package(ZLIB REQUIRED)
 
-# A Neo Geo game (game.cfg's board = neogeo; this fork): its own board (machine/neogeo.cpp, video/neogeo_video.cpp) and,
-# for now, a program with no window in the 68000's interpreter (port/neogeo_main.cpp; openspec change neogeo-boot).
-# None of the Capcom targets below are made for it.
+# A Neo Geo game (game.cfg's board = neogeo; this fork): its own board (machine/neogeo*.cpp, video/neogeo_video.cpp) and
+# its program, named as the game, in a window or with none, in the 68000's interpreter (port/neogeo_main.cpp,
+# port/neogeo_window.cpp; openspec changes neogeo-boot, neogeo-window-sound). None of the Capcom targets below are made
+# for it.
 file(STRINGS "${GAME_DIR}/game.cfg" GAME_BOARD REGEX "^board[ \t]*=")
 if (GAME_BOARD MATCHES "neogeo")
-    add_executable(neogeo-run port/neogeo_main.cpp machine/neogeo.cpp video/neogeo_video.cpp machine/m68k.cpp
-        sound/z80.cpp machine/romset.cpp machine/kabuki.cpp machine/cps2crypt.cpp runtime/no_blocks.cpp runtime/no_z80_blocks.cpp)
-    target_include_directories(neogeo-run PRIVATE runtime port machine "${WORK_DIR}/gen")
-    target_link_libraries(neogeo-run PRIVATE ZLIB::ZLIB)
-    target_compile_options(neogeo-run PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    set(YMFM_OPN third_party/ymfm_opn.cpp third_party/ymfm_ssg.cpp third_party/ymfm_adpcm.cpp)
+    set_source_files_properties(${YMFM_OPN} PROPERTIES COMPILE_OPTIONS "-w")
+    add_executable(${GAME} port/neogeo_main.cpp port/neogeo_window.cpp machine/neogeo.cpp machine/neogeo_sound.cpp
+        video/neogeo_video.cpp machine/m68k.cpp sound/z80.cpp machine/romset.cpp machine/kabuki.cpp machine/cps2crypt.cpp
+        runtime/no_blocks.cpp runtime/no_z80_blocks.cpp ${YMFM_OPN})
+    target_include_directories(${GAME} PRIVATE runtime port machine "${WORK_DIR}/gen")
+    target_link_libraries(${GAME} PRIVATE SDL3::SDL3 ZLIB::ZLIB)
+    target_compile_options(${GAME} PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    # (<game>-neogeo: the collection's launcher has a bridge called <game> beside it, which starts this program)
+    set_target_properties(${GAME} PROPERTIES OUTPUT_NAME "${GAME}-neogeo")
+    if (WIN32)
+        set_target_properties(${GAME} PROPERTIES WIN32_EXECUTABLE ON)
+        get_filename_component(GAME_ICON "${GAME_DIR}/icon.ico" ABSOLUTE)
+        if (EXISTS "${GAME_ICON}")
+            enable_language(RC)
+            file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/icon.rc" "1 ICON \"${GAME_ICON}\"\n")
+            target_sources(${GAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/icon.rc")
+        endif ()
+    endif ()
     return()
 endif ()
 

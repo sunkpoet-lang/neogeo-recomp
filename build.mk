@@ -87,13 +87,13 @@ configure:
 	@cmake -S $(CR) -B $(B) -G Ninja -DCMAKE_BUILD_TYPE=Release -DGAME=$(GAME) \
 	  -DGAME_DIR=$(CURDIR)/games/$(GAME) -DWORK_DIR=$(CURDIR)/work/$(GAME) > /dev/null
 
-# A Neo Geo game (game.cfg's board = neogeo; this fork): for now only its program with no window, build/<game>/neogeo-run
+# A Neo Geo game (game.cfg's board = neogeo; this fork): its program, build/<game>/<game> (a window, or --headless)
 neogeo-run:
 	@mkdir -p $(GEN)
 	@$(CFG) --header $(GEN)/game_info.h $(GAME)
 	@cmake -S $(CR) -B $(B) -G Ninja -DCMAKE_BUILD_TYPE=Release -DGAME=$(GAME) \
 	  -DGAME_DIR=$(CURDIR)/games/$(GAME) -DWORK_DIR=$(CURDIR)/work/$(GAME) > /dev/null
-	@ninja -C $(B) neogeo-run
+	@ninja -C $(B) $(GAME)
 
 port: gen configure
 	@ninja -C $(B) $(GAME)
