@@ -67,6 +67,30 @@ public:
     NeoGeoSound &Sound() {
         return m_sound;
     }
+    // Whether the game has the board (the cartridge's vectors in), not the system ROM: at power-on the system tests the
+    // work RAM, and a game's sources writing it then make the test fail ("WORK RAM ERROR")
+    bool GameRunning() const {
+        return m_cartVectors;
+    }
+    // For a game's sources (runtime/neogeo_game.h): the work RAM (0x100000-0x10FFFF, mirrored), as the 68000 sees it
+    uint8_t Peek8(uint32_t address) const {
+        return m_ram[address & 0xFFFF];
+    }
+    uint16_t Peek16(uint32_t address) const {
+        return static_cast<uint16_t>((m_ram[address & 0xFFFE] << 8) | m_ram[(address & 0xFFFE) + 1]);
+    }
+    void Poke8(uint32_t address, uint8_t value) {
+        m_ram[address & 0xFFFF] = value;
+    }
+    void Poke16(uint32_t address, uint16_t value) {
+        m_ram[address & 0xFFFE] = static_cast<uint8_t>(value >> 8);
+        m_ram[(address & 0xFFFE) + 1] = static_cast<uint8_t>(value);
+    }
+    // The backup RAM (the system's and the games' settings, bookkeeping and high scores), kept in a file between runs
+    std::vector<uint8_t> &BackupRam() {
+        return m_backupRam;
+    }
+
     // Save states and the hash of the whole state (68000, Z80, memories, registers, video)
     void Serialize(Archive &ar);
     uint32_t StateHash();
