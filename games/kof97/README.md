@@ -28,7 +28,7 @@ system ROM tests the work RAM at power-on, and a write then fails that test.
 
 ## Building and checking
 
-    make neogeo-run GAME=kof97
+    make GAME=kof97
     build/kof97/kof97 --headless --rom /path/to/kof97.zip --frames 3000 --shot-every 300 --shot-dir shots \
         --script "1300:coin1:1,1450:start1:8" --hash-log hashes.txt --audio-dump kof97.wav
 

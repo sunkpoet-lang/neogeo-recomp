@@ -1,21 +1,23 @@
 # Third-party notices
 
-cps2recomp is licensed under the GNU General Public License v3.0 (see `LICENSE`). Most of it was
-written for this project. What follows is everything that was not; the licenses of all of it are
-compatible with the GPL-3.0.
+neogeo-recomp is licensed under the GNU General Public License v3.0 (see `LICENSE`). It is built on
+[cps2recomp](https://github.com/tmcleroy/cps2recomp) by Tommy McLeroy (GPL-3.0-only): the 68000 and Z80 and their
+translators, the set reader, the in-game menu, the settings, the presenter, the HUD and the launcher come from it,
+with their history (see the README). What follows is everything that was written for neither project; the licenses
+of all of it are compatible with the GPL-3.0.
 
 ## In this repository
 
-### MAME (the CPS-2 program cipher)
+### MAME's Neo Geo driver (BSD-3-Clause)
 
-`machine/cps2crypt.cpp` is MAME's `src/mame/capcom/cps2crypt.cpp`: the tables and the two Feistel
-networks are as they are there, and only the entry point at the end of the file was written here.
-The cipher was worked out by Andreas Naive and Nicola Salmoria. **BSD-3-Clause**:
+The Neo Geo board (`machine/neogeo.cpp`, `machine/neogeo.h`, `video/neogeo_video.cpp`, `video/neogeo_video.h`)
+follows MAME's Neo Geo driver closely enough to be credited as coming from it: `src/mame/snk/neogeo.cpp`, `neogeo.h`,
+`neogeo_spr.cpp` and `neogeo_v.cpp` (the memory map and its registers, the interrupts and the display position timer,
+the Z80's banks and command latches, the sprites' list, shrink and drawing, the fixed layer, the palette and its
+resistor networks). The horizontal shrink table (`kShrinkX`) is MAME's as it is. **BSD-3-Clause**, by the copyright
+holders MAME lists for those files: Bryan McPhail, Ernesto Corvi, Andrew Prime, Zsolt Vasvari (thanks to Fuzz):
 
 ```
-Copyright (c) Paul Leaman, Andreas Naive, Nicola Salmoria, Charles MacDonald
-All rights reserved.
-
 Redistribution and use in source and binary forms, with or without modification, are permitted
 provided that the following conditions are met:
 
@@ -38,103 +40,35 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-It is compiled into a game's program and its launcher, so both carry this notice.
+### ymfm (BSD-3-Clause)
 
-More was written here but follows MAME closely enough to be credited as coming from it (all
-BSD-3-Clause there; the notice above covers the same terms, with these authors):
+The YM2610 (`machine/neogeo_sound.cpp`) is [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles (commit
+81aec25), the FM chips' emulation MAME uses, kept unchanged: `third_party/ymfm.h`, `ymfm_fm.h`, `ymfm_fm.ipp`,
+`ymfm_opn.h`, `ymfm_opn.cpp`, `ymfm_ssg.h`, `ymfm_ssg.cpp`, `ymfm_adpcm.h`, `ymfm_adpcm.cpp`. **BSD-3-Clause**,
+Copyright (c) 2021, Aaron Giles, All rights reserved, with the conditions and disclaimer above.
 
-| Here | After | What |
-| --- | --- | --- |
-| `sound/qsound.cpp`, `qsound.h` | `src/devices/sound/qsoundhle.cpp`, by superctr and Valley Bell | What the QSound chip's program does with its registers: the voices, the echo, the two start-up states. Written again with this project's names; the pan curve is this project's own. |
-| `machine/romset.cpp`: `Unshuffle`, `DecodeKey` | `src/mame/capcom/cps2.cpp` | How the graphics ROMs' address lines are untangled, and the layout of a key file (about thirty lines). |
+### MAME (the CPS-2 program cipher, BSD-3-Clause)
 
-The rest of the machine (`machine/`, `video/`, `sound/z80.cpp`) is this project's code. It uses
-facts about the hardware that MAME's CPS-1/CPS-2 drivers record (register layouts, priority rules,
-timings); the files that do say so. No emulator is compiled or linked into a game, and none is in
-this repository.
+`machine/cps2crypt.cpp` is MAME's `src/mame/capcom/cps2crypt.cpp` (worked out by Andreas Naive and Nicola Salmoria;
+Copyright (c) Paul Leaman, Andreas Naive, Nicola Salmoria, Charles MacDonald, with the conditions and disclaimer
+above). It comes with cps2recomp's set reader (`machine/romset.cpp`), which the Neo Geo shares and which still reads
+CPS sets; `romset.cpp`'s `Unshuffle` and `DecodeKey` follow MAME's `src/mame/capcom/cps2.cpp`.
 
-The arcade timing (`machine/machine.cpp`, `LineDma`; `machine/m68k.h`, `busWait`; `docs/TIMING.md`) follows what
-[jtcps2](https://github.com/jotego/jtcores) (jotego's CPS-2 core, GPL-3.0-or-later) does: the board's acknowledge
-after Loic Petit's study of the DL-1827, and the CPS-A's DMA as jotego measured it. No code of it is here; the rules
-were written again from reading it and from simulating it, and checked against the simulation.
+### recomp-common (GPL-3.0) and wiiparty-recomp (GPL-3.0-or-later)
 
-### wiiparty-recomp (GPL-3.0-or-later) and recomp-common (GPL-3.0)
+`recomp-common/` is a copy of [recomp-common](https://github.com/tmcleroy/recomp-common) (the in-game menu, the
+settings rules and the launcher; Tommy McLeroy's, GPL-3.0), never changed here. Its launcher descends from the
+launcher of [wiiparty-recomp](https://github.com/arelkair/wiiparty-recomp) by arelkair (GPL-3.0-or-later):
+`launcher/src/ui.cpp`, `ui.h` and `embedded.h` are that project's files nearly unchanged and are marked
+GPL-3.0-or-later; `main.cpp`, parts of `app.cpp`, `game_process.cpp` and `embed_fonts.cmake` follow it.
+recomp-common's own `THIRD_PARTY_NOTICES.md` has the table, file by file.
 
-`recomp-common/` is a copy of [recomp-common](https://github.com/tmcleroy/recomp-common) (the
-in-game menu, the settings rules and the launcher; this author's, GPL-3.0), made by
-`tools/sync-common.sh` and never changed here. Its launcher descends from the launcher of
-[wiiparty-recomp](https://github.com/arelkair/wiiparty-recomp) by arelkair (GPL-3.0-or-later):
-`launcher/src/ui.cpp`, `ui.h` and `embedded.h` are that project's files nearly unchanged and are
-marked GPL-3.0-or-later; `main.cpp`, parts of `app.cpp`, `game_process.cpp` and `embed_fonts.cmake`
-follow it. recomp-common's own `THIRD_PARTY_NOTICES.md` has the table, file by file.
+### Facts from fbneo-training-mode
 
-The 5x7 dot-matrix font of the menu (`recomp-common/text.h`) is the generic character set of LCD
-and LED displays, typed in for recomp-common.
-
-### Sound file decoders (public domain, or MIT / MIT-0)
-
-The custom soundtrack (`port/soundtrack.cpp`) reads the player's music files with four single-file decoders,
-kept unchanged in `third_party/` and compiled by `port/decoders.cpp`. Each is offered under either of two
-licences, the first being the public domain; the licence statements are at the end of each file, and the release
-archives carry them in `licenses/sound-decoders.txt`.
-
-| File | Project | Licence |
-| --- | --- | --- |
-| `third_party/stb_vorbis.c` | [stb](https://github.com/nothings/stb) `stb_vorbis` 1.22 (commit 2c980bb), by Sean Barrett | Public domain, or MIT |
-| `third_party/dr_flac.h` | [dr_libs](https://github.com/mackron/dr_libs) `dr_flac` 0.13.4 (commit dfe8377), by David Reid | Public domain, or MIT No Attribution |
-| `third_party/dr_mp3.h` | dr_libs `dr_mp3` 0.7.4 (the same commit), by David Reid, after minimp3 by lieff | Public domain, or MIT No Attribution |
-| `third_party/dr_wav.h` | dr_libs `dr_wav` 0.14.6 (the same commit), by David Reid | Public domain, or MIT No Attribution |
-
-### ymfm (BSD-3-Clause) — this fork only
-
-The sound of the classic CPS-1 board (Street Fighter II Champion Edition and Hyper Fighting) plays its
-YM2151 with [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles (commit 81aec25), the FM chips'
-emulation MAME uses. Its OPM files are kept unchanged: `third_party/ymfm.h`, `third_party/ymfm_fm.h`,
-`third_party/ymfm_fm.ipp`, `third_party/ymfm_opm.h` and `third_party/ymfm_opm.cpp`. This is an emulator's code, which upstream's
-`CONTRIBUTING.md` (rule 4) does not take: it lives only in this fork's `sf2-sonido` branch. The Neo Geo board of
-this fork's `neogeo` branch plays its YM2610 with ymfm's OPN, SSG and ADPCM files from the same commit, also
-unchanged: `third_party/ymfm_opn.h`, `ymfm_opn.cpp`, `ymfm_ssg.h`, `ymfm_ssg.cpp`, `ymfm_adpcm.h` and
-`ymfm_adpcm.cpp`. **BSD-3-Clause**:
-
-```
-Copyright (c) 2021, Aaron Giles
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification, are permitted
-provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice, this list of conditions
-   and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright notice, this list of
-   conditions and the following disclaimer in the documentation and/or other materials provided
-   with the distribution.
-3. Neither the name of the copyright holder nor the names of its contributors may be used to
-   endorse or promote products derived from this software without specific prior written
-   permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
-IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-```
-
-The OKI MSM6295 of the same board (`sound/okim6295.cpp`, `okim6295.h`) was written for this fork from the chip's
-data sheet: the ADPCM steps and the sample table as the chip defines them.
-
-### MAME's Neo Geo driver (BSD-3-Clause) — this fork only
-
-The Neo Geo board of this fork's `neogeo` branch (`machine/neogeo.cpp`, `machine/neogeo.h`,
-`video/neogeo_video.cpp`, `video/neogeo_video.h`) follows MAME's Neo Geo driver closely enough to be credited as
-coming from it: `src/mame/snk/neogeo.cpp`, `neogeo.h`, `neogeo_spr.cpp` and `neogeo_v.cpp` (the memory map and its
-registers, the interrupts and the display position timer, the Z80's banks and command latches, the sprites' list,
-shrink and drawing, the fixed layer, the palette and its resistor networks). The horizontal shrink table
-(`kShrinkX`) is MAME's as it is. **BSD-3-Clause**, copyright holders as MAME lists them for those files: Bryan
-McPhail, Ernesto Corvi, Andrew Prime, Zsolt Vasvari (thanks to Fuzz); the licence text is the one above, with their
-names in place of Aaron Giles'.
+The addresses in a game's memory that a game's sources use (for example KOF '97's players' health, in
+`games/kof97/src/kof97.cpp`) come from [fbneo-training-mode](https://github.com/peon2/fbneo-training-mode) by peon2
+and its contributors, which documents them for FBNeo's Lua scripts. Only those facts about the games are used; none
+of its code is here.
 
 ## Downloaded at build time
 
@@ -147,35 +81,17 @@ None of these is stored in this repository.
 | [Inter](https://rsms.me/inter/) 4.1 | SIL Open Font License 1.1. Copyright (c) 2016 The Inter Project Authors | The launcher's font, compiled into the launcher |
 | [zlib](https://zlib.net) | zlib. Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler | Reading a ROM set's archive, screenshots (PNG); the system's |
 
-Each download is checked against its published SHA-256. The release archives (`tools/release/`) carry the
-license texts of SDL 3, Dear ImGui and Inter (the font is inside the launcher), MAME's notice above, and the
-GPL-3.0 with the offer of source that goes with it (`SOURCE.txt`: the tag's source on GitHub). In release builds
-SDL 3 (3.4.16) is linked into every program; `zlib1.dll` is in the Windows archive, and there the MinGW-w64
-runtime (libstdc++, libgcc, winpthreads) is linked in: GPL-3.0 with the GCC Runtime Library Exception, and the
-MinGW-w64 runtime licence, whose texts the Windows archive carries too.
-
 ## Tools used to build (not included in builds)
 
-Python, CMake, Ninja, a C++ compiler; glslangValidator and SPIRV-Cross to regenerate
-`port/shaders.inc` from the shaders in `port/shaders/` (which are this project's).
+Python, CMake, Ninja, a C++20 compiler; glslangValidator and SPIRV-Cross to regenerate `port/shaders.inc` from the
+shaders in `port/shaders/`.
 
 ## What is not included
 
-Nothing from any game or board is in this repository: no ROM or part of one, no graphics, sound or
-text, no key, and nothing made from a game's ROMs. The games' folders (`games/<id>/`) hold this project's own
-code and notes about each game (addresses and record layouts found by the author, the ROM set's file names and
-checksums), input movies (text: which buttons were held on which frame), and the README's pictures of the games
-in `docs/screenshots/`, made by the programs from the author's own ROM sets. Code translated from a game by the recompiler is
-made on the machine of someone who has the game's ROM set, and is never part of this repository.
+Nothing from any game or board is in this repository: no ROM or part of one, no BIOS, no graphics, sound or text, and
+nothing made from a game's or the system's ROMs. The games' folders (`games/<id>/`) hold this project's own code and
+notes about each game (addresses, the ROM set's file names and checksums). Code translated from a game by the
+recompiler is made on the machine of someone who has the game's ROM set, and is never part of this repository.
 
-`sound/driver.cpp` is the one file here written from a program of Capcom's: it does in C++ what
-version 2.01b of the sound program on these boards does (the Z80 program that plays a game's music
-and sound effects on the QSound chip). It was written by hand from reading that program, routine by
-routine, in the way a game's repository rewrites routines of its game (`docs/READABLE.md`), and is
-checked against the program write for write on the player's own ROMs. It reads every table,
-sequence and sample from the player's ROM set; the only bytes of the program it carries are the 29
-characters of the version text it knows the program by.
-
-Code added later from another project must have a license compatible with the GPL-3.0 and be listed
-here, with its notice kept in the file. `tools/audit.sh` fails if a file marked as another
-project's is not one of those listed above.
+Code added later from another project must have a license compatible with the GPL-3.0 and be listed here, with its
+notice kept in the file.

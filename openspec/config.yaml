@@ -1,0 +1,9 @@
+schema: spec-driven
+
+context: |
+  Language: English
+  All new artifacts must be written in English. (The changes and specs brought from the cps2recomp fork are in
+  Spanish; they stay as they are.)
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Project: native Neo Geo MVS ports on CPS-2 Recomp's toolkit (C++20, CMake, SDL3). Nothing from a game or the
+  system ROMs is ever committed; players bring their own sets.
