@@ -31,6 +31,7 @@ struct GfxRange {
 
 struct Board {
     bool cps1 = false;
+    bool neogeo = false; // (`board = neogeo`: a Neo Geo MVS, not a Capcom board at all; machine/neogeo.h)
     bool qsound = true; // (false: the classic CPS-1's sound, which the toolkit does not have yet)
     uint8_t layerControl = 0x26;
     uint8_t priority[4] = {0x28, 0x2A, 0x2C, 0x2E};
@@ -101,5 +102,32 @@ RomList ParseRomList(const char *program, const char *graphics, const char *soun
 // zips are found by checksum, whatever they are called. Nothing is written or changed.
 // False with a message if a file is missing or is not the one expected.
 bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::string &error);
+
+// A Neo Geo MVS game (board = neogeo): its cartridge's files and the system's, from the BIOS set (MAME's `neogeo`),
+// as the board's chips see them
+struct NeoGeoRoms {
+    std::vector<uint8_t> program;      // P1 then P2 (from 0x100000), words high byte first as the 68000 reads them
+    std::vector<uint8_t> fix;          // S1: the fix layer's 8x8 tiles, 32 bytes each
+    std::vector<uint8_t> soundProgram; // M1: the Z80's program and its banks
+    std::vector<uint8_t> samples;      // V: the YM2610's ADPCM samples
+    std::vector<uint8_t> sprites;      // C: each pair of files interleaved a byte at a time (odd file, odd bytes)
+    std::vector<uint8_t> bios;         // the MVS system ROM, words high byte first
+    std::vector<uint8_t> fixBios;      // sfix: the system's fix layer tiles
+    std::vector<uint8_t> soundBios;    // sm1: the system's Z80 program
+    std::vector<uint8_t> zoom;         // 000-lo.lo: the sprites' vertical shrink table
+};
+// The cartridge's lists as game.cfg has them (program, graphics: the C pairs "c1:crc+c2:crc", sound_program, samples,
+// fix), and the system's: `bios_set` (the zip it is in, beside the game's) and `bios`, the MVS system ROM, sfix, sm1
+// and 000-lo.lo in that order
+struct NeoGeoList {
+    std::vector<RomFile> program, fix, soundProgram, samples, sprites, bios;
+    std::string set, parent, biosSet = "neogeo";
+};
+NeoGeoList ParseNeoGeoList(const char *program, const char *fix, const char *soundProgram, const char *samples,
+                           const char *sprites, const char *bios, const char *set, const char *parent = "",
+                           const char *biosSet = "neogeo");
+// Reads the game's set and the BIOS set (in `path`, a zip or a folder, and the zips beside it), by checksum as
+// LoadRomSet does. False with a message naming what is missing or different.
+bool LoadNeoGeoSet(const std::string &path, const NeoGeoList &list, NeoGeoRoms &roms, std::string &error);
 
 } // namespace cps2recomp

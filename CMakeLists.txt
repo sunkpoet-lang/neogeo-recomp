@@ -24,6 +24,19 @@ else ()
 endif ()
 find_package(ZLIB REQUIRED)
 
+# A Neo Geo game (game.cfg's board = neogeo; this fork): its own board (machine/neogeo.cpp, video/neogeo_video.cpp) and,
+# for now, a program with no window in the 68000's interpreter (port/neogeo_main.cpp; openspec change neogeo-boot).
+# None of the Capcom targets below are made for it.
+file(STRINGS "${GAME_DIR}/game.cfg" GAME_BOARD REGEX "^board[ \t]*=")
+if (GAME_BOARD MATCHES "neogeo")
+    add_executable(neogeo-run port/neogeo_main.cpp machine/neogeo.cpp video/neogeo_video.cpp machine/m68k.cpp
+        sound/z80.cpp machine/romset.cpp machine/kabuki.cpp machine/cps2crypt.cpp runtime/no_blocks.cpp runtime/no_z80_blocks.cpp)
+    target_include_directories(neogeo-run PRIVATE runtime port machine "${WORK_DIR}/gen")
+    target_link_libraries(neogeo-run PRIVATE ZLIB::ZLIB)
+    target_compile_options(neogeo-run PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    return()
+endif ()
+
 # Translated game code: work/<game>/gen/native_*.cpp, written by tools/recomp.py.
 # Without it the game still builds and runs everything in the interpreter.
 file(GLOB GEN_SOURCES CONFIGURE_DEPENDS "${WORK_DIR}/gen/native_*.cpp")

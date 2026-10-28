@@ -122,6 +122,17 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 The OKI MSM6295 of the same board (`sound/okim6295.cpp`, `okim6295.h`) was written for this fork from the chip's
 data sheet: the ADPCM steps and the sample table as the chip defines them.
 
+### MAME's Neo Geo driver (BSD-3-Clause) — this fork only
+
+The Neo Geo board of this fork's `neogeo` branch (`machine/neogeo.cpp`, `machine/neogeo.h`,
+`video/neogeo_video.cpp`, `video/neogeo_video.h`) follows MAME's Neo Geo driver closely enough to be credited as
+coming from it: `src/mame/snk/neogeo.cpp`, `neogeo.h`, `neogeo_spr.cpp` and `neogeo_v.cpp` (the memory map and its
+registers, the interrupts and the display position timer, the Z80's banks and command latches, the sprites' list,
+shrink and drawing, the fixed layer, the palette and its resistor networks). The horizontal shrink table
+(`kShrinkX`) is MAME's as it is. **BSD-3-Clause**, copyright holders as MAME lists them for those files: Bryan
+McPhail, Ernesto Corvi, Andrew Prime, Zsolt Vasvari (thanks to Fuzz); the licence text is the one above, with their
+names in place of Aaron Giles'.
+
 ## Downloaded at build time
 
 None of these is stored in this repository.

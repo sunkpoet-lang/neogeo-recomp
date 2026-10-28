@@ -290,6 +290,7 @@ RomList ParseRomList(const char *program, const char *graphics, const char *soun
     RomList list;
     list.board.cps1 = std::string(board) == "cps1" || std::string(board) == "cps1-classic";
     list.board.qsound = std::string(board) != "cps1-classic";
+    list.board.neogeo = std::string(board) == "neogeo";
     if (list.board.cps1) {
         // (cps_b: layer control, four priority masks, palette control, three enable bits; hex bytes)
         unsigned values[9];
@@ -521,6 +522,130 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
             set.samples.push_back(data[list.board.cps1 ? i : i + 1]);
             set.samples.push_back(data[list.board.cps1 ? i + 1 : i]);
         }
+    }
+    return true;
+}
+
+NeoGeoList ParseNeoGeoList(const char *program, const char *fix, const char *soundProgram, const char *samples,
+                           const char *sprites, const char *bios, const char *set, const char *parent,
+                           const char *biosSet) {
+    NeoGeoList list;
+    list.program = ParseFiles(program);
+    list.fix = ParseFiles(fix);
+    list.soundProgram = ParseFiles(soundProgram);
+    list.samples = ParseFiles(samples);
+    list.sprites = ParseFiles(sprites);
+    list.bios = ParseFiles(bios);
+    list.set = set;
+    list.parent = parent;
+    if (biosSet[0]) {
+        list.biosSet = biosSet;
+    }
+    return list;
+}
+
+bool LoadNeoGeoSet(const std::string &path, const NeoGeoList &list, NeoGeoRoms &roms, std::string &error) {
+    Places places;
+    bool haveBiosZip = false;
+    {
+        struct stat info;
+        if (stat(path.c_str(), &info) != 0) {
+            error = "there is no " + path;
+            return false;
+        }
+        std::vector<std::string> zips;
+        std::string beside;
+        if (S_ISDIR(info.st_mode)) {
+            places.folder = path;
+            beside = path;
+        } else {
+            zips.push_back(path);
+            const size_t slash = path.find_last_of('/');
+            beside = slash == std::string::npos ? "." : path.substr(0, slash);
+        }
+        for (const std::string &name : {list.set, list.parent, list.biosSet}) {
+            if (!name.empty() && beside + "/" + name + ".zip" != path) {
+                zips.push_back(beside + "/" + name + ".zip");
+            }
+        }
+        for (size_t n = 0; n < zips.size(); n++) {
+            Zip zip;
+            if (zip.Open(zips[n])) {
+                haveBiosZip = haveBiosZip || zips[n] == beside + "/" + list.biosSet + ".zip";
+                places.zips.push_back(std::move(zip));
+            } else if (n == 0 && places.folder.empty()) {
+                error = path + " is not a zip file";
+                return false;
+            }
+        }
+    }
+    std::vector<uint8_t> data;
+    // Files one after the other (the program's words swapped to high byte first, as MAME's ROM_LOAD16_WORD_SWAP)
+    auto readAll = [&](const std::vector<RomFile> &files, std::vector<uint8_t> &out, bool swapWords) {
+        out.clear();
+        for (const RomFile &file : files) {
+            if (!file.parts.empty()) {
+                error = "game.cfg: only the graphics join files (" + file.name + ")";
+                return false;
+            }
+            if (!ReadFile(places, file, data, error)) {
+                return false;
+            }
+            if (swapWords) {
+                for (size_t i = 0; i + 1 < data.size(); i += 2) {
+                    std::swap(data[i], data[i + 1]);
+                }
+            }
+            out.insert(out.end(), data.begin(), data.end());
+        }
+        return true;
+    };
+    if (!readAll(list.program, roms.program, true) || !readAll(list.fix, roms.fix, false) ||
+        !readAll(list.soundProgram, roms.soundProgram, false) || !readAll(list.samples, roms.samples, false)) {
+        return false;
+    }
+    // Sprites: each pair a byte at a time, the first file's at even addresses (MAME's ROM_LOAD16_BYTE)
+    roms.sprites.clear();
+    for (const RomFile &file : list.sprites) {
+        if (file.parts.size() != 2) {
+            error = "game.cfg: the Neo Geo's graphics come in pairs, \"c1:crc+c2:crc\" (" + file.name + ")";
+            return false;
+        }
+        std::vector<uint8_t> odd;
+        if (!ReadFile(places, file.parts[0], data, error) || !ReadFile(places, file.parts[1], odd, error)) {
+            return false;
+        }
+        if (odd.size() != data.size()) {
+            error = "graphics files of different sizes in a pair: " + file.parts[0].name + ", " + file.parts[1].name;
+            return false;
+        }
+        const size_t at = roms.sprites.size();
+        roms.sprites.resize(at + data.size() * 2);
+        for (size_t i = 0; i < data.size(); i++) {
+            roms.sprites[at + i * 2] = data[i];
+            roms.sprites[at + i * 2 + 1] = odd[i];
+        }
+    }
+    // The system: the MVS ROM, sfix, sm1, 000-lo.lo
+    if (list.bios.size() != 4) {
+        error = "game.cfg: bios lists the MVS system ROM, sfix, sm1 and 000-lo.lo";
+        return false;
+    }
+    std::vector<uint8_t> *system[4] = {&roms.bios, &roms.fixBios, &roms.soundBios, &roms.zoom};
+    for (int n = 0; n < 4; n++) {
+        if (!ReadFile(places, list.bios[n], data, error)) {
+            if (!haveBiosZip) {
+                error = "the Neo Geo's BIOS is missing: " + list.biosSet + ".zip (with " + list.bios[0].name +
+                        ") should be beside the game's files";
+            }
+            return false;
+        }
+        if (n == 0) {
+            for (size_t i = 0; i + 1 < data.size(); i += 2) {
+                std::swap(data[i], data[i + 1]);
+            }
+        }
+        *system[n] = data;
     }
     return true;
 }
