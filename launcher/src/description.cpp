@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <deque>
 #include <filesystem>
 #include <string>
@@ -39,6 +40,9 @@ struct GameInfo {
     const char* extra_set;
     // The Multi game page's modes it takes part in (game.cfg's multi: "endless")
     const char* multi;
+    // (this fork) A Neo Geo game's (board "neogeo"): its fix layer's files, and the system's set and files (game.cfg's
+    // fix, bios and bios_set; machine/romset.h, NeoGeoList)
+    const char *fix, *bios, *bios_set;
 };
 #ifdef LAUNCHER_COLLECTION
 const GameInfo* game_of_set(const char* set);
@@ -65,6 +69,22 @@ launcher::FileCheck check_rom_set(const GameInfo& game, const std::string& path)
     std::error_code error;
     if (path.empty() || !std::filesystem::exists(path, error)) {
         check.message = "It isn't there any more.";
+        return check;
+    }
+    // (this fork) A Neo Geo game: its cartridge and the system's set beside it, read as the game reads them
+    if (!strcmp(game.board, "neogeo")) {
+        const cps2recomp::NeoGeoList list = cps2recomp::ParseNeoGeoList(game.program, game.fix, game.sound_program, game.samples,
+                                                                        game.graphics, game.bios, game.rom_set, game.rom_parent,
+                                                                        game.bios_set);
+        cps2recomp::NeoGeoRoms roms;
+        std::string message;
+        if (cps2recomp::LoadNeoGeoSet(path, list, roms, message)) {
+            check.result = launcher::FileCheck::Result::Good;
+            check.message = game.rom_name;
+        } else {
+            check.message = "Not usable: " + message + ". This port needs the set " + game.rom_set + " (" + game.rom_name +
+                            "), with the Neo Geo's system set (" + game.bios_set + ".zip) beside it.";
+        }
         return check;
     }
     // (the same reading the game does: its files by checksum, from the zip, its parent's or the folder)
@@ -283,13 +303,6 @@ const OutsideProgram kFBNeo = {
     "FBNeo's menus (Game, Input, Video, Audio) are over the picture: its keys are set in Input > Map game inputs.",
     "FBNeo's own (Input > Map game inputs changes them): arrows, then the punches and kicks on the keys it shows there, 1: Start, 5: coin   "
     "Alt+Enter: full screen   F12: screenshot"};
-// (this fork) The Neo Geo games, each a program of the fork's own Neo Geo port (machine/neogeo.h), kept in a NeoGeo folder
-// with the sets (the game's and the system's, neogeo.zip) in its roms folder
-const OutsideProgram kKof97NeoGeo = {
-    "the Neo Geo port", "kof97-neogeo.exe", "NeoGeo", "this collection's own native Neo Geo port", "github.com/sunkpoet-lang/cps2recomp", "roms",
-    "No menu yet: it plays as the arcade board does, in a window. The first time, the board sets itself up and restarts once.",
-    "Player 1: arrows, A / S: buttons A and C, Z / X: B and D, 1: Start, 5: coin   Player 2: I J K L, T / Y: A and C, G / H: B and D, "
-    "2: Start, 6: coin   Gamepads: West A, South B, North C, East D, Start, Back: coin   F11: full screen   F12: screenshot   Esc: quit"};
 
 struct OutsideGame {
     const char *id, *name;                   // --play ID, as the player reads it
@@ -303,8 +316,6 @@ const std::vector<OutsideGame>& outside_games() {
         {"kinst", "Killer Instinct", &kUltraCombo, "kinst set and its CHD", {"ki-l15d.u98", "ki-l14.u98"}, {"kinst.chd", "kinst/kinst.chd", "kinst.raw"}, 7845},
         {"kinst2", "Killer Instinct 2", &kUltraCombo, "kinst2 set and its CHD", {"ki2-l14.u98"}, {"kinst2.chd", "kinst2/kinst2.chd", "kinst2.raw"}, 7845},
         {"sfiii3", "Street Fighter III 3rd Strike", &kFBNeo, "sfiii3nr1 set, with sfiii3 beside it", {"sfiii3nr1.zip"}, {"sfiii3.zip"}},
-        {"kof97", "The King of Fighters '97", &kKof97NeoGeo, "kof97 set, with neogeo.zip (the Neo Geo's system ROMs) beside it",
-         {"kof97.zip"}, {"neogeo.zip"}},
     };
     return games;
 }
