@@ -560,7 +560,8 @@ bool LoadNeoGeoSet(const std::string &path, const NeoGeoList &list, NeoGeoRoms &
             beside = path;
         } else {
             zips.push_back(path);
-            const size_t slash = path.find_last_of('/');
+            // (a Windows path may have either slash: the launcher gives backslashes)
+            const size_t slash = path.find_last_of("/\\");
             beside = slash == std::string::npos ? "." : path.substr(0, slash);
         }
         for (const std::string &name : {list.set, list.parent, list.biosSet}) {

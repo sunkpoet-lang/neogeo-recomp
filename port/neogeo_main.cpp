@@ -1,44 +1,39 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Part of cps2recomp (the user's fork: the Neo Geo board).
 //
-// A Neo Geo game (game.cfg's board = neogeo) on the board of machine/neogeo.h, in the 68000's interpreter: in a window
-// (port/neogeo_window.cpp), or with no window for the checks (--headless: pictures as PNG files, a hash of the whole
-// state each frame, input from a script, the sound to a WAV file).
+// A Neo Geo game (game.cfg's board = neogeo): its port (neogeo_port.h) in a window (neogeo_window.cpp), or with no
+// window for the checks (--headless: pictures as PNG files, a hash of the whole state each frame, input from a script,
+// the sound to a WAV file). The launcher starts it as it starts the Capcom games.
 //
-//   <game> [--rom FILE_OR_FOLDER] [--mute] [--scale N]
+//   <game> [--rom FILE_OR_FOLDER] [--eeprom FILE] [--settings FILE] [--features A,-B] [--fullscreen] [--mute]
+//          [--scale N] [--renderer sdl|gpu]
+//   <game> --list-features                 (for the launcher: the optional features, one a line)
 //   <game> --headless [--rom ...] [--frames N] [--shot-every N] [--shot-dir DIR] [--hash-log FILE] [--audio-dump FILE]
-//          [--script "FRAME:BUTTON:FRAMES,..."] [--state-save FRAME:FILE] [--state-load FILE] [--stats] [--mute]
+//          [--script "FRAME:BUTTON:FRAMES,..."] [--state-save FRAME:FILE] [--state-load FILE] [--menu FRAME:KEYS[:PNG]]
+//          [--keys TICK:KEY,...] [--stats]
 //
 // With no --rom, the game's set is looked for in roms/ beside the program, then in the current folder.
 // Script buttons: coin1 start1 up1 down1 left1 right1 a1 b1 c1 d1 (and the same ending in 2), service, test.
 
 #include "game_info.h"
 
-#include "../machine/neogeo.h"
-#include "../machine/romset.h"
+#include "../recomp-common/settings.h"
+#include "../runtime/game.h"
 #include "../runtime/state.h"
-#include "neogeo_window.h"
+#include "neogeo_port.h"
 #include "png_write.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <memory>
 #include <sstream>
 #include <string>
-#include <sys/stat.h>
 #include <vector>
-
-#ifndef GAME_BIOS_SET
-#define GAME_BIOS_SET "neogeo"
-#endif
-#ifndef GAME_ROM_PARENT
-#define GAME_ROM_PARENT ""
-#endif
 
 using namespace cps2recomp;
 
@@ -94,24 +89,6 @@ bool ParseScript(const std::string &text, std::vector<Press> &presses) {
     return true;
 }
 
-bool Exists(const std::string &path) {
-    struct stat info;
-    return stat(path.c_str(), &info) == 0;
-}
-
-// The set beside the program (roms/<set>.zip), or in the current folder
-std::string FindRom() {
-    const char *base = SDL_GetBasePath();
-    const std::string here = base ? base : "";
-    for (const std::string &path : {here + "roms/" GAME_ROM_SET ".zip", std::string("roms/" GAME_ROM_SET ".zip"),
-                                    std::string(GAME_ROM_SET ".zip")}) {
-        if (Exists(path)) {
-            return path;
-        }
-    }
-    return here + "roms/" GAME_ROM_SET ".zip";
-}
-
 // A 16-bit stereo WAV of what the sound chip made
 void WriteWav(const std::string &path, const std::vector<int16_t> &sound, uint32_t rate) {
     FILE *f = fopen(path.c_str(), "wb");
@@ -140,149 +117,141 @@ void WriteWav(const std::string &path, const std::vector<int16_t> &sound, uint32
 } // namespace
 
 int main(int argc, char **argv) {
-    std::string rom, shotDir = ".", hashLog, script, stateSave, stateLoad, audioDump;
-    uint64_t frames = 600, shotEvery = 0, saveAt = 0;
-    bool stats = false, headless = false, mute = false;
-    int scale = 3;
+    port::NeoGeoPort port;
+    port::NeoGeoOptions &o = port.opt;
     for (int i = 1; i < argc; i++) {
         const std::string a = argv[i];
         auto next = [&]() -> const char * { return i + 1 < argc ? argv[++i] : ""; };
         if (a == "--rom") {
-            rom = next();
+            o.rom = next();
+        } else if (a == "--eeprom") {
+            o.savesPath = next();
+        } else if (a == "--settings") {
+            o.settingsPath = next();
+        } else if (a == "--features") {
+            o.features = next();
+        } else if (a == "--fullscreen") {
+            o.fullscreen = true;
         } else if (a == "--frames") {
-            frames = strtoull(next(), nullptr, 10);
+            o.frames = strtoull(next(), nullptr, 10);
         } else if (a == "--headless") {
-            headless = true;
+            o.headless = true;
         } else if (a == "--mute") {
-            mute = true;
+            o.mute = true;
         } else if (a == "--scale") {
-            scale = atoi(next());
+            o.scale = atoi(next());
+        } else if (a == "--renderer") {
+            o.renderer = next();
         } else if (a == "--shot-every") {
-            shotEvery = strtoull(next(), nullptr, 10);
+            o.shotEvery = strtoull(next(), nullptr, 10);
         } else if (a == "--shot-dir") {
-            shotDir = next();
+            o.shotDir = next();
         } else if (a == "--hash-log") {
-            hashLog = next();
+            o.hashLog = next();
         } else if (a == "--audio-dump") {
-            audioDump = next();
+            o.audioDump = next();
         } else if (a == "--script") {
-            script = next();
+            o.script = next();
+        } else if (a == "--menu") {
+            o.menuTest = next();
+        } else if (a == "--keys") {
+            o.keys = next();
         } else if (a == "--state-save") {
             const std::string v = next();
             const size_t colon = v.find(':');
-            saveAt = strtoull(v.c_str(), nullptr, 10);
-            stateSave = colon == std::string::npos ? "" : v.substr(colon + 1);
+            o.saveAt = strtoull(v.c_str(), nullptr, 10);
+            o.stateSave = colon == std::string::npos ? "" : v.substr(colon + 1);
         } else if (a == "--state-load") {
-            stateLoad = next();
+            o.stateLoad = next();
         } else if (a == "--stats") {
-            stats = true;
+            o.stats = true;
+        } else if (a == "--list-features") {
+            // For the launcher: one optional feature per line (recomp-common/settings.h), not those whose switch is on
+            // its first page (game.h, kFeatureFirstPage)
+            RegisterGame();
+            port::RegisterNeoGeoPortFeatures();
+            std::vector<recomp::FeatureInfo> list = FeatureList();
+            list.erase(std::remove_if(list.begin(), list.end(), [](const recomp::FeatureInfo &f) { return f.flags & kFeatureFirstPage; }), list.end());
+            fputs(recomp::FeatureListText(list).c_str(), stdout);
+            return 0;
         } else {
             fprintf(stderr, "%s: unknown option %s\n", argv[0], a.c_str());
             return 2;
         }
     }
-    if (rom.empty()) {
-        rom = FindRom();
-    }
     std::vector<Press> presses;
-    if (!ParseScript(script, presses)) {
+    if (!ParseScript(o.script, presses)) {
         return 2;
     }
-
-    const NeoGeoList list = ParseNeoGeoList(GAME_PROGRAM, GAME_FIX, GAME_SOUND_PROGRAM, GAME_SAMPLES, GAME_GRAPHICS,
-                                            GAME_BIOS, GAME_ROM_SET, GAME_ROM_PARENT, GAME_BIOS_SET);
-    NeoGeoRoms roms;
     std::string error;
-    if (!LoadNeoGeoSet(rom, list, roms, error)) {
+    if (!port.Init(error)) {
         fprintf(stderr, "%s: %s\n", GAME_NAME, error.c_str());
-        if (!headless) {
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, GAME_TITLE, (std::string(GAME_NAME) + ": " + error).c_str(), nullptr);
+        if (!o.headless) {
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, GAME_NAME, (std::string(GAME_NAME) + ": " + error).c_str(), nullptr);
         }
         return 1;
     }
-    auto board = std::make_unique<NeoGeo>(std::move(roms));
-    if (!stateLoad.empty()) {
-        FILE *f = fopen(stateLoad.c_str(), "rb");
-        std::vector<uint8_t> data;
-        if (f) {
-            uint8_t buffer[65536];
-            size_t got;
-            while ((got = fread(buffer, 1, sizeof(buffer), f)) > 0) {
-                data.insert(data.end(), buffer, buffer + got);
-            }
-            fclose(f);
-        }
-        Archive ar(data, false);
-        board->Serialize(ar);
-        if (!f || !ar.Ok()) {
-            fprintf(stderr, "%s: cannot load the state %s\n", GAME_NAME, stateLoad.c_str());
-            return 1;
-        }
-    }
 
-    if (!headless) {
-        NeoGeoWindowOptions options;
-        options.title = GAME_TITLE;
-        options.id = GAME_ID;
-        options.scale = scale;
-        options.mute = mute;
-        options.shotDir = shotDir;
-        return RunNeoGeoWindow(*board, options);
+    if (!o.headless) {
+        const int code = port::RunNeoGeoWindow(port);
+        port.Finish();
+        return code;
     }
 
     // With no window: the frames asked for, as fast as they go
-    NeoGeoSound &sound = board->Sound();
-    sound.keep = !audioDump.empty() && !mute;
+    NeoGeo &board = *port.board;
+    NeoGeoSound &sound = board.Sound();
+    sound.keep = !o.audioDump.empty() && !o.mute;
     std::vector<int16_t> recorded;
-    FILE *log = hashLog.empty() ? nullptr : fopen(hashLog.c_str(), "w");
+    FILE *log = o.hashLog.empty() ? nullptr : fopen(o.hashLog.c_str(), "w");
     const auto started = std::chrono::steady_clock::now();
-    const uint64_t first = board->Frames();
-    for (uint64_t n = 0; n < frames; n++) {
-        const uint64_t frame = board->Frames() + 1; // (the frame about to be run, counting from 1)
-        board->players[0] = board->players[1] = 0;
+    const uint64_t first = board.Frames();
+    const uint64_t frames = o.frames ? o.frames : 600;
+    // (by ticks, as the window goes: --keys can stop the game; a run stopped for good still ends)
+    while (!port.quit && board.Frames() - first < frames && port.tick < (frames + 60) * 64) {
+        const uint64_t frame = board.Frames() + 1; // (the frame about to be run, counting from 1)
+        uint16_t players[2] = {};
         for (const Press &p : presses) {
             if (frame >= p.frame && frame < p.frame + p.frames) {
-                board->players[p.player] |= p.bits;
+                players[p.player] |= p.bits;
             }
         }
-        board->RunFrame();
+        if (!port.Tick(players)) {
+            continue; // (stopped by --keys: p; o goes on by a frame)
+        }
         if (sound.keep) {
             recorded.insert(recorded.end(), sound.made.begin(), sound.made.end());
         }
         sound.made.clear();
         if (log) {
-            fprintf(log, "%llu %08x\n", static_cast<unsigned long long>(frame), board->StateHash());
+            fprintf(log, "%llu %08x\n", static_cast<unsigned long long>(frame), board.StateHash());
         }
-        if (shotEvery && frame % shotEvery == 0) {
+        if (o.shotEvery && frame % o.shotEvery == 0) {
             char path[1024];
-            snprintf(path, sizeof(path), "%s/%s_%06llu.png", shotDir.c_str(), GAME_ID, static_cast<unsigned long long>(frame));
-            WritePng(path, board->Picture(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
+            snprintf(path, sizeof(path), "%s/%s_%06llu.png", o.shotDir.c_str(), GAME_ID, static_cast<unsigned long long>(frame));
+            std::vector<uint32_t> shown;
+            port.Shown(shown);
+            WritePng(path, shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
         }
-        if (!stateSave.empty() && frame == saveAt) {
-            std::vector<uint8_t> data;
-            Archive ar(data, true);
-            board->Serialize(ar);
-            FILE *f = fopen(stateSave.c_str(), "wb");
-            if (!f || fwrite(data.data(), 1, data.size(), f) != data.size()) {
-                fprintf(stderr, "%s: cannot write the state %s\n", GAME_NAME, stateSave.c_str());
-            }
-            if (f) {
-                fclose(f);
+        if (!o.stateSave.empty() && frame == o.saveAt) {
+            if (!port.SaveState(o.stateSave, error)) {
+                fprintf(stderr, "%s: %s\n", GAME_NAME, error.c_str());
             }
         }
     }
     if (log) {
         fclose(log);
     }
-    if (!audioDump.empty()) {
-        WriteWav(audioDump, recorded, NeoGeoSound::SampleRate());
+    if (!o.audioDump.empty()) {
+        WriteWav(o.audioDump, recorded, NeoGeoSound::SampleRate());
     }
-    if (stats) {
+    if (o.stats) {
         const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
         fprintf(stderr, "%llu frames in %.2f s: %.0f a second; watchdog resets %u; unmapped addresses %zu\n",
-                static_cast<unsigned long long>(board->Frames() - first), seconds,
-                (board->Frames() - first) / (seconds > 0 ? seconds : 1), board->watchdogResets, board->unmapped.size());
+                static_cast<unsigned long long>(board.Frames() - first), seconds,
+                (board.Frames() - first) / (seconds > 0 ? seconds : 1), board.watchdogResets, board.unmapped.size());
     }
-    fprintf(stderr, "state hash %08x at frame %llu\n", board->StateHash(), static_cast<unsigned long long>(board->Frames()));
+    fprintf(stderr, "state hash %08x at frame %llu\n", board.StateHash(), static_cast<unsigned long long>(board.Frames()));
+    port.Finish();
     return 0;
 }
