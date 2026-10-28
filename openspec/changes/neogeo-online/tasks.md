@@ -25,5 +25,5 @@
 ## 5. Through the tunnel (with the user)
 
 - [x] 5.1 `cps-tunel host --game-port 7845` + `kof97 --host 7845` and `cps-tunel join CODE` + `kof97 --join 127.0.0.1:PORT` on one PC
-- [ ] 5.2 A match with a friend through the tunnel; note the ping and rollbacks
+- [x] 5.2 A match with a friend through the tunnel; note the ping and rollbacks (2026-10-28: ping 51-69 ms, delay 1, rollbacks of 1 frame, no desync)
 - [x] 5.3 `games/kof97/README.md` and the README: how to play online today (the command line, the tunnel), what is off
