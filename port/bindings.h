@@ -71,7 +71,8 @@ struct BoundTable {
 // 5 a coin. Players 2 to 4 have no keys until some are chosen. A gamepad is laid out like a six-button panel:
 // punches on the top row (West, North, right shoulder), kicks below (South, East, right trigger); Start; Back puts
 // a coin in. A game that names its buttons has them (on its own) as a beat-'em-up's pad has them: the first on
-// West, the second on South (jump, say), the third on East, then North and the shoulder and trigger. The punches
+// West, the second on South (jump, say), the third on East, then North and the shoulder and trigger; unless its
+// names leave a place empty, which puts them in a fighting game's places (the Neo Geo's A C / B D). The punches
 // and kicks together have no key or button until they are given one.
 inline const BoundTable &MakeBoundTable(int players, const std::string &buttons, bool shared) {
     static constexpr SDL_Scancode kKeys[kBoundActionCount] = {
@@ -127,7 +128,10 @@ inline const BoundTable &MakeBoundTable(int players, const std::string &buttons,
             titles.push_back(shared ? std::string(title) + " \u00b7 " + names[button] : names[button]);
             title = titles.back().c_str();
         }
-        const PadInput pad = !shared && named ? kNamedPad[button] : kPad[action];
+        // (a game whose names leave a place empty, "A | C | | B | D", names a fighting game's places: its pad keeps
+        // the punches' and kicks' layout)
+        const bool placed = std::find(names.begin(), names.end(), std::string()) != names.end();
+        const PadInput pad = !shared && named && !placed ? kNamedPad[button] : kPad[action];
         recomp::BindAction &a = t.actions[count];
         a.name = kBoundActions[action].name;
         a.title = title;
