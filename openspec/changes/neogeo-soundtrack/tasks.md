@@ -1,11 +1,11 @@
 ## 1. Bring the player over
 
-- [x] 1.1 Take `port/soundtrack.{h,cpp}`, `port/decoders.{h,cpp}`, `machine/soundtrack.cpp` and `third_party/stb_vorbis.c`, `dr_flac.h`, `dr_mp3.h`, `dr_wav.h` from cps2recomp with their history (`git filter-repo --paths-from-file`, merged as the toolkit was); mark the headers as neogeo-recomp's
+- [x] 1.1 Take `port/soundtrack.{h,cpp}`, `port/decoders.{h,cpp}`, `machine/soundtrack.cpp` and `third_party/stb_vorbis.c`, `dr_flac.h`, `dr_mp3.h`, `dr_wav.h` from cps2recomp with their history (`git filter-repo --paths-from-file`, merged as the toolkit was); their headers stay cps2recomp's, as the toolkit's other files do
 - [x] 1.2 Add them to `CMakeLists.txt` (the decoders with `-w`) and to `THIRD_PARTY_NOTICES.md`; build `kof97` and check that the hash at frame 3000 is still `7ef55b19`
 
 ## 2. The commands
 
-- [ ] 2.1 `NEOGEORECOMP_SOUNDTRACK_LOG`: every command the 68000 sends to 0x320000, with its frame and the Z80's reply, to stderr
+- [x] 2.1 `NEOGEORECOMP_SOUNDTRACK_LOG`: every command the 68000 sends to 0x320000, with its frame and the Z80's reply, to stderr
 - [ ] 2.2 `Soundtrack::Command(byte, frame)` beside `Request`; `runtime/neogeo_game.h` gets the game's music list, stop command and fades; `IsMusic` from that list; SNK's reserved commands never music
 
 ## 3. The listening copy

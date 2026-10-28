@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 
 namespace cps2recomp {
 
@@ -476,6 +477,11 @@ void NeoGeo::Unmapped(uint32_t address) {
 // --- the Z80 ---
 
 void NeoGeo::SoundCommand(uint8_t value) {
+    // (NEOGEORECOMP_SOUNDTRACK_LOG: each command, with the frame, for finding a game's music; the Z80's replies too)
+    static const bool log = getenv("NEOGEORECOMP_SOUNDTRACK_LOG") != nullptr;
+    if (log) {
+        fprintf(stderr, "sound: frame %llu command %02X\n", static_cast<unsigned long long>(m_frames), value);
+    }
     m_command = value;
     m_commandPending = true;
     UpdateNmi();
@@ -554,6 +560,10 @@ void NeoGeo::Out(uint16_t port, uint8_t value) {
         m_nmiEnabled = low == 0x08;
         UpdateNmi();
     } else if (low == 0x0C) {
+        static const bool log = getenv("NEOGEORECOMP_SOUNDTRACK_LOG") != nullptr;
+        if (log && value != m_reply) {
+            fprintf(stderr, "sound: frame %llu reply %02X\n", static_cast<unsigned long long>(m_frames), value);
+        }
         m_reply = value;
     } else if (low >= 0x04 && low <= 0x07) {
         m_sound.RunTo(m_z80.cycles * 2);
