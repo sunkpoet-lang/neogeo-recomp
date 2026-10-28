@@ -8,6 +8,7 @@
 # Run from the repository's top (make collection).
 #   B=folder           where (build/collection)
 #   NO_GAME_CODE=1     take each game's program from build/<id>-nocode/ (the build with no translated code)
+# With Rust's cargo it also builds the online tunnel (tools/tunel.sh) beside the launcher.
 set -eu
 B=${B:-build/collection}
 games=""
@@ -31,3 +32,5 @@ cmake -S launcher -B "$B/launcher" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_R
     -DDISCLAIMER="Not affiliated with Capcom." ${CMAKE_ARGS:-} > /dev/null
 cmake --build "$B/launcher"
 echo "built $B/cps2recomp-launcher"
+# The online tunnel beside it (tunel/, Rust): without cargo the collection is as before, with no ONLINE card
+sh tools/tunel.sh "$B" || echo "built without the online tunnel"

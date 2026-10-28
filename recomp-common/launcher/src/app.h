@@ -12,6 +12,7 @@
 #include <SDL3/SDL.h>
 
 #include <atomic>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <mutex>
@@ -180,6 +181,32 @@ private:
     void display_cards(size_t which, float width);
     void play_button(size_t which, float width);
     void files_card(float width);
+
+    // Online play (launcher::Description::Online): the ONLINE card, and one room at a time, its tunnel (cps-tunel
+    // beside the launcher) and its game started together
+    void online_card(size_t which, float width);
+    void open_room(size_t which, bool host);
+    void close_room(const std::string& message);  // (the game and the tunnel stopped; `message` shown on the card)
+    void watch_room();                             // every frame: the tunnel's new lines, the game or the tunnel ended
+    void room_line(const std::string& line);
+    struct Room {
+        size_t game = SIZE_MAX;    // the slot it is for (SIZE_MAX: no room)
+        bool host = false;
+        GameProcess tunnel;
+        std::filesystem::path log; // the tunnel's lines (logs/tunel.log of the game's folder)
+        uintmax_t read = 0;        // of it so far
+        std::string partial;       // (a line not ended yet)
+        std::string code;          // the host's room code
+        bool started = false;      // the game started
+        int rival = 0;             // the host's first guest (its number in the tunnel's lines), 0: none yet
+        bool connected = false, relay = false, left = false, copied = false;
+        int ping = -1;
+        std::string error;
+    };
+    Room room_;
+    char room_code_[512] = {};       // what is pasted or typed in the card
+    std::string room_message_;       // why the last room ended, or that a code isn't complete
+    size_t room_message_for_ = SIZE_MAX;
 
     // The Multi game page (a collection's MultiModes): a mode's choices and games, and the run of one
     void multi_page(float width);

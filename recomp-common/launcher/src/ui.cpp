@@ -463,6 +463,39 @@ bool search_box(const char* id_text, char* buffer, size_t size, const char* hint
     return changed;
 }
 
+bool text_box(const char* id_text, char* buffer, size_t size, const char* hint, float width, bool wrong) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const Palette& p = palette();
+    ImVec2 origin = window->DC.CursorPos;
+    ImVec2 box(px(width), px(36));
+    ImRect rect(origin, origin + box);
+    ImGuiID id = window->GetID(id_text);
+    bool active = ImGui::GetActiveID() == id;
+    float hover = animate(id + 1, active || ImGui::IsMouseHoveringRect(rect.Min, rect.Max) ? 1.0f : 0.0f, 22.0f);
+    window->DrawList->AddRectFilled(rect.Min, rect.Max, mix(p.control, p.control_hover, hover), px(10));
+    if (wrong) {
+        window->DrawList->AddRect(rect.Min, rect.Max, p.danger, px(10), px(1.5f));
+    }
+    push_font(Font::Regular, size::kBody);
+    float line = ImGui::GetFontSize();
+    ImGui::SetCursorScreenPos(ImVec2(rect.Min.x + px(14), std::round(rect.Min.y + (box.y - line) * 0.5f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled, p.tertiary);
+    ImGui::PushStyleColor(ImGuiCol_Text, p.text);
+    ImGui::PushStyleColor(ImGuiCol_NavCursor, IM_COL32(0, 0, 0, 0));  // (the ring is ours, round the whole box)
+    if (active && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)) {
+        ImGui::ClearActiveID();
+    }
+    ImGui::SetNextItemWidth(box.x - px(28));
+    bool changed = ImGui::InputTextWithHint(id_text, hint, buffer, size);
+    ImGui::PopStyleColor(4);
+    pop_font();
+    focus_ring(rect, id, px(10));
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::ItemSize(rect);
+    return changed;
+}
+
 bool nav_item(const char* label, bool active, float width, bool reachable) {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImGuiID id = window->GetID(label);

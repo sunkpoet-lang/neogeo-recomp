@@ -289,11 +289,12 @@ struct OutsideGame {
     const OutsideProgram *program;
     const char *set;                         // MAME's set, as the page says it
     std::vector<const char*> first, second;  // in the program's files folder: one of these, and one of these
+    int netplay_port = 0;                    // the program's own online play (UltraCombo's --host/--join), 0: none
 };
 const std::vector<OutsideGame>& outside_games() {
     static const std::vector<OutsideGame> games = {
-        {"kinst", "Killer Instinct", &kUltraCombo, "kinst set and its CHD", {"ki-l15d.u98", "ki-l14.u98"}, {"kinst.chd", "kinst/kinst.chd", "kinst.raw"}},
-        {"kinst2", "Killer Instinct 2", &kUltraCombo, "kinst2 set and its CHD", {"ki2-l14.u98"}, {"kinst2.chd", "kinst2/kinst2.chd", "kinst2.raw"}},
+        {"kinst", "Killer Instinct", &kUltraCombo, "kinst set and its CHD", {"ki-l15d.u98", "ki-l14.u98"}, {"kinst.chd", "kinst/kinst.chd", "kinst.raw"}, 7845},
+        {"kinst2", "Killer Instinct 2", &kUltraCombo, "kinst2 set and its CHD", {"ki2-l14.u98"}, {"kinst2.chd", "kinst2/kinst2.chd", "kinst2.raw"}, 7845},
         {"sfiii3", "Street Fighter III 3rd Strike", &kFBNeo, "sfiii3nr1 set, with sfiii3 beside it", {"sfiii3nr1.zip"}, {"sfiii3.zip"}},
     };
     return games;
@@ -373,6 +374,14 @@ launcher::Description describe_outside(const OutsideGame& game) {
     d.candidates = [game](const std::filesystem::path& folder) { return outside_candidates(*game.program, folder); };
     d.arguments = [](const launcher::Launch& launch) { return std::vector<std::string>{"--rom", launch.file}; };
     d.mute_argument = nullptr;  // (the program's own menu has the volume)
+    if (game.netplay_port) {
+        // (after "--", the bridge passes them to the program: outside_bridge.cpp)
+        d.online.port = game.netplay_port;
+        d.online.arguments = [port = game.netplay_port](const std::string& address) {
+            return address.empty() ? std::vector<std::string>{"--", "--host", std::to_string(port)}
+                                   : std::vector<std::string>{"--", "--join", address};
+        };
+    }
     d.bindings = port::MakeBoundTable(2, "", false).table;
     d.controls_heading = "WHILE PLAYING";
     d.controls = {{"Keys", p.keys}};

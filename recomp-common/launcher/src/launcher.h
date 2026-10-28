@@ -144,6 +144,14 @@ struct Description {
     recomp::BindTable bindings;
     const char *controls_heading = "WHILE PLAYING";
     std::vector<InfoRow> controls;            // what is fixed, as rows of text
+
+    // Optional: online play, for a game with netplay of its own over UDP, through the online tunnel beside the launcher
+    // (cps-tunel). The game's page then has an ONLINE card. `port`: the game's netplay port (0: none); `arguments`: what
+    // goes after the game's own to host (address "") or to join `address` ("127.0.0.1:PORT", the tunnel's).
+    struct Online {
+        int port = 0;
+        std::function<std::vector<std::string>(const std::string &address)> arguments;
+    } online;
 };
 
 // The port's own file defines this.

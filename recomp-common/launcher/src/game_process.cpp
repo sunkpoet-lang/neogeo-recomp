@@ -12,6 +12,7 @@
 #include <windows.h>
 #else
 #include <fcntl.h>
+#include <signal.h>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -66,9 +67,17 @@ bool GameProcess::start(const std::filesystem::path& program, const std::vector<
         return false;
     }
     running_ = true;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pid_ = pid;
+    }
     waiter_ = std::thread([this, pid] {
         int status = 0;
         waitpid(pid, &status, 0);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            pid_ = 0;
+        }
         exit_code_ = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
         running_ = false;
         SDL_Event event{};
@@ -76,6 +85,13 @@ bool GameProcess::start(const std::filesystem::path& program, const std::vector<
         SDL_PushEvent(&event);  // redraw the launcher
     });
     return true;
+}
+
+void GameProcess::stop() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pid_ > 0) {
+        kill(pid_, SIGTERM);
+    }
 }
 
 std::string GameProcess::output_of(const std::filesystem::path& program, const std::vector<std::string>& args) {
@@ -162,7 +178,10 @@ bool GameProcess::start(const std::filesystem::path& program, const std::vector<
         }
     }
     PROCESS_INFORMATION process{};
-    BOOL started = CreateProcessW(program.wstring().c_str(), line.data(), nullptr, nullptr, output != INVALID_HANDLE_VALUE, 0, nullptr, directory.c_str(),
+    // (with its output in a log, a console program such as the online tunnel needs no window of its own; a game, a
+    // windowed program, is not affected)
+    DWORD flags = output != INVALID_HANDLE_VALUE ? CREATE_NO_WINDOW : 0;
+    BOOL started = CreateProcessW(program.wstring().c_str(), line.data(), nullptr, nullptr, output != INVALID_HANDLE_VALUE, flags, nullptr, directory.c_str(),
                                   &startup, &process);
     if (output != INVALID_HANDLE_VALUE) {
         CloseHandle(output);
@@ -174,10 +193,18 @@ bool GameProcess::start(const std::filesystem::path& program, const std::vector<
     CloseHandle(process.hThread);
     running_ = true;
     HANDLE handle = process.hProcess;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        handle_ = handle;
+    }
     waiter_ = std::thread([this, handle] {
         WaitForSingleObject(handle, INFINITE);
         DWORD code = 0;
         GetExitCodeProcess(handle, &code);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            handle_ = nullptr;
+        }
         CloseHandle(handle);
         exit_code_ = static_cast<int>(code);
         running_ = false;
@@ -186,6 +213,13 @@ bool GameProcess::start(const std::filesystem::path& program, const std::vector<
         SDL_PushEvent(&event);  // redraw the launcher
     });
     return true;
+}
+
+void GameProcess::stop() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (handle_) {
+        TerminateProcess(static_cast<HANDLE>(handle_), 1);
+    }
 }
 
 std::string GameProcess::output_of(const std::filesystem::path& program, const std::vector<std::string>& args) {
