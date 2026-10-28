@@ -38,11 +38,14 @@ estados, el HUD) y `port/neogeo_window.cpp` reescrito con el presentador compart
 - **Costo**: un segundo ciclo de ventana (~500 líneas) que se parece al de Capcom. Se acepta; si el autor hace su
   propio Neo Geo, se mira entonces cómo juntarlos.
 
-### 2. Las fuentes de un juego de Neo Geo: `runtime/neogeo_game.h`
-Paralelo a `runtime/game.h`, con las mismas ideas y nombres (`Feature`, comandos, `beforeFrame`, `frame`, HUD,
-`Serialize`), pero sus funciones reciben `NeoGeo&`. `NeoGeo` gana lo que las fuentes necesitan leer y escribir sin
-tocar su modelo: leer y escribir la RAM de trabajo (`Peek8/16`, `Poke8/16`) y la entrada antes de cada cuadro (ya está:
-`players`). El HUD usa `port/hud.*` como los de Capcom.
+### 2. Las fuentes de un juego de Neo Geo: el mismo registro, más `runtime/neogeo_game.h`
+(Revisado en la tarea 1.2.) El registro de `runtime/game.h` (`TheGame()`: páginas, features, comandos, ajustes de
+`settings.ini`, líneas y cajas del HUD) no depende de `Machine`, y el menú y el HUD solo leen ese registro. Así que un
+juego de Neo Geo llena el **mismo** registro desde su `RegisterGame()` (en `games/<id>/src`), y solo lo que toca la
+placa va en `runtime/neogeo_game.h`: `beforeFrame`, `frame` y `Serialize` con `NeoGeo&`. `NeoGeo` gana `Peek8/16` y
+`Poke8/16` sobre la RAM de trabajo para las fuentes. Sin fuentes, `runtime/no_game.cpp` como en los de Capcom.
+- **Por qué**: el menú, la página Features del launcher (`--list-features`) y el HUD funcionan sin cambios, y una
+  feature de KOF se escribe igual que una de Super Turbo.
 - **Por qué**: es la puerta de la AST (fuentes que miran las órdenes de sonido) y del entrenamiento (fuentes que leen
   la RAM y alimentan `fight/`), igual que en los juegos de Capcom.
 
