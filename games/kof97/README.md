@@ -20,6 +20,20 @@ coin, speed, sound, the cheats, the Display page, test menu, reset, quit). P sto
 = change the speed, F5 / F9 save and load a state, F6 / F7 the slot, F2 the operator's test switch, 9 service, F11
 full screen. The board's backup RAM is kept in the game's saves folder, so the board sets itself up only the first time.
 
+## Playing online
+
+Two players, rollback by GekkoNet (`port/neogeo_online.h`). Both need the same `kof97.zip`, `neogeo.zip` and
+version; the game checks before it starts.
+
+    kof97 --host 7845 --rom ROM/kof97.zip                 player 1, waiting on UDP port 7845
+    kof97 --join 127.0.0.1:7845 --rom ROM/kof97.zip       player 2 (another PC: its address)
+
+Over the internet with no ports to open, through a UDP tunnel such as `cps-tunel` (Iroh, a code to share; not
+published yet): the host runs `cps-tunel host --game-port 7845` and then `kof97 --host 7845`, and sends the code it prints;
+the other runs `cps-tunel join CODE --listen 7846` and then `kof97 --join 127.0.0.1:7846`. `--delay N` holds the local
+controls back N frames (1 by default). Online there are no save states, pausing, slowing, reset or cheats, and each
+player's backup RAM is left as it was. `--stress` runs GekkoNet's stress test on one PC.
+
 ## Its own sources
 
 `src/kof97.cpp` (runtime/neogeo_game.h): for now the Cheats page's infinite energy for each player, with the players'
@@ -35,5 +49,5 @@ system ROM tests the work RAM at power-on, and a write then fails that test.
 `--menu FRAME:KEYS[:shot.png]` works the menu (u d l r, a a button, b back), `--keys TICK:KEY,...` presses keys
 (p, o, -, =; f and NAME=N sets a feature), `--features` and `--settings` as the launcher gives them.
 
-Next steps: the custom soundtrack (AST), the training mode (over fight/), online play (`neogeo-online`, with
-GekkoNet), and the translation to C++.
+Next steps: the custom soundtrack (AST), the training mode (over fight/), spectators and replays for online play
+(GekkoNet has both), and the translation to C++.
