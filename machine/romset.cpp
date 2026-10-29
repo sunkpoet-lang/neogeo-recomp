@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 
 #include "romset.h"
+#include "neogeo_decrypt.h"
 
 #include "kabuki.h"
 
@@ -648,6 +649,7 @@ bool LoadNeoGeoSet(const std::string &path, const NeoGeoList &list, NeoGeoRoms &
         }
         *system[n] = data;
     }
+    if (list.set == "kof2002" && !DecryptKof2002(roms, error)) return false;
     return true;
 }
 

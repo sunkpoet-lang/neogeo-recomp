@@ -31,7 +31,8 @@ set(LAUNCHER_HOME_ENV "${HOME_ENV}")
 set(LAUNCHER_DISCLAIMER "${DISCLAIMER}")
 set(LAUNCHER_PORT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/description.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../machine/romset.cpp ${CMAKE_CURRENT_SOURCE_DIR}/../machine/cps2crypt.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../machine/kabuki.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../machine/kabuki.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../machine/neogeo_decrypt.cpp)
 set(LAUNCHER_COLLECTION ${COLLECTION})
 if(COLLECTION)
     # (no LAUNCHER_UPDATE_REPO: no updates until this repository publishes releases with their manifests; VERSION's

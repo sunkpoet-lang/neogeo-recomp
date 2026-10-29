@@ -40,6 +40,15 @@ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISI
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+### MAME's KOF 2002 protection (BSD-3-Clause)
+
+`machine/neogeo_decrypt.cpp` adapts the CMC50 tables and routines, SFIX extraction, P2 block permutation and PCM2
+swap from MAME's `src/devices/bus/neogeo/prot_cmc.cpp`, `prot_kof2k2.cpp` and `prot_pcm2.cpp`, revision
+[8c285468743535fbbde018fef23b3cfb8c9a3ec8](https://github.com/mamedev/mame/tree/8c285468743535fbbde018fef23b3cfb8c9a3ec8/src/devices/bus/neogeo).
+Copyright S. Smith, David Haywood, Fabio Priuli. **BSD-3-Clause**, with the conditions and disclaimer above.
+The integration validates the original cartridge sizes and retains the board's linear M1 layout. No ROM contents
+are included. Synthetic test CRCs are generated from deterministic artificial data, not game data.
+
 ### ymfm (BSD-3-Clause)
 
 The YM2610 (`machine/neogeo_sound.cpp`) is [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles (commit

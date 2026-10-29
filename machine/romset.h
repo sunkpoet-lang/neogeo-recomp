@@ -108,7 +108,7 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
 struct NeoGeoRoms {
     std::vector<uint8_t> program;      // P1 then P2 (from 0x100000), words high byte first as the 68000 reads them
     std::vector<uint8_t> fix;          // S1: the fix layer's 8x8 tiles, 32 bytes each
-    std::vector<uint8_t> soundProgram; // M1: the Z80's program and its banks
+    std::vector<uint8_t> soundProgram; // M1: linear Z80 data (no MAME 64 KiB prefix); decrypted for KOF2002
     std::vector<uint8_t> samples;      // V: the YM2610's ADPCM samples
     std::vector<uint8_t> sprites;      // C: each pair of files interleaved a byte at a time (odd file, odd bytes)
     std::vector<uint8_t> bios;         // the MVS system ROM, words high byte first

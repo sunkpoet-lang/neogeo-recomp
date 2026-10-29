@@ -524,8 +524,9 @@ uint8_t NeoGeo::Read(uint16_t address) {
     if (program.empty()) {
         return 0xFF;
     }
-    const uint32_t at = ((static_cast<uint32_t>(m_z80Banks[region]) << (11 + region)) + (address - start)) %
-                        static_cast<uint32_t>(program.size());
+    // NEO-ZMC exposes at most 18 bank address bits (MAME init_audio).
+    const uint32_t mask = (static_cast<uint32_t>(program.size()) - 1) & 0x3FFFF;
+    const uint32_t at = ((static_cast<uint32_t>(m_z80Banks[region]) << (11 + region)) & mask) + (address - start);
     return program[at];
 }
 

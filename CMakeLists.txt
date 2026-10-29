@@ -56,7 +56,7 @@ if (NOT NEOGEO_GAME_SOURCES)
 endif ()
 add_executable(${GAME} port/neogeo_main.cpp port/neogeo_port.cpp port/neogeo_window.cpp port/present.cpp port/menu.cpp
     port/hud.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/neogeo_game.cpp
-    machine/neogeo.cpp machine/neogeo_sound.cpp video/neogeo_video.cpp machine/m68k.cpp sound/z80.cpp machine/romset.cpp
+    machine/neogeo.cpp machine/neogeo_decrypt.cpp machine/neogeo_sound.cpp video/neogeo_video.cpp machine/m68k.cpp sound/z80.cpp machine/romset.cpp
     machine/kabuki.cpp machine/cps2crypt.cpp runtime/no_blocks.cpp runtime/no_z80_blocks.cpp ${YMFM_OPN}
     machine/soundtrack.cpp port/soundtrack.cpp port/decoders.cpp port/neogeo_online.cpp
     ${NEOGEO_GAME_SOURCES})
@@ -79,4 +79,10 @@ if (WIN32)
         file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/icon.rc" "1 ICON \"${GAME_ICON}\"\n")
         target_sources(${GAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/icon.rc")
     endif ()
+endif ()
+
+option(NEOGEO_BUILD_TESTS "Build synthetic decryption and board tests" OFF)
+if (NEOGEO_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif ()
