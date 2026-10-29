@@ -10,3 +10,8 @@ target_include_directories(neogeo_decrypt_test PRIVATE ${ROOT}/machine ${ROOT}/r
 target_link_libraries(neogeo_decrypt_test PRIVATE ZLIB::ZLIB)
 target_compile_options(neogeo_decrypt_test PRIVATE -Wall -Wextra -Wno-unused-parameter)
 add_test(NAME neogeo_decrypt COMMAND neogeo_decrypt_test "${CMAKE_CURRENT_BINARY_DIR}/synthetic-roms")
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_test(NAME neogeo_startup COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/neogeo_startup_test.py"
+    --exe "$<TARGET_FILE:${GAME}>" --game "${GAME}" --scratch "${CMAKE_CURRENT_BINARY_DIR}/startup")

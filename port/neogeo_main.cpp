@@ -14,7 +14,8 @@
 //          [--script "FRAME:BUTTON:FRAMES,..."] [--state-save FRAME:FILE] [--state-load FILE] [--menu FRAME:KEYS[:PNG]]
 //          [--keys TICK:KEY,...] [--stats]
 //
-// With no --rom, the game's set is looked for in roms/ beside the program, then in the current folder.
+// Without --rom: executable-relative roms/, ROM/, rom/, then beside the executable;
+// finally the legacy working-directory roms/ and current-directory ZIP.
 // Script buttons: coin1 start1 up1 down1 left1 right1 a1 b1 c1 d1 (and the same ending in 2), service, test.
 
 #include "game_info.h"

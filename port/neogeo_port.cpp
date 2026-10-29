@@ -37,7 +37,7 @@ namespace {
 
     bool Exists(const std::string &path) {
         struct stat info;
-        return stat(path.c_str(), &info) == 0;
+        return stat(path.c_str(), &info) == 0 && S_ISREG(info.st_mode);
     }
 
     bool ReadFile(const std::string &path, std::vector<uint8_t> &data) {
@@ -64,12 +64,13 @@ namespace {
         return fclose(f) == 0 && ok;
     }
 
-    // The set beside the program (roms/<set>.zip), or in the current folder
+    // Prefer the portable collection beside the executable, then legacy working-directory layouts.
     std::string FindRom() {
         const char *base = SDL_GetBasePath();
         const std::string here = base ? base : "";
-        for (const std::string &path : {here + "roms/" GAME_ROM_SET ".zip", std::string("roms/" GAME_ROM_SET ".zip"),
-                                        std::string(GAME_ROM_SET ".zip")}) {
+        for (const std::string &path : {here + "roms/" GAME_ROM_SET ".zip", here + "ROM/" GAME_ROM_SET ".zip",
+                                        here + "rom/" GAME_ROM_SET ".zip", here + GAME_ROM_SET ".zip",
+                                        std::string("roms/" GAME_ROM_SET ".zip"), std::string(GAME_ROM_SET ".zip")}) {
             if (Exists(path)) {
                 return path;
             }
