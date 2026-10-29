@@ -28,6 +28,7 @@ This project stands on other people's work:
 | Game | Status |
 |---|---|
 | The King of Fighters '97 (`kof97`, NGM-2320) | Plays from the launcher: picture, sound, controls, in-game menu, save states, cheats |
+| The King of Fighters 2002 (`kof2002`, NGM-2650) | Original encrypted set: runtime decryption, title/attract graphics and sound; see `games/kof2002/README.md` |
 
 The **board** is modelled: the 68000's memory map and banks, the system ROM and its vectors, the interrupts and the
 display position timer, the inputs, the LSPC video (sprites with shrink and chaining, the fix layer, the palettes)
@@ -37,13 +38,17 @@ the whole state each frame), which the checks and, later, online play rely on.
 
 ## Playing
 
-You need your own sets, as MAME names them: the game's (`kof97.zip`) and the Neo Geo's system set (`neogeo.zip`,
+You need your own sets, as MAME names them: the game's (`kof97.zip` or the original `kof2002.zip`) and the Neo Geo's system set (`neogeo.zip`,
 with the MVS system ROM `sp-s2.sp1`), in the same folder.
 
 Open `neogeo-recomp-launcher`, show it the folder your sets are in, and press Play. The Controllers page sets the
 keys and gamepads (the Neo Geo's A and C on a six-button stick's top row, B and D on its bottom row). While playing,
 Esc or F1 (or the left stick's click, or Start and Select together) opens the menu: save states, coin, speed, sound,
 cheats, display. The first time a game starts, the board sets itself up and restarts once, as a new MVS does.
+
+For direct startup, place both sets in `roms/`, `ROM/` or `rom/` beside the game's executable, or directly beside
+it. An explicit `--rom /path/to/game.zip` takes precedence. See [KOF2002's notes](games/kof2002/README.md) for the
+encrypted set format, standalone startup and title-screen icon.
 
 ## Building
 
@@ -68,11 +73,26 @@ hashes.txt` (more in `games/kof97/README.md`).
 | `machine/m68k*`, `sound/z80*`, `port/menu*`, `port/present*`, `recomp-common/`, `launcher/` | From cps2recomp |
 | `openspec/` | The specs and the plans of each change ([OpenSpec](https://github.com/Fission-AI/OpenSpec)) |
 
+## Checks
+
+Enable synthetic decryption, ROM-loader, Z80-bank and executable-startup checks without supplying ROMs:
+
+```sh
+make GAME=kof2002
+cmake -S . -B build/kof2002 -G Ninja -DGAME=kof2002 -DNEOGEO_BUILD_TESTS=ON
+cmake --build build/kof2002
+ctest --test-dir build/kof2002 --output-on-failure
+```
+
+The [decryption report](openspec/changes/neo-kof2002-decrypt/validation.md) records the pinned MAME reference,
+synthetic golden values and KOF97 regression. The [desktop report](openspec/changes/neo-kof2002-desktop/validation.md)
+records discovery checks and Windows icon verification. Actual game checks require the player's own sets.
+
 ## Next
 
 - The custom soundtrack (your own music in place of the board's, as CPS-2 Recomp's Super Turbo has it)
 - Training mode for the fighting games (frame data, inputs, hitboxes, a dummy that records and replays)
-- Online play with rollback ([GekkoNet](https://github.com/HeatXD/GekkoNet)), through a direct or relayed tunnel
+- Further validation of online rollback ([GekkoNet](https://github.com/HeatXD/GekkoNet)) over direct and relayed connections; see [KOF97's online instructions](games/kof97/README.md)
 - Translation to C++
 - More games: Garou, the Fatal Fury and Real Bout series, other KOFs, Samurai Shodown, Last Blade, Metal Slug
 
