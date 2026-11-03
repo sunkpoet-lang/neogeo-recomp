@@ -43,6 +43,7 @@ typedef struct {
   int id;                   // RMENU_ROW_ACTION: handed back when chosen
   const char* title;        // RMENU_ROW_ACTION
   const char* description;  // RMENU_ROW_ACTION
+  const char* bar;          // the menu bar's menu it is in (NULL or "": by its kind; see menubar.h)
 } RMenuRow;
 
 typedef struct {

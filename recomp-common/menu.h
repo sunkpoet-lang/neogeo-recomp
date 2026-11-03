@@ -48,6 +48,7 @@ struct MenuRow {
     int id;                  // Action: handed back when chosen
     std::string title;       // Action; Page: the page's name
     std::string description; // Action
+    std::string bar;         // the menu bar's menu it is in (menubar.h's AddMenuEntries; "": by its kind)
     MenuRow(Kind kind, int id = 0, std::string title = {}, std::string description = {})
         : kind(kind), id(id), title(std::move(title)), description(std::move(description)) {}
 };
