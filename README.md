@@ -46,6 +46,25 @@ keys and gamepads (the Neo Geo's A and C on a six-button stick's top row, B and 
 Esc or F1 (or the left stick's click, or Start and Select together) opens the menu: save states, coin, speed, sound,
 cheats, display. The first time a game starts, the board sets itself up and restarts once, as a new MVS does.
 
+In a window the game also has a **menu bar** above the picture (Game, Video, Audio, Input, Features, Help) for the
+mouse: the same choices as that menu, and the window's own (its size, full screen, screenshots). Right-click the
+picture for the same menus where you click; `F10`, or Alt pressed and let go on its own, opens Game. While one of its
+menus is open the game stands still (online it goes on, and what would change the match is dim). Full screen has no
+bar until the pointer reaches the top edge. The keys while playing:
+
+| Key | Does |
+| --- | --- |
+| Esc, `F1` | the in-game menu |
+| `F10`, Alt | the menu bar's Game menu |
+| `F5`, `F9` | quick save, quick load (the slot chosen; `F6` and `F7` the slot before and after) |
+| `F8` | a screenshot, beside the save states in `screenshots/` |
+| `F11`, Alt+Enter | full screen |
+| `F2` | the board's test switch |
+| `P`, `O` | stop and start again, one frame on |
+| `-`, `=` | slower, faster |
+
+A key you give to the game in the Controllers page does only that.
+
 For direct startup, place both sets in `roms/`, `ROM/` or `rom/` beside the game's executable, or directly beside
 it. An explicit `--rom /path/to/game.zip` takes precedence. See [KOF2002's notes](games/kof2002/README.md) for the
 encrypted set format, standalone startup and title-screen icon.
