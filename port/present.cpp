@@ -157,12 +157,8 @@ bool Presenter::Open(SDL_Window *window, bool gpu, std::string &error) {
 
 void Presenter::Close() {
     if (m_device) {
-        if (m_transfer) {
-            SDL_ReleaseGPUTransferBuffer(m_device, m_transfer);
-        }
-        if (m_picture) {
-            SDL_ReleaseGPUTexture(m_device, m_picture);
-        }
+        Release(m_picture);
+        Release(m_overlayGpu);
         if (m_sampler) {
             SDL_ReleaseGPUSampler(m_device, m_sampler);
         }
@@ -177,14 +173,13 @@ void Presenter::Close() {
     m_device = nullptr;
     m_pipeline = nullptr;
     m_sampler = nullptr;
-    m_picture = nullptr;
-    m_transfer = nullptr;
-    for (SDL_Texture *texture : {m_texture, m_enlarged}) {
+    for (SDL_Texture *texture : {m_texture, m_enlarged, m_overlayTexture}) {
         if (texture) {
             SDL_DestroyTexture(texture);
         }
     }
-    m_texture = m_enlarged = nullptr;
+    m_texture = m_enlarged = m_overlayTexture = nullptr;
+    m_overlayChanged = !m_regions.empty(); // (made again, if opened again)
     if (m_renderer) {
         SDL_DestroyRenderer(m_renderer);
     }
@@ -200,14 +195,19 @@ void Presenter::Size(int &width, int &height) const {
     }
 }
 
-bool Presenter::Upload(SDL_GPUCommandBuffer *commands, const uint32_t *pixels, int width, int height) {
-    if (width != m_width || height != m_height) {
-        if (m_picture) {
-            SDL_ReleaseGPUTexture(m_device, m_picture);
-        }
-        if (m_transfer) {
-            SDL_ReleaseGPUTransferBuffer(m_device, m_transfer);
-        }
+void Presenter::Release(Texture &texture) {
+    if (texture.transfer) {
+        SDL_ReleaseGPUTransferBuffer(m_device, texture.transfer);
+    }
+    if (texture.texture) {
+        SDL_ReleaseGPUTexture(m_device, texture.texture);
+    }
+    texture = {};
+}
+
+bool Presenter::Upload(SDL_GPUCommandBuffer *commands, const uint32_t *pixels, int width, int height, Texture &into) {
+    if (width != into.width || height != into.height) {
+        Release(into);
         SDL_GPUTextureCreateInfo texture = {};
         texture.type = SDL_GPU_TEXTURETYPE_2D;
         texture.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
@@ -216,30 +216,30 @@ bool Presenter::Upload(SDL_GPUCommandBuffer *commands, const uint32_t *pixels, i
         texture.height = static_cast<Uint32>(height);
         texture.layer_count_or_depth = 1;
         texture.num_levels = 1;
-        m_picture = SDL_CreateGPUTexture(m_device, &texture);
+        into.texture = SDL_CreateGPUTexture(m_device, &texture);
         SDL_GPUTransferBufferCreateInfo transfer = {};
         transfer.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
         transfer.size = static_cast<Uint32>(width * height * 4);
-        m_transfer = SDL_CreateGPUTransferBuffer(m_device, &transfer);
-        m_width = width;
-        m_height = height;
+        into.transfer = SDL_CreateGPUTransferBuffer(m_device, &transfer);
+        into.width = width;
+        into.height = height;
     }
-    if (!m_picture || !m_transfer) {
+    if (!into.texture || !into.transfer) {
         return false;
     }
-    void *to = SDL_MapGPUTransferBuffer(m_device, m_transfer, true);
+    void *to = SDL_MapGPUTransferBuffer(m_device, into.transfer, true);
     if (!to) {
         return false;
     }
     memcpy(to, pixels, static_cast<size_t>(width) * height * 4);
-    SDL_UnmapGPUTransferBuffer(m_device, m_transfer);
+    SDL_UnmapGPUTransferBuffer(m_device, into.transfer);
     SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(commands);
     SDL_GPUTextureTransferInfo from = {};
-    from.transfer_buffer = m_transfer;
+    from.transfer_buffer = into.transfer;
     from.pixels_per_row = static_cast<Uint32>(width);
     from.rows_per_layer = static_cast<Uint32>(height);
     SDL_GPUTextureRegion region = {};
-    region.texture = m_picture;
+    region.texture = into.texture;
     region.w = static_cast<Uint32>(width);
     region.h = static_cast<Uint32>(height);
     region.d = 1;
@@ -248,7 +248,15 @@ bool Presenter::Upload(SDL_GPUCommandBuffer *commands, const uint32_t *pixels, i
     return true;
 }
 
-void Presenter::Draw(SDL_GPUCommandBuffer *commands, SDL_GPUTexture *target, const SDL_FRect &where) {
+void Presenter::SetOverlay(const std::vector<uint32_t> &pixels, int width, int height, const std::vector<SDL_Rect> &regions) {
+    m_overlay = pixels;
+    m_overlayWidth = width;
+    m_overlayHeight = height;
+    m_regions = regions;
+    m_overlayChanged = true;
+}
+
+void Presenter::Draw(SDL_GPUCommandBuffer *commands, SDL_GPUTexture *target, int targetWidth, int targetHeight, const SDL_FRect &where) {
     SDL_GPUColorTargetInfo colour = {};
     colour.texture = target;
     colour.clear_color = {0, 0, 0, 1};
@@ -258,15 +266,33 @@ void Presenter::Draw(SDL_GPUCommandBuffer *commands, SDL_GPUTexture *target, con
     SDL_BindGPUGraphicsPipeline(pass, m_pipeline);
     const SDL_GPUViewport viewport = {where.x, where.y, where.w, where.h, 0, 1};
     SDL_SetGPUViewport(pass, &viewport);
-    const SDL_GPUTextureSamplerBinding binding = {m_picture, m_sampler};
+    const SDL_GPUTextureSamplerBinding binding = {m_picture.texture, m_sampler};
     SDL_BindGPUFragmentSamplers(pass, 0, &binding, 1);
     // (blended all over: as if each of the picture's pixels took one of the screen's, which the shader blends
     // from edge to edge)
     const bool smooth = m_scaling == Scaling::Smooth;
-    const Sizes sizes = {{static_cast<float>(m_width), static_cast<float>(m_height)},
-                         {smooth ? 1.0f : std::floor(where.w / m_width + 0.999f), smooth ? 1.0f : std::floor(where.h / m_height + 0.999f)}};
+    const float across = static_cast<float>(m_picture.width), down = static_cast<float>(m_picture.height);
+    const Sizes sizes = {{across, down}, {smooth ? 1.0f : std::floor(where.w / across + 0.999f), smooth ? 1.0f : std::floor(where.h / down + 0.999f)}};
     SDL_PushGPUFragmentUniformData(commands, 0, &sizes, sizeof(sizes));
     SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+    // The overlay over it, one of its pixels to one of the window's (the same shader: at a scale of 1 it gives
+    // each pixel as it is), inside its regions only
+    if (m_overlayGpu.texture && !m_regions.empty() && m_overlayGpu.width == targetWidth && m_overlayGpu.height == targetHeight) {
+        const SDL_GPUViewport all = {0, 0, static_cast<float>(targetWidth), static_cast<float>(targetHeight), 0, 1};
+        SDL_SetGPUViewport(pass, &all);
+        const SDL_GPUTextureSamplerBinding overlay = {m_overlayGpu.texture, m_sampler};
+        SDL_BindGPUFragmentSamplers(pass, 0, &overlay, 1);
+        const Sizes one = {{static_cast<float>(targetWidth), static_cast<float>(targetHeight)}, {1.0f, 1.0f}};
+        SDL_PushGPUFragmentUniformData(commands, 0, &one, sizeof(one));
+        for (const SDL_Rect &region : m_regions) {
+            SDL_Rect inside = region;
+            const SDL_Rect window = {0, 0, targetWidth, targetHeight};
+            if (SDL_GetRectIntersection(&region, &window, &inside)) {
+                SDL_SetGPUScissor(pass, &inside);
+                SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
+            }
+        }
+    }
     SDL_EndGPURenderPass(pass);
 }
 
@@ -277,9 +303,14 @@ void Presenter::Show(const uint32_t *pixels, int width, int height, const SDL_FR
             return;
         }
         SDL_GPUTexture *screen = nullptr;
+        Uint32 screenWidth = 0, screenHeight = 0;
         // (not the call that waits for a free picture of the window's: a frame that cannot be shown is left out)
-        if (SDL_AcquireGPUSwapchainTexture(commands, m_window, &screen, nullptr, nullptr) && screen && Upload(commands, pixels, width, height)) {
-            Draw(commands, screen, where);
+        if (SDL_AcquireGPUSwapchainTexture(commands, m_window, &screen, &screenWidth, &screenHeight) && screen &&
+            Upload(commands, pixels, width, height, m_picture)) {
+            if (m_overlayChanged && !m_regions.empty() && Upload(commands, m_overlay.data(), m_overlayWidth, m_overlayHeight, m_overlayGpu)) {
+                m_overlayChanged = false;
+            }
+            Draw(commands, screen, static_cast<int>(screenWidth), static_cast<int>(screenHeight), where);
         }
         SDL_SubmitGPUCommandBuffer(commands);
         return;
@@ -301,7 +332,7 @@ void Presenter::Show(const uint32_t *pixels, int width, int height, const SDL_FR
         SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
         SDL_RenderClear(m_renderer);
         SDL_RenderTexture(m_renderer, m_texture, nullptr, &where);
-        SDL_RenderPresent(m_renderer);
+        Finish();
         return;
     }
     SDL_SetTextureScaleMode(m_texture, SDL_SCALEMODE_NEAREST);
@@ -327,13 +358,49 @@ void Presenter::Show(const uint32_t *pixels, int width, int height, const SDL_FR
     SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
     SDL_RenderClear(m_renderer);
     SDL_RenderTexture(m_renderer, m_enlarged ? m_enlarged : m_texture, nullptr, &where);
+    Finish();
+}
+
+void Presenter::Finish() {
+    int width = 0, height = 0;
+    SDL_GetRenderOutputSize(m_renderer, &width, &height);
+    if (!m_regions.empty() && m_overlayWidth == width && m_overlayHeight == height) {
+        if (m_overlayChanged || !m_overlayTexture) {
+            float w = 0, h = 0;
+            if (!m_overlayTexture || !SDL_GetTextureSize(m_overlayTexture, &w, &h) || w != width || h != height) {
+                if (m_overlayTexture) {
+                    SDL_DestroyTexture(m_overlayTexture);
+                }
+                m_overlayTexture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_XBGR8888, SDL_TEXTUREACCESS_STREAMING, width, height);
+                if (m_overlayTexture) {
+                    SDL_SetTextureScaleMode(m_overlayTexture, SDL_SCALEMODE_NEAREST);
+                    SDL_SetTextureBlendMode(m_overlayTexture, SDL_BLENDMODE_NONE);
+                }
+            }
+            if (m_overlayTexture) {
+                SDL_UpdateTexture(m_overlayTexture, nullptr, m_overlay.data(), width * static_cast<int>(sizeof(uint32_t)));
+            }
+            m_overlayChanged = false;
+        }
+        for (const SDL_Rect &region : m_regions) {
+            SDL_FRect r;
+            SDL_RectToFRect(&region, &r);
+            if (m_overlayTexture) {
+                SDL_RenderTexture(m_renderer, m_overlayTexture, &r, &r);
+            }
+        }
+    }
     SDL_RenderPresent(m_renderer);
 }
 
 bool Presenter::Render(const uint32_t *pixels, int width, int height, int outWidth, int outHeight, const SDL_FRect &where,
-                       Scaling scaling, std::vector<uint32_t> &out, std::string &error) {
+                       Scaling scaling, std::vector<uint32_t> &out, std::string &error, const std::vector<uint32_t> *overlay,
+                       const std::vector<SDL_Rect> *regions) {
     Presenter p;
     p.m_scaling = scaling;
+    if (overlay && regions) {
+        p.SetOverlay(*overlay, outWidth, outHeight, *regions);
+    }
     if (!p.OpenGpu(nullptr, error)) {
         return false;
     }
@@ -352,9 +419,10 @@ bool Presenter::Render(const uint32_t *pixels, int width, int height, int outWid
     transfer.size = static_cast<Uint32>(outWidth * outHeight * 4);
     SDL_GPUTransferBuffer *download = SDL_CreateGPUTransferBuffer(device, &transfer);
     SDL_GPUCommandBuffer *commands = SDL_AcquireGPUCommandBuffer(device);
-    bool ok = target && download && commands && p.Upload(commands, pixels, width, height);
+    bool ok = target && download && commands && p.Upload(commands, pixels, width, height, p.m_picture) &&
+              (p.m_regions.empty() || p.Upload(commands, p.m_overlay.data(), outWidth, outHeight, p.m_overlayGpu));
     if (ok) {
-        p.Draw(commands, target, where);
+        p.Draw(commands, target, outWidth, outHeight, where);
         SDL_GPUCopyPass *copy = SDL_BeginGPUCopyPass(commands);
         SDL_GPUTextureRegion region = {};
         region.texture = target;
