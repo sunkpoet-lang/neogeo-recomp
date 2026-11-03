@@ -174,6 +174,11 @@ uint16_t NeoGeo::Read16(uint32_t address) {
         return Word(m_cartVectors ? m_roms.program : m_roms.bios, a);
     }
     if (a < 0x100000) {
+        // MAME prot_kof98.cpp: overlay is active only at the cartridge header words.
+        if (m_roms.kof98Protection && (a == 0x100 || a == 0x102)) {
+            if (m_kof98Protection == 1) return a == 0x100 ? 0x00c2 : 0x00fd;
+            if (m_kof98Protection == 2) return a == 0x100 ? 0x4e45 : 0x4f2d;
+        }
         return Word(m_roms.program, a);
     }
     if (a < 0x200000) {
@@ -263,6 +268,9 @@ void NeoGeo::Write16(uint32_t address, uint16_t value) {
     if (a >= 0x100000 && a < 0x200000) {
         m_ram[a & 0xFFFF] = static_cast<uint8_t>(value >> 8);
         m_ram[(a & 0xFFFF) + 1] = static_cast<uint8_t>(value);
+    } else if (m_roms.kof98Protection && a == 0x20aaaa) {
+        if (value == 0x0090) m_kof98Protection = 1;
+        if (value == 0x00f0) m_kof98Protection = 2;
     } else if (a >= 0x2FFFF0 && a < 0x300000) {
         BankSelect(value);
     } else if (a >= 0x300000 && a < 0x400000) {
@@ -286,6 +294,9 @@ void NeoGeo::Write8(uint32_t address, uint8_t value) {
     const uint16_t onBus = odd ? value : static_cast<uint16_t>(value << 8);
     if (a >= 0x100000 && a < 0x200000) {
         m_ram[a & 0xFFFF] = value;
+    } else if (m_roms.kof98Protection && (a & ~1u) == 0x20aaaa) {
+        if (onBus == 0x0090) m_kof98Protection = 1;
+        if (onBus == 0x00f0) m_kof98Protection = 2;
     } else if (a >= 0x2FFFF0 && a < 0x300000) {
         BankSelect(onBus);
     } else if (a >= 0x300000 && a < 0x400000) {
@@ -585,6 +596,8 @@ void NeoGeo::Serialize(Archive &ar) {
     ar.Vec(m_backupRam);
     ar.Vec(m_z80Ram);
     ar.Pod(m_bankBase);
+    // Preserve all previous cartridges' state byte layout and hashes.
+    if (m_roms.kof98Protection) ar.Pod(m_kof98Protection);
     ar.Pod(m_cartVectors);
     ar.Pod(m_cartSound);
     ar.Pod(m_backupUnlocked);

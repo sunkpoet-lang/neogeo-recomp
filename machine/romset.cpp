@@ -546,6 +546,7 @@ NeoGeoList ParseNeoGeoList(const char *program, const char *fix, const char *sou
 }
 
 bool LoadNeoGeoSet(const std::string &path, const NeoGeoList &list, NeoGeoRoms &roms, std::string &error) {
+    roms.kof98Protection = false;
     Places places;
     bool haveBiosZip = false;
     {
@@ -650,6 +651,8 @@ bool LoadNeoGeoSet(const std::string &path, const NeoGeoList &list, NeoGeoRoms &
         *system[n] = data;
     }
     if (list.set == "kof2002" && !DecryptKof2002(roms, error)) return false;
+    if (list.set == "kf2k2mp2" && !DecryptKf2k2mp2(roms, error)) return false;
+    if (list.set == "kof98" && !DecryptKof98(roms, error)) return false;
     return true;
 }
 

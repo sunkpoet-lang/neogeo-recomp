@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright S. Smith, David Haywood, Fabio Priuli (MAME).
 // Adapted from MAME 8c285468743535fbbde018fef23b3cfb8c9a3ec8:
-// src/devices/bus/neogeo/prot_{cmc,kof2k2,pcm2}.cpp.
+// src/devices/bus/neogeo/prot_{cmc,kof2k2,pcm2,misc}.cpp.
 // See THIRD_PARTY_NOTICES.md for the licence and integration attribution.
 #include "neogeo_decrypt.h"
 #include "romset.h"
@@ -472,6 +472,67 @@ bool DecryptKof2002(NeoGeoRoms &roms, std::string &error) {
     // cmc50_m1_decrypt also writes the linear data back to soundProgram.
     // The board uses that linear data; MAME's duplicated audio prefix is unnecessary here.
     Pcm2Swap(roms.samples.data(), roms.samples.size(), 0);
+    return true;
+}
+
+// Adapted from MAME prot_kof98.cpp at the revision above (same authors, BSD-3-Clause).
+bool DecryptKof98(NeoGeoRoms &roms, std::string &error) {
+    if (roms.program.size() != 0x600000 || roms.sprites.size() != 0x4000000 ||
+        roms.samples.size() != 0x1000000 || roms.soundProgram.size() != 0x40000 || roms.fix.size() != 0x20000) {
+        error = "kof98: unsupported ROM layout (P=6 MiB, C=64 MiB, V=16 MiB, M1=256 KiB, S1=128 KiB)";
+        return false;
+    }
+    auto *src = roms.program.data();
+    std::vector<uint8_t> original(src, src + 0x200000);
+    static const uint32_t sections[] = {0,0x100000,4,0x100004,0x10000a,0xa,0x10000e,0xe};
+    static const uint32_t positions[] = {0,4,0xa,0xe};
+    for (int i = 0x800; i < 0x100000; i += 0x200) {
+        for (int j = 0; j < 0x100; j += 0x10) {
+            for (int k = 0; k < 16; k += 2) {
+                memcpy(src+i+j+k, original.data()+i+j+sections[k/2]+0x100, 2);
+                memcpy(src+i+j+k+0x100, original.data()+i+j+sections[k/2], 2);
+            }
+            if (i >= 0x80000) {
+                const int swap = i >= 0xc0000 ? 0x100 : 0;
+                for (auto pos : positions) {
+                    memcpy(src+i+j+pos, original.data()+i+j+pos+swap, 2);
+                    memcpy(src+i+j+pos+0x100, original.data()+i+j+pos+(0x100-swap), 2);
+                }
+            }
+        }
+        memcpy(src+i, original.data()+i, 2);
+        memcpy(src+i+2, original.data()+i+0x100000, 2);
+        memcpy(src+i+0x100, original.data()+i+0x100, 2);
+        memcpy(src+i+0x102, original.data()+i+0x100100, 2);
+    }
+    memmove(src+0x100000, src+0x200000, 0x400000);
+    roms.kof98Protection = true;
+    return true;
+}
+
+bool DecryptKf2k2mp2(NeoGeoRoms &roms, std::string &error) {
+    if (roms.program.size() != 0x600000 || roms.sprites.size() != 0x4000000 ||
+        roms.samples.size() != 0x1000000 || roms.soundProgram.size() != 0x20000 ||
+        roms.fix.size() != 0x20000) {
+        error = "kf2k2mp2: unsupported ROM layout (expected P=6 MiB, C=64 MiB, V=16 MiB, encrypted M1=128 KiB, S1=128 KiB)";
+        return false;
+    }
+    // MAME neoboot_prot_device::kf2k2mp2_px_decrypt. The final MiB is zero-filled.
+    std::vector<uint8_t> program(0x600000);
+    memcpy(program.data(), roms.program.data() + 0x1c0000, 0x40000);
+    memcpy(program.data() + 0x40000, roms.program.data() + 0x140000, 0x80000);
+    memcpy(program.data() + 0xc0000, roms.program.data() + 0x100000, 0x40000);
+    memcpy(program.data() + 0x100000, roms.program.data() + 0x200000, 0x400000);
+    roms.program.swap(program);
+    Pcm2Swap(roms.samples.data(), roms.samples.size(), 0);
+    Cmc50 cmc;
+    roms.soundProgram.resize(0x80000, 0);
+    std::vector<uint8_t> audio(0x90000);
+    cmc.cmc50_m1_decrypt(roms.soundProgram.data(), roms.soundProgram.size(), audio.data(), audio.size());
+    // MAME sx_decrypt(1): swap halves within each 16-byte S1 block, not SFIX extraction.
+    for (size_t i = 0; i < roms.fix.size(); i += 16)
+        for (size_t j = 0; j < 8; ++j) std::swap(roms.fix[i + j], roms.fix[i + j + 8]);
+    cmc.cmc50_gfx_decrypt(roms.sprites.data(), roms.sprites.size(), 0xec);
     return true;
 }
 } // namespace cps2recomp

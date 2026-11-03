@@ -106,6 +106,7 @@ bool LoadRomSet(const std::string &path, const RomList &list, RomSet &set, std::
 // A Neo Geo MVS game (board = neogeo): its cartridge's files and the system's, from the BIOS set (MAME's `neogeo`),
 // as the board's chips see them
 struct NeoGeoRoms {
+    bool kof98Protection = false;     // immutable cartridge type; overlay state lives on the board
     std::vector<uint8_t> program;      // P1 then P2 (from 0x100000), words high byte first as the 68000 reads them
     std::vector<uint8_t> fix;          // S1: the fix layer's 8x8 tiles, 32 bytes each
     std::vector<uint8_t> soundProgram; // M1: linear Z80 data (no MAME 64 KiB prefix); decrypted for KOF2002

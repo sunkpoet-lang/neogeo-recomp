@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--mame-dir', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--cxx', default='g++')
+    parser.add_argument('--magic2', action='store_true', help='Use the Magic Plus II layout and upstream bootleg helpers')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     src = (args.mame_dir / 'prot_cmc.cpp').read_text()
@@ -61,6 +62,7 @@ public:
 };
 class kof2002_prot_device { public: void kof2002_decrypt_68k(uint8_t*,uint32_t); };
 class pcm2_prot_device { public: void swap(uint8_t*,uint32_t,int); };
+class neoboot_prot_device { public: void kf2k2mp2_px_decrypt(uint8_t*,uint32_t); void sx_decrypt(uint8_t*,uint32_t,int); };
 '''
     methods = []
     for name in ['decrypt', 'gfx_decrypt', 'cmc50_gfx_decrypt', 'sfix_decrypt', 'm1_address_scramble', 'cmc50_m1_decrypt']:
@@ -71,6 +73,10 @@ class pcm2_prot_device { public: void swap(uint8_t*,uint32_t,int); };
         methods.append(text)
     methods.append(function((args.mame_dir/'prot_kof2k2.cpp').read_text(), 'kof2002_prot_device::kof2002_decrypt_68k'))
     methods.append(function((args.mame_dir/'prot_pcm2.cpp').read_text(), 'pcm2_prot_device::swap'))
+    if args.magic2:
+        misc = (args.mame_dir/'prot_misc.cpp').read_text()
+        for name in ['kf2k2mp2_px_decrypt', 'sx_decrypt']:
+            methods.append(function(misc, 'neoboot_prot_device::' + name))
     driver = r'''
 void fill(std::vector<uint8_t>& v,size_t n,uint32_t& seed) {
     v.resize(n); for(auto& b:v) {seed^=seed<<13;seed^=seed>>17;seed^=seed<<5;b=seed>>11;}
@@ -93,6 +99,12 @@ int main() {
     }
 }
 '''
+    if args.magic2:
+        driver = driver.replace('fill(p,0x500000,seed)', 'fill(p,0x600000,seed)')
+        driver = driver.replace('m.resize(0x80000,0);', 'fill(s,0x20000,seed); m.resize(0x80000,0);')
+        driver = driver.replace('kof2002_prot_device().kof2002_decrypt_68k', 'neoboot_prot_device().kf2k2mp2_px_decrypt')
+        driver = driver.replace('cmc.sfix_decrypt(c.data(),c.size(),s.data(),s.size());',
+                                'neoboot_prot_device().sx_decrypt(s.data(),s.size(),1);')
     cpp = args.output/'reference.cpp'
     cpp.write_text(header + tables + '\n'.join(methods) + driver)
     exe = (args.output/'reference.exe').resolve()

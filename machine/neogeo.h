@@ -141,6 +141,7 @@ private:
 
     std::vector<uint8_t> m_ram, m_backupRam, m_z80Ram;
     uint32_t m_bankBase = 0;     // where 0x200000 reads in the program
+    uint8_t m_kof98Protection = 0; // Altera header overlay, KOF98 cartridge only
     bool m_cartVectors = false;  // the first 128 bytes from the cartridge (true) or the system ROM
     bool m_cartSound = false;    // the Z80's first 32 KB from the cartridge's M1 (true) or the system's sm1
     bool m_backupUnlocked = false;
