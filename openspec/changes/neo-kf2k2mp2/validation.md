@@ -59,3 +59,8 @@ to the player's central library. With PATH restricted to Windows directories, th
 3,000 headless frames successfully. final-package.json records the command, exit code and all packaged file
 SHA256 values. It supersedes binary.json's earlier pre-icon binary hash. No ROMs, BIOS or player settings were
 copied into this folder. Human window/controller review and maintained-launcher deployment remain pending.
+
+## Player acceptance - 3 November 2026
+
+The player reports Magic Plus II accepted the same way as KOF98: sound correct, play with GekkoNet correct and offline
+play to the ending without problems. This is the player's report, not a recorded run.

@@ -28,9 +28,9 @@ This project stands on other people's work:
 | Game | Status |
 |---|---|
 | The King of Fighters '97 (`kof97`, NGM-2320) | Plays from the launcher: picture, sound, controls, in-game menu, save states, cheats |
-| The King of Fighters 2002 (`kof2002`, NGM-2650) | Original encrypted set: runtime decryption, title/attract graphics and sound; see `games/kof2002/README.md` |
-| The King of Fighters 2002 Magic Plus II (`kf2k2mp2`) | Separate bootleg pipeline; local play accepted by the player, local peer/rollback checks pass; Internet acceptance pending. See `games/kf2k2mp2/README.md` |
-| The King of Fighters '98 (`kof98`, NGM-2420) | Original program decryption and stateful header protection; own title and combat captures, synthetic/loader/state checks. See `games/kof98/README.md` |
+| The King of Fighters 2002 (`kof2002`, NGM-2650) | Original encrypted set: runtime decryption; accepted by the player with sound and GekkoNet play, offline to the ending; see `games/kof2002/README.md` |
+| The King of Fighters 2002 Magic Plus II (`kf2k2mp2`) | Separate bootleg pipeline; accepted by the player with sound and GekkoNet play, offline to the ending; local peer/rollback checks pass. See `games/kf2k2mp2/README.md` |
+| The King of Fighters '98 (`kof98`, NGM-2420) | Original program decryption and stateful header protection; synthetic/loader/state checks; accepted by the player after about three hours with nearly every team, sound and GekkoNet play, offline to the ending. See `games/kof98/README.md` |
 
 The **board** is modelled: the 68000's memory map and banks, the system ROM and its vectors, the interrupts and the
 display position timer, the inputs, the LSPC video (sprites with shrink and chaining, the fix layer, the palettes)

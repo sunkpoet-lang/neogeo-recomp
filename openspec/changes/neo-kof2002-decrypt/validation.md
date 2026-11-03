@@ -89,3 +89,8 @@ After the user separately authorised committing and publishing, both games were 
 `neogeo_decrypt` and `neogeo_startup` (2/2). A fresh 3000-frame KOF97 run matched the pre-change hash log and WAV
 byte for byte, ending at `e61c6f3c`. KOF2002 completed another 3000 frames with exit 0 and state `eb3961f6`.
 Both OpenSpec changes passed strict validation. These checks do not establish Internet netplay behaviour.
+
+## Player acceptance - 3 November 2026
+
+The player reports KOF2002 accepted the same way as KOF98: sound correct, play with GekkoNet correct and offline
+play to the ending without problems. This is the player's report, not a recorded run.

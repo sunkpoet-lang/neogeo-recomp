@@ -9,3 +9,4 @@
 - [x] 3.2 Verify real variant boot, graphics/nonzero PCM and scripted run; document human acceptance limits.
 - [x] 3.3 Capture own title, embed icon, verify final executable and document usage/evidence.
 - [x] 3.4 Update shared checkpoint without deployment, commit or push.
+- [x] 3.5 Player acceptance: sound, GekkoNet play and offline play to the ending (3 November 2026; see validation.md).

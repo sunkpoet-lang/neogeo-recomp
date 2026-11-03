@@ -3,6 +3,10 @@
 **Note:** All dates are in Mexico City CST (UTC-6).
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
+## [2026-11-03] - Player acceptance of KOF98, KOF2002 and Magic Plus II
+
+- docs: record the player's acceptance of KOF98 (about three hours with nearly every team), KOF2002 and Magic Plus II, with sound and GekkoNet play correct and offline play to the ending, in their validation reports, tasks and the README.
+
 ## [2026-10-30] - Magic Plus II cartridge support
 
 - feat: support the original KOF98 cartridge with validated program decryption and a serialised Altera header overlay, preserving unrelated cartridges' state layouts.

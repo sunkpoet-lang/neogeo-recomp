@@ -64,3 +64,9 @@ from the final results. Own-frame captures through the screenshot mode initially
 Ignored evidence: work/kof98-validation/before, runtime.json/log, community/results.json, magic2-stress-result.json,
 per-peer logs/hashes, direct-start.json, bridge-check/results.json and baseline-integrity.json. Human play quality,
 full game completion and real Internet sessions remain player acceptance tasks.
+
+## Player acceptance - 3 November 2026
+
+The player reports about three hours of play with nearly every team: sound correct, play with GekkoNet correct and
+the game running fully; offline play reaches the ending without problems. Every team to the ending (about six
+hours) was not played and is not claimed. This is the player's report, not a recorded run.
