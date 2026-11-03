@@ -55,7 +55,7 @@ if (NOT NEOGEO_GAME_SOURCES)
     set(NEOGEO_GAME_SOURCES runtime/no_game.cpp)
 endif ()
 add_executable(${GAME} port/neogeo_main.cpp port/neogeo_port.cpp port/neogeo_window.cpp port/present.cpp port/menu.cpp
-    port/hud.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/neogeo_game.cpp
+    port/hud.cpp recomp-common/menu.cpp recomp-common/menubar.cpp recomp-common/settings.cpp runtime/game.cpp runtime/neogeo_game.cpp
     machine/neogeo.cpp machine/neogeo_decrypt.cpp machine/neogeo_sound.cpp video/neogeo_video.cpp machine/m68k.cpp sound/z80.cpp machine/romset.cpp
     machine/kabuki.cpp machine/cps2crypt.cpp runtime/no_blocks.cpp runtime/no_z80_blocks.cpp ${YMFM_OPN}
     machine/soundtrack.cpp port/soundtrack.cpp port/decoders.cpp port/neogeo_online.cpp

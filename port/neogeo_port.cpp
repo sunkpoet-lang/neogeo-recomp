@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
@@ -328,6 +329,14 @@ void NeoGeoPort::Shown(std::vector<uint32_t> &pixels) const {
         canvas.Fill(x - 3, y - 2, width + 6, 12, {20, 22, 30, 220});
         canvas.Text(x, y, 1, 0, {255, 255, 255, 255}, status);
     }
+    // A note for a moment (a screenshot taken, full screen's hint), under where fighting games keep their bars
+    if (!notice.empty() && tick < noticeUntil) {
+        const recomp::text::Canvas canvas{pixels.data(), kWidth, kHeight};
+        const float width = recomp::text::TextWidth(notice.c_str(), 1);
+        const float x = (kWidth - width) / 2, y = 52;
+        canvas.Fill(x - 3, y - 2, width + 6, 12, {20, 22, 30, 220});
+        canvas.Text(x, y, 1, 0, {255, 255, 255, 255}, notice.c_str());
+    }
 }
 
 void NeoGeoPort::MenuPicture(std::vector<uint32_t> &pixels, uint32_t &width, uint32_t &height) const {
@@ -360,6 +369,60 @@ bool NeoGeoPort::SaveState(const std::string &path, std::string &error) {
         error = "cannot write " + path;
         return false;
     }
+    // (and beside it a small picture of the game: each pixel the average of four by four of the board's)
+    constexpr int kWidth = NeoGeoVideo::kWidth, w = kWidth / 4, h = NeoGeoVideo::kHeight / 4;
+    const uint32_t *picture = board->Picture();
+    std::vector<uint32_t> small(static_cast<size_t>(w) * h);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            uint32_t r = 0, g = 0, b = 0;
+            for (int dy = 0; dy < 4; dy++) {
+                for (int dx = 0; dx < 4; dx++) {
+                    const uint32_t p = picture[static_cast<size_t>(y * 4 + dy) * kWidth + x * 4 + dx];
+                    r += p & 0xFF;
+                    g += (p >> 8) & 0xFF;
+                    b += (p >> 16) & 0xFF;
+                }
+            }
+            small[static_cast<size_t>(y) * w + x] = 0xFF000000u | ((b / 16) << 16) | ((g / 16) << 8) | (r / 16);
+        }
+    }
+    WritePng(StatePicture(path).c_str(), small.data(), w, h);
+    return true;
+}
+
+std::string NeoGeoPort::StatePicture(const std::string &statePath) {
+    const size_t dot = statePath.rfind('.');
+    const size_t slash = statePath.find_last_of("/\\");
+    return (dot != std::string::npos && (slash == std::string::npos || dot > slash) ? statePath.substr(0, dot) : statePath) + ".png";
+}
+
+bool NeoGeoPort::Screenshot(std::string &file, std::string &error) const {
+    namespace fs = std::filesystem;
+    const std::string folder = FolderOf(opt.savesPath) + "screenshots";
+    std::error_code failed;
+    fs::create_directories(fs::u8path(folder), failed);
+    // (GAME-YYYYMMDD-HHMMSS.png, and -2, -3... after it when there is one already)
+    SDL_Time now = 0;
+    SDL_DateTime t{};
+    SDL_GetCurrentTime(&now);
+    SDL_TimeToDateTime(now, &t, true);
+    char stamp[32];
+    snprintf(stamp, sizeof(stamp), "%04d%02d%02d-%02d%02d%02d", t.year, t.month, t.day, t.hour, t.minute, t.second);
+    std::string name, path;
+    for (int n = 1;; n++) {
+        name = std::string(GAME_ID) + "-" + stamp + (n > 1 ? "-" + std::to_string(n) : std::string()) + ".png";
+        path = folder + "/" + name;
+        if (!fs::exists(fs::u8path(path), failed)) {
+            break;
+        }
+    }
+    WritePng(path.c_str(), board->Picture(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
+    if (!fs::exists(fs::u8path(path), failed)) {
+        error = "cannot write " + path;
+        return false;
+    }
+    file = name;
     return true;
 }
 

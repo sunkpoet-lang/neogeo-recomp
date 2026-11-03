@@ -12,7 +12,8 @@
 //   <game> --list-features                 (for the launcher: the optional features, one a line)
 //   <game> --headless [--rom ...] [--frames N] [--shot-every N] [--shot-dir DIR] [--hash-log FILE] [--audio-dump FILE]
 //          [--script "FRAME:BUTTON:FRAMES,..."] [--state-save FRAME:FILE] [--state-load FILE] [--menu FRAME:KEYS[:PNG]]
-//          [--keys TICK:KEY,...] [--stats]
+//          [--keys TICK:KEY,...] [--stats] [--present-test PNG [--present-bar [N[.K]]]]
+//   <game> --window-events "LOOP:WHAT;..."   (tests: mouse and key events put to the window; neogeo_window.cpp)
 //
 // Without --rom: executable-relative roms/, ROM/, rom/, then beside the executable;
 // finally the legacy working-directory roms/ and current-directory ZIP.
@@ -31,6 +32,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -169,6 +171,12 @@ int main(int argc, char **argv) {
             o.stateLoad = next();
         } else if (a == "--stats") {
             o.stats = true;
+        } else if (a == "--present-test") {
+            o.presentTest = next();
+        } else if (a == "--present-bar") {
+            o.presentBar = i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9' ? next() : "0";
+        } else if (a == "--window-events") {
+            o.windowEvents = next();
         } else if (a == "--host") {
             o.online.mode = port::OnlineOptions::Mode::Host;
             if (i + 1 < argc && argv[i + 1][0] != '-') {
@@ -296,6 +304,44 @@ int main(int argc, char **argv) {
                 (board.Frames() - first) / (seconds > 0 ? seconds : 1), board.watchdogResets, board.unmapped.size());
     }
     fprintf(stderr, "state hash %08x at frame %llu\n", board.StateHash(), static_cast<unsigned long long>(board.Frames()));
+    if (!o.presentTest.empty()) {
+        // (the picture the run ended on, through the GPU path and read back: what a window 672 lines tall would show;
+        // --present-bar: as tall again as the menu bar's strip above it, menu N open, and its entry K's submenu)
+        std::vector<uint32_t> shown, drawn, overlay;
+        std::vector<SDL_Rect> regions;
+        port.Shown(shown);
+        const int outHeight = 672;
+        const int outWidth = static_cast<int>(std::lround(outHeight * port::PictureShape(
+            port::DisplayShapeNow() == port::Shape::Arcade ? 384 : NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, port::DisplayShapeNow(), 4.0f / 3.0f)));
+        int windowHeight = outHeight;
+        SDL_FRect where = port::NeoGeoWhere(outWidth, outHeight);
+        if (!o.presentBar.empty()) {
+            windowHeight = outHeight + recomp::MenuBar::kHeightDots * std::max(1, outHeight / NeoGeoVideo::kHeight);
+            where.y += static_cast<float>(port::BarStrip(windowHeight));
+            recomp::MenuBar bar;
+            port::BarMenus(port, bar, false);
+            bar.SetArea(outWidth, windowHeight, port::BarDot(windowHeight));
+            const int open = atoi(o.presentBar.c_str());
+            const size_t sub = o.presentBar.find('.');
+            if (open > 0) {
+                bar.OpenMenu(static_cast<size_t>(open - 1));
+                if (sub != std::string::npos) {
+                    for (int k = atoi(o.presentBar.c_str() + sub + 1); k > 1; k--) {
+                        bar.Buttons(recomp::kMenuDown);
+                    }
+                    bar.Buttons(recomp::kMenuRight);
+                }
+            }
+            port::BarPicture(bar, outWidth, windowHeight, overlay, regions);
+        }
+        if (SDL_Init(SDL_INIT_VIDEO) &&
+            port::Presenter::Render(shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, outWidth, windowHeight, where, port::DisplayScalingNow(),
+                                    drawn, error, regions.empty() ? nullptr : &overlay, regions.empty() ? nullptr : &regions)) {
+            WritePng(o.presentTest.c_str(), drawn.data(), outWidth, windowHeight);
+        } else {
+            fprintf(stderr, "--present-test: %s\n", error.empty() ? SDL_GetError() : error.c_str());
+        }
+    }
     port.Finish();
     if (isOnline) {
         if (!online.Message().empty()) {

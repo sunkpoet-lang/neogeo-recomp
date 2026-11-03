@@ -11,6 +11,7 @@
 #include "../machine/neogeo.h"
 #include "menu.h"
 #include "neogeo_online.h"
+#include "present.h"
 
 #include <cstdint>
 #include <memory>
@@ -32,6 +33,9 @@ struct NeoGeoOptions {
     int scale = 0;             // --scale: the window this many times the board's lines (0: the Display page's)
     std::string renderer;      // --renderer sdl|gpu
     OnlineOptions online;      // --host, --join, --delay, --stress (neogeo_online.h)
+    std::string presentTest;   // --present-test F.png: (headless) the last picture drawn by the GPU path, no window
+    std::string presentBar;    // --present-bar [N[.K]]: ... with the menu bar's strip above it (menu N open; its entry K's)
+    std::string windowEvents;  // --window-events: mouse and key events put to the window at times (neogeo_window.cpp)
 };
 
 struct NeoGeoPort {
@@ -48,6 +52,8 @@ struct NeoGeoPort {
     // Online (neogeo_online.h): no stopping, slowing, save states, reset or test switch, and the menu's coin goes
     // through the session as this player's
     bool online = false;
+    std::string notice;       // said at the top of the picture ...
+    uint64_t noticeUntil = 0; // ... until this tick
 
     // Loads the set, the sources and the settings; false with a message
     bool Init(std::string &error);
@@ -63,6 +69,11 @@ struct NeoGeoPort {
     void Shown(std::vector<uint32_t> &pixels) const;
     void MenuPicture(std::vector<uint32_t> &pixels, uint32_t &width, uint32_t &height) const;
     std::string StatePath(int slot) const;
+    // The small picture kept beside a save state (a quarter of the board's, for the menu bar's slots)
+    static std::string StatePicture(const std::string &statePath);
+    // The board's picture (no HUD, menu or notice) as a PNG in the screenshots folder beside the save states, named
+    // for the game and the time; false with the reason
+    bool Screenshot(std::string &file, std::string &error) const;
     bool SaveState(const std::string &path, std::string &error);
     bool LoadState(const std::string &path, std::string &error);
     // Keeps the backup RAM for the next run
@@ -76,5 +87,19 @@ private:
 void RegisterNeoGeoPortFeatures();
 
 int RunNeoGeoWindow(NeoGeoPort &port);
+
+// Where in a window `width` x `height` (its pixels) the picture goes, as the Display page says
+SDL_FRect NeoGeoWhere(int width, int height);
+// The Display page's shape and scaling now
+Shape DisplayShapeNow();
+Scaling DisplayScalingNow();
+// The window's menu bar (recomp-common/menubar.h), above the picture in a window: its menus (the in-game menu's rows
+// and the window's own, made again whenever what they show may have changed), how many of the window's pixels make a
+// dot of its letters in a window so many pixels tall, how tall its strip is then, and its picture as the presenter's
+// overlay (the strip, and the menus open)
+void BarMenus(NeoGeoPort &port, recomp::MenuBar &bar, bool fullscreen);
+int BarDot(int windowHeight);
+int BarStrip(int windowHeight);
+void BarPicture(const recomp::MenuBar &bar, int width, int height, std::vector<uint32_t> &pixels, std::vector<SDL_Rect> &regions);
 
 } // namespace port
