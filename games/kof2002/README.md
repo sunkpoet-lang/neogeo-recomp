@@ -2,7 +2,8 @@
 
 The original MAME/FBNeo `kof2002` cartridge (NGM-2650): runtime P2, CMC50 graphics/M1, extracted FIX and PCM2 samples.
 Use your own `kof2002.zip` and `neogeo.zip` (with `sp-s2.sp1`), beside each other. Bootleg, Plus and predecrypted sets
-are not supported. The encrypted `265-m1.m1` is 128 KiB, CRC `85aaa632`; do not replace it with an expanded M1.
+are not accepted by this original-set entry. Magic Plus II has its own [kf2k2mp2 entry](../kf2k2mp2/README.md).
+The encrypted `265-m1.m1` is 128 KiB, CRC `85aaa632`; do not replace it with an expanded M1.
 No ROM files are part of this change.
 
 ## Build and run

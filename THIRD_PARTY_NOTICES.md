@@ -49,6 +49,13 @@ Copyright S. Smith, David Haywood, Fabio Priuli. **BSD-3-Clause**, with the cond
 The integration validates the original cartridge sizes and retains the board's linear M1 layout. No ROM contents
 are included. Synthetic test CRCs are generated from deterministic artificial data, not game data.
 
+Magic Plus II additionally adapts `kf2k2mp2_px_decrypt` and `sx_decrypt(1)` from `prot_misc.cpp` at the same revision,
+with the same authors and BSD-3-Clause licence. Its dispatch follows `boot_kof2k2.cpp`; its S1 is not extracted.
+
+KOF98 adapts program decryption and Altera header-overlay behaviour from `prot_kof98.cpp` at that revision,
+by S. Smith, David Haywood and Fabio Priuli, under the same BSD-3-Clause conditions. The overlay state is included
+only in KOF98 board states; its original unencrypted graphics, S1, M1 and samples are not transformed.
+
 ### ymfm (BSD-3-Clause)
 
 The YM2610 (`machine/neogeo_sound.cpp`) is [ymfm](https://github.com/aaronsgiles/ymfm) by Aaron Giles (commit
