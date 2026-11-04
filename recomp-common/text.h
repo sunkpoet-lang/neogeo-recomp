@@ -39,6 +39,61 @@ inline constexpr uint8_t kFont[95][5] = {
   {0x00,0x00,0x7F,0x00,0x00}, {0x00,0x41,0x36,0x08,0x00}, {0x08,0x04,0x08,0x10,0x08},
 };
 
+// (ForkAde's fork) The Spanish letters and signs, for the in-game chat: a column per 16 bits, bit 0 two rows above
+// the cell (a capital's accent), bit 2 its top row; any other character outside ASCII is drawn as "?"
+struct ExtraGlyph {
+    uint32_t code;
+    uint16_t columns[5];
+};
+inline constexpr ExtraGlyph kSpanish[] = {
+  {0xE1, {0x080,0x150,0x154,0x152,0x1E0}}, {0xE9, {0x0E0,0x150,0x154,0x152,0x060}}, // á é
+  {0xED, {0x000,0x110,0x1F4,0x102,0x000}}, {0xF3, {0x0E0,0x110,0x114,0x112,0x0E0}}, // í ó
+  {0xFA, {0x0F0,0x100,0x104,0x082,0x1F0}}, {0xFC, {0x0F0,0x104,0x100,0x084,0x1F0}}, // ú ü
+  {0xF1, {0x1F4,0x022,0x014,0x012,0x1E0}}, {0xC1, {0x1F8,0x044,0x046,0x045,0x1F8}}, // ñ Á
+  {0xC9, {0x1FC,0x124,0x126,0x125,0x104}}, {0xCD, {0x000,0x104,0x1FE,0x105,0x000}}, // É Í
+  {0xD3, {0x0F8,0x104,0x106,0x105,0x0F8}}, {0xDA, {0x0FC,0x100,0x102,0x101,0x0FC}}, // Ó Ú
+  {0xDC, {0x0FC,0x102,0x100,0x102,0x0FC}}, {0xD1, {0x1FC,0x012,0x021,0x042,0x1FD}}, // Ü Ñ
+  {0xBF, {0x0C0,0x120,0x114,0x100,0x080}}, {0xA1, {0x000,0x000,0x1F4,0x000,0x000}}, // ¿ ¡
+};
+
+// (ForkAde's fork) The next character of UTF-8 text, and the bytes it takes; a byte that does not start a whole
+// character is one character of its own (drawn "?")
+inline uint32_t NextChar(const char *s, size_t left, size_t &used) {
+    const auto b = [&](size_t i) { return static_cast<unsigned char>(s[i]); };
+    const unsigned c = b(0);
+    size_t n = c < 0x80 ? 1 : (c >> 5) == 0x6 ? 2 : (c >> 4) == 0xE ? 3 : (c >> 3) == 0x1E ? 4 : 0;
+    if (n == 0 || n > left) {
+        used = 1;
+        return c < 0x80 ? c : 0xFFFD;
+    }
+    uint32_t code = n == 1 ? c : c & (0x7F >> n);
+    for (size_t i = 1; i < n; i++) {
+        if ((b(i) & 0xC0) != 0x80) {
+            used = 1;
+            return 0xFFFD;
+        }
+        code = code << 6 | (b(i) & 0x3F);
+    }
+    used = n;
+    return code;
+}
+
+// (ForkAde's fork) How many characters the first `bytes` of UTF-8 text are, and how many bytes its first `chars` are
+inline size_t CharCount(const char *s, size_t bytes) {
+    size_t count = 0;
+    for (size_t at = 0, used = 0; at < bytes; at += used, count++) {
+        NextChar(s + at, bytes - at, used);
+    }
+    return count;
+}
+inline size_t BytesOf(const char *s, size_t bytes, size_t chars) {
+    size_t at = 0;
+    for (size_t used = 0; at < bytes && chars > 0; at += used, chars--) {
+        NextChar(s + at, bytes - at, used);
+    }
+    return at;
+}
+
 constexpr int kCharWidth = 6, kLineHeight = 10; // a character's cell and a line, in font dots
 
 struct Color {
@@ -63,16 +118,21 @@ struct Canvas {
             }
         }
     }
+    // (`n` bytes of UTF-8 text: this fork draws a character a cell, and the Spanish ones of kSpanish)
     void Chars(float x, float y, float dot, const char *s, size_t n, Color c) const {
-        for (size_t i = 0; i < n; i++, x += kCharWidth * dot) {
-            unsigned ch = static_cast<unsigned char>(s[i]);
-            if (ch < 32 || ch > 126) {
-                ch = '?';
+        for (size_t i = 0, used = 0; i < n; i += used, x += kCharWidth * dot) {
+            const uint32_t ch = NextChar(s + i, n - i, used);
+            uint16_t glyph[5] = {};
+            const ExtraGlyph *extra = nullptr;
+            for (const ExtraGlyph &one : kSpanish) {
+                extra = one.code == ch ? &one : extra;
             }
-            const uint8_t *glyph = kFont[ch - 32];
             for (int col = 0; col < 5; col++) {
-                for (int row = 0; row < 8; row++) {
-                    if (glyph[col] & (1 << row)) {
+                glyph[col] = extra ? extra->columns[col] : static_cast<uint16_t>(kFont[(ch >= 32 && ch <= 126 ? ch : '?') - 32][col] << 2);
+            }
+            for (int col = 0; col < 5; col++) {
+                for (int row = -2; row < 8; row++) {
+                    if (glyph[col] & (1 << (row + 2))) {
                         Fill(x + col * dot, y + row * dot, dot, dot, c);
                     }
                 }
@@ -81,18 +141,18 @@ struct Canvas {
     }
     // Text in lines of at most maxWidth, broken at spaces (0: one line); the lines drawn
     int Text(float x, float y, float dot, float maxWidth, Color c, const char *s) const {
-        size_t perLine = maxWidth > 0 ? static_cast<size_t>(maxWidth / (kCharWidth * dot)) : strlen(s);
+        size_t perLine = maxWidth > 0 ? static_cast<size_t>(maxWidth / (kCharWidth * dot)) : CharCount(s, strlen(s));
         perLine = std::max<size_t>(perLine, 1);
         int lines = 0;
         while (*s) {
             size_t n = strlen(s);
-            if (n > perLine) {
-                n = perLine;
+            if (CharCount(s, n) > perLine) {
+                n = BytesOf(s, n, perLine);
                 while (n > 0 && s[n] != ' ') {
                     n--;
                 }
                 if (n == 0) {
-                    n = perLine; // (a word longer than the line)
+                    n = BytesOf(s, strlen(s), perLine); // (a word longer than the line)
                 }
             }
             Chars(x, y + lines * kLineHeight * dot, dot, s, n, c);
@@ -107,23 +167,23 @@ struct Canvas {
 };
 
 inline float TextWidth(const char *s, float dot) {
-    return strlen(s) * kCharWidth * dot;
+    return CharCount(s, strlen(s)) * kCharWidth * dot;
 }
 
 // The lines Canvas::Text would draw the text in
 inline int TextLines(const char *s, float dot, float maxWidth) {
-    size_t perLine = maxWidth > 0 ? static_cast<size_t>(maxWidth / (kCharWidth * dot)) : strlen(s);
+    size_t perLine = maxWidth > 0 ? static_cast<size_t>(maxWidth / (kCharWidth * dot)) : CharCount(s, strlen(s));
     perLine = std::max<size_t>(perLine, 1);
     int lines = 0;
     while (*s) {
         size_t n = strlen(s);
-        if (n > perLine) {
-            n = perLine;
+        if (CharCount(s, n) > perLine) {
+            n = BytesOf(s, n, perLine);
             while (n > 0 && s[n] != ' ') {
                 n--;
             }
             if (n == 0) {
-                n = perLine;
+                n = BytesOf(s, strlen(s), perLine);
             }
         }
         lines++;

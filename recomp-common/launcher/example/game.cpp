@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
         {"health", "Cheats", "Health", "Whose health is kept full.", 0, {"Off", "Player 1", "Both"}},
         {"easy", "Difficulty", "Easy", "Fewer and slower.", recomp::kFeatureExclusive, {}},
         {"hard", "Difficulty", "Hard", "More and faster.", recomp::kFeatureExclusive, {}},
+        {"filter", "Picture", "Filter", "How the picture is drawn.", recomp::kFeatureMenuChoices, {"Off", "Soft", "Scanlines", "CRT", "Smooth edges"}},
     };
     const char *settings = "";
     for (int i = 1; i < argc; i++) {

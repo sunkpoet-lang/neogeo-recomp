@@ -234,8 +234,8 @@ launcher::Description describe_game(const GameInfo& game) {
     // Online play (port/neogeo_online.h): every Neo Geo game has its own, through the tunnel beside the launcher (the
     // ONLINE card: the host's game waits on 7845, the other's joins the tunnel's port)
     if (!strcmp(game.board, "neogeo")) {
-        d.online.port = 7845;
-        d.online.arguments = [](const std::string& address) {
+        d.tunnel.port = 7845;
+        d.tunnel.arguments = [](const std::string& address) {
             return address.empty() ? std::vector<std::string>{"--host", "7845"} : std::vector<std::string>{"--join", address};
         };
     }
@@ -386,8 +386,8 @@ launcher::Description describe_outside(const OutsideGame& game) {
     d.mute_argument = nullptr;  // (the program's own menu has the volume)
     if (game.netplay_port) {
         // (after "--", the bridge passes them to the program: outside_bridge.cpp)
-        d.online.port = game.netplay_port;
-        d.online.arguments = [port = game.netplay_port](const std::string& address) {
+        d.tunnel.port = game.netplay_port;
+        d.tunnel.arguments = [port = game.netplay_port](const std::string& address) {
             return address.empty() ? std::vector<std::string>{"--", "--host", std::to_string(port)}
                                    : std::vector<std::string>{"--", "--join", address};
         };

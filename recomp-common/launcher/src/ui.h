@@ -86,8 +86,13 @@ bool dropdown(const char* id, const std::vector<std::string>& labels, int& index
 bool search_box(const char* id, char* buffer, size_t size, const char* hint, float width);
 // A plain field to type or paste in (a room code); `wrong` outlines it in the danger color. True when it changed.
 bool text_box(const char* id, char* buffer, size_t size, const char* hint, float width, bool wrong = false);
+// A field to type in (an address, say), with `hint` in it while it is empty; a gamepad's B leaves it. True when
+// what is in it changed.
+bool text_field(const char* id, char* buffer, size_t size, const char* hint, float width);
 // (`reachable`: false keeps the arrow keys and a gamepad off it)
-bool nav_item(const char* label, bool active, float width, bool reachable = true);
+// `indent`: its words further in (a row under another's). `fold`: a row that opens and closes the rows under it shows a
+// chevron at its end, pointing right while it is closed (0) and down while it is open (1); -1: none.
+bool nav_item(const char* label, bool active, float width, bool reachable = true, float indent = 0.0f, int fold = -1);
 bool list_item(const char* label, bool active, float width);
 bool key_chip(const char* id, const char* label, bool capturing, float width, ImRect& rect);
 float keycap(const char* key);

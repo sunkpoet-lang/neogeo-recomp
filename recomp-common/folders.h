@@ -7,12 +7,14 @@
 // portable.txt in the folder the download was unpacked to (beside the launcher; on macOS beside the app, which
 // is never written to), they are in user/<name>/ there instead, so the whole thing can go on a drive and be
 // carried to another computer. Taking portable.txt away goes back to the system's folders; nothing is moved
-// either way. The launcher and the game ask the same question, and so find the same folders. Nothing here knows
-// of a game or SDL.
+// either way. The launcher and the game ask the same question, and so find the same folders. A folder is named by
+// FolderName(name), which on Windows leaves out what Windows refuses in a name (X-Men: Children of the Atom is
+// X-Men - Children of the Atom there). Nothing here knows of a game or SDL.
 #pragma once
 
 #include <cstdlib>
 #include <filesystem>
+#include <string>
 
 namespace recomp {
 
@@ -43,6 +45,34 @@ inline std::filesystem::path PortableFolder(const std::filesystem::path &program
     const std::filesystem::path install = InstallFolder(program_folder);
     std::error_code error;
     return std::filesystem::is_regular_file(install / kPortableMarker, error) ? install / kPortableFolder : std::filesystem::path();
+}
+
+#ifdef _WIN32
+constexpr bool kWindowsNames = true;
+#else
+constexpr bool kWindowsNames = false;
+#endif
+
+// The name of a player's folder for a game (or a collection) named so. As it is, except on Windows, which refuses
+// < > : " / \ | ? * and the control characters in a name, and a name ending in a dot or a space (the folder can't
+// be made, and a game started in it doesn't start: error 267): a colon is " -" there, the others are left out.
+// Elsewhere the name is kept, so the folders players already have keep theirs.
+inline std::string FolderName(const std::string &name, bool windows = kWindowsNames) {
+    if (!windows) {
+        return name;
+    }
+    std::string folder;
+    for (const char c : name) {
+        if (c == ':') {
+            folder += " -";
+        } else if (static_cast<unsigned char>(c) >= 32 && std::string("<>\"/\\|?*").find(c) == std::string::npos) {
+            folder += c;
+        }
+    }
+    while (!folder.empty() && (folder.back() == '.' || folder.back() == ' ')) {
+        folder.pop_back();
+    }
+    return folder.empty() ? "_" : folder;
 }
 
 }  // namespace recomp

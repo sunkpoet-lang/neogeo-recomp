@@ -25,6 +25,13 @@
 // manifest had and the new one has not. If any step fails nothing is changed. Downloads are made by the system's
 // curl (macOS, Windows 10 and later, and Linux distributions have it, and tar).
 //
+// Android: an app can't replace its own files, only the system's installer can. So there's no manifest: the check
+// takes the newest release with an APK, and installing downloads that APK into the app's cache, checks it against the
+// release's SHA256SUMS.txt, and hands it to the port's activity (installPackage(String path): 0 Android's installer
+// opened, 1 Android's Settings opened first, for the player to allow the app to install apps; anything else: it
+// couldn't). Android asks the player to confirm, and installs it over the app (the same signing key: settings, saves
+// and ROM sets stay). A release without SHA256SUMS.txt: the update card's Download opens the APK in the browser.
+//
 // The variable RECOMP_UPDATE_RELEASES names another list of releases (a file:// URL, for tests).
 #pragma once
 
@@ -50,12 +57,16 @@ public:
         Installing,
         Installed,     // the new version is in place: start the launcher again
         Failed,        // the check or the install did not work (message): nothing was changed
+        Downloaded,    // (Android) the new APK is downloaded and checked, and Android's installer asks the player to
+                       // confirm; install() opens the installer again (the player said not now, or allowed it in Settings)
     };
     struct Status {
         State state = State::Idle;
         std::string version;    // the newer version's (Available and after)
         std::string message;    // for the player
         std::string notes_url;  // the release's page
+        std::string download_url; // (Android) the newer release's APK, for the player to download and open when the
+                                  // release has no SHA256SUMS.txt to check it with (NotInstalled)
         double fraction = 0.0;  // of the download (Installing)
     };
 
@@ -65,7 +76,7 @@ public:
             std::function<void()> wake = {});
     ~Updater();
     void check();    // on a thread
-    void install();  // on a thread (Available only; the caller sees to it that no game is running)
+    void install();  // on a thread (Available, or Downloaded on Android; the caller sees to it that no game is running)
     Status status() const;
     bool busy() const;  // checking or installing
     // Starts the launcher again (the new one) with these arguments; the caller then quits. False if it did not start.
@@ -89,12 +100,18 @@ public:
     // <0, 0, >0 as version a is older than, the same as, newer than b ("0.4.0-beta.1" < "0.4.0-beta.2" < "0.4.0")
     static int compare_versions(const std::string& a, const std::string& b);
     static std::string sha256_of_file(const std::filesystem::path& path);
+    // A file's SHA-256 in a SHA256SUMS.txt (lines of "<sha256>  <name>", sha256sum's and shasum's, "*" before a
+    // name read in binary), or "" if it isn't there
+    static std::string sum_in(const std::string& sums, const std::string& name);
     static const char* platform();
 
 private:
     void set(State state, const std::string& message);
     bool do_check();
     bool do_install();
+    bool do_install_apk();  // (Android)
+    // Downloads url to a file, its progress shown against `size`: curl's exit code
+    int download(const std::string& url, const std::filesystem::path& to, uint64_t size);
     void run(void (Updater::*work)());
     void check_work();
     void install_work();
@@ -110,6 +127,12 @@ private:
     Manifest next_, current_;
     std::string archive_url_;            // the new release's archive
     std::vector<size_t> needed_;         // next_.files that differ here
+#ifdef __ANDROID__
+    // (Android) the new release's APK and its SHA256SUMS.txt, and the APK once it is downloaded and checked
+    std::string apk_url_, apk_name_, sums_url_;
+    uint64_t apk_size_ = 0;
+    std::filesystem::path apk_;
+#endif
 };
 
 }  // namespace launcher

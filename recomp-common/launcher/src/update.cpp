@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of recomp-common: https://github.com/tmcleroy/recomp-common
 #include "update.h"
 
+#include "run_program.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -15,6 +17,10 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
+#ifdef __ANDROID__
+#include <SDL3/SDL_system.h>
+#include <jni.h>
+#endif
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/wait.h>
@@ -282,135 +288,6 @@ private:
     bool ok_ = true;
 };
 
-// ---- running curl -----------------------------------------------------------------------------
-
-#ifdef _WIN32
-std::wstring wide(const std::string& text) {
-    if (text.empty()) {
-        return {};
-    }
-    int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
-    std::wstring out(static_cast<size_t>(size), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), out.data(), size);
-    return out;
-}
-// An argument as CommandLineToArgvW reads it back: in quotes, a quote with a backslash before it, and backslashes
-// doubled where a quote follows them
-std::wstring quoted(const std::wstring& arg) {
-    std::wstring out = L"\"";
-    size_t backslashes = 0;
-    for (wchar_t c : arg) {
-        if (c == L'\\') {
-            backslashes++;
-            continue;
-        }
-        out.append(c == L'"' ? backslashes * 2 + 1 : backslashes, L'\\');
-        backslashes = 0;
-        out += c;
-    }
-    out.append(backslashes * 2, L'\\');
-    return out + L"\"";
-}
-std::wstring command_line(const fs::path& program, const std::vector<std::string>& args) {
-    std::wstring line = quoted(program.wstring());
-    for (const std::string& arg : args) {
-        line += L" " + quoted(wide(arg));
-    }
-    return line;
-}
-#endif
-
-// Runs a program (no shell) and waits for it: its exit code (-1: it did not start), and its output if asked
-int run_program(const fs::path& program, const std::vector<std::string>& args, std::string* output) {
-#ifdef _WIN32
-    SECURITY_ATTRIBUTES security{sizeof security, nullptr, TRUE};
-    HANDLE read = nullptr, write = nullptr;
-    if (!CreatePipe(&read, &write, &security, 0)) {
-        return -1;
-    }
-    SetHandleInformation(read, HANDLE_FLAG_INHERIT, 0);
-    STARTUPINFOW startup{};
-    startup.cb = sizeof startup;
-    startup.dwFlags = STARTF_USESTDHANDLES;
-    startup.hStdOutput = write;
-    startup.hStdError = write;
-    startup.hStdInput = nullptr;
-    PROCESS_INFORMATION process{};
-    std::wstring line = command_line(program, args);
-    if (!CreateProcessW(program.wstring().c_str(), line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process)) {
-        CloseHandle(write);
-        CloseHandle(read);
-        return -1;
-    }
-    CloseHandle(write);
-    char buffer[16384];
-    DWORD got = 0;
-    std::string all;
-    while (ReadFile(read, buffer, sizeof buffer, &got, nullptr) && got > 0) {
-        all.append(buffer, got);
-    }
-    CloseHandle(read);
-    WaitForSingleObject(process.hProcess, INFINITE);
-    DWORD code = 0;
-    GetExitCodeProcess(process.hProcess, &code);
-    CloseHandle(process.hProcess);
-    CloseHandle(process.hThread);
-    if (output) {
-        *output = std::move(all);
-    }
-    return static_cast<int>(code);
-#else
-    int pipe_ends[2];
-    if (pipe(pipe_ends) != 0) {
-        return -1;
-    }
-    std::vector<std::string> owned{program.string()};
-    owned.insert(owned.end(), args.begin(), args.end());
-    std::vector<char*> argv;
-    for (std::string& arg : owned) {
-        argv.push_back(arg.data());
-    }
-    argv.push_back(nullptr);
-    posix_spawn_file_actions_t actions;
-    posix_spawn_file_actions_init(&actions);
-    posix_spawn_file_actions_adddup2(&actions, pipe_ends[1], 1);
-    posix_spawn_file_actions_addopen(&actions, 2, "/dev/null", O_WRONLY, 0);
-    posix_spawn_file_actions_addclose(&actions, pipe_ends[0]);
-    pid_t pid = 0;
-    int result = posix_spawnp(&pid, owned[0].c_str(), &actions, nullptr, argv.data(), environ);
-    posix_spawn_file_actions_destroy(&actions);
-    close(pipe_ends[1]);
-    std::string all;
-    if (result == 0) {
-        char buffer[16384];
-        ssize_t got;
-        while ((got = read(pipe_ends[0], buffer, sizeof buffer)) > 0) {
-            all.append(buffer, static_cast<size_t>(got));
-        }
-    }
-    close(pipe_ends[0]);
-    if (result != 0) {
-        return -1;
-    }
-    int status = 0;
-    waitpid(pid, &status, 0);
-    if (output) {
-        *output = std::move(all);
-    }
-    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-#endif
-}
-
-fs::path curl_program() {
-#ifdef _WIN32
-    wchar_t system[MAX_PATH];
-    UINT n = GetSystemDirectoryW(system, MAX_PATH);
-    return n > 0 && n < MAX_PATH ? fs::path(system) / L"curl.exe" : fs::path(L"curl.exe");
-#else
-    std::error_code error;
-    return fs::exists("/usr/bin/curl", error) ? fs::path("/usr/bin/curl") : fs::path("curl");
-#endif
-}
 
 // What curl's exit code means, for the player
 std::string curl_problem(int code) {
@@ -447,21 +324,23 @@ int fetch_file(const std::string& url, const fs::path& to) {
     }
     return run_program(curl_program(),
                        {"-fsSL", "--connect-timeout", "15", "--speed-limit", "1024", "--speed-time", "60", "--retry", "2", "-A", "recomp-launcher", "-o",
-                        to.string(), url},
+                        to.u8string(), url},
                        nullptr);
 }
 
 // The archive unpacked into `into` by the system's own program for it (no shell): its exit code
+// (run_program takes its arguments as UTF-8, as every path here is given: a narrow .string() is the system's code page
+// on Windows, which a folder with an accent in it is not in)
 int unpack_archive(const fs::path& archive, const fs::path& into) {
 #if defined(__APPLE__)
-    return run_program("/usr/bin/ditto", {"-x", "-k", archive.string(), into.string()}, nullptr);
+    return run_program("/usr/bin/ditto", {"-x", "-k", archive.u8string(), into.u8string()}, nullptr);
 #elif defined(_WIN32)
     wchar_t system[MAX_PATH];
     UINT n = GetSystemDirectoryW(system, MAX_PATH);
     const fs::path tar = n > 0 && n < MAX_PATH ? fs::path(system) / L"tar.exe" : fs::path(L"tar.exe");  // (it reads zips too)
-    return run_program(tar, {"-xf", archive.string(), "-C", into.string()}, nullptr);
+    return run_program(tar, {"-xf", archive.u8string(), "-C", into.u8string()}, nullptr);
 #else
-    return run_program("tar", {"-xzf", archive.string(), "-C", into.string()}, nullptr);
+    return run_program("tar", {"-xzf", archive.u8string(), "-C", into.u8string()}, nullptr);
 #endif
 }
 
@@ -498,6 +377,38 @@ std::string plain_version(std::string tag) {
     return !tag.empty() && (tag[0] == 'v' || tag[0] == 'V') ? tag.substr(1) : tag;
 }
 
+#ifdef __ANDROID__
+// Where the APK is downloaded: the app's cache (the port's activity gives Android's installer only files from there)
+fs::path apk_folder() {
+    const char* cache = SDL_GetAndroidCachePath();
+    return cache && *cache ? fs::path(cache) / "update" : fs::path();
+}
+
+// The port's activity's installPackage(String path): 0 the installer opened, 1 Settings first, -1 it couldn't
+int android_install(const fs::path& apk) {
+    JNIEnv* env = static_cast<JNIEnv*>(SDL_GetAndroidJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_GetAndroidActivity());
+    if (!env || !activity) {
+        return -1;
+    }
+    int result = -1;
+    jclass activity_class = env->GetObjectClass(activity);
+    jmethodID install = env->GetMethodID(activity_class, "installPackage", "(Ljava/lang/String;)I");
+    if (install) {
+        jstring path = env->NewStringUTF(apk.string().c_str());
+        result = env->CallIntMethod(activity, install, path);
+        env->DeleteLocalRef(path);
+    }
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        result = -1;
+    }
+    env->DeleteLocalRef(activity_class);
+    env->DeleteLocalRef(activity);
+    return result;
+}
+#endif
+
 }  // namespace
 
 // ---- the parts the tests see too ---------------------------------------------------------------
@@ -507,6 +418,8 @@ const char* Updater::platform() {
     return "macos";
 #elif defined(_WIN32)
     return "windows-x64";
+#elif defined(__ANDROID__)
+    return "android";
 #elif defined(__linux__) && defined(__aarch64__)
     return "linux-arm64";
 #elif defined(__linux__)
@@ -614,6 +527,28 @@ int Updater::compare_versions(const std::string& a, const std::string& b) {
     return pa.size() < pb.size() ? -1 : pa.size() > pb.size() ? 1 : 0;
 }
 
+std::string Updater::sum_in(const std::string& sums, const std::string& name) {
+    std::stringstream lines(sums);
+    std::string line;
+    while (std::getline(lines, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        const size_t space = line.find(' ');
+        if (space != 64 || !is_sha256(line.substr(0, 64))) {
+            continue;
+        }
+        size_t at = line.find_first_not_of(' ', space);
+        if (at != std::string::npos && line[at] == '*') {
+            at++;
+        }
+        if (at != std::string::npos && line.compare(at, std::string::npos, name) == 0) {
+            return line.substr(0, 64);
+        }
+    }
+    return "";
+}
+
 std::string Updater::sha256_of_file(const fs::path& path) {
     std::ifstream in(path, std::ios::binary);
     if (!in) {
@@ -647,6 +582,12 @@ Updater::Updater(fs::path program_folder, std::string launcher_name, std::string
     if (fs::is_directory(top_ / ".update", error)) {
         fs::remove_all(top_ / ".update", error);
     }
+#ifdef __ANDROID__
+    // (the APK of the last update, installed by now or not wanted)
+    if (const fs::path apks = apk_folder(); !apks.empty()) {
+        fs::remove_all(apks, error);
+    }
+#endif
 }
 
 Updater::~Updater() {
@@ -696,7 +637,7 @@ void Updater::check() {
 }
 
 void Updater::install() {
-    if (status().state == State::Available) {
+    if (status().state == State::Available || status().state == State::Downloaded) {
         run(&Updater::install_work);
     }
 }
@@ -711,8 +652,17 @@ void Updater::install_work() {
         std::lock_guard<std::mutex> lock(mutex_);
         status_.fraction = 0.0;
     }
+#ifdef __ANDROID__
+    if (!apk_.empty()) {
+        set(State::Installing, "Opening Android's installer…");  // (downloaded already)
+    } else {
+        set(State::Installing, "Downloading…");
+    }
+    do_install_apk();
+#else
     set(State::Installing, "Downloading…");
     do_install();
+#endif
 }
 
 bool Updater::do_check() {
@@ -729,8 +679,66 @@ bool Updater::do_check() {
         set(State::Failed, "Couldn't check for a new version: GitHub's answer could not be read.");
         return false;
     }
-    // The newest release with a manifest for this system (a beta only while this is a beta), and this one's own
     const bool beta = version_.find('-') != std::string::npos;
+#ifdef __ANDROID__
+    // (Android: an app can't replace its own files, only the system's installer can, so there's no manifest: the
+    // newest release's APK, which the player downloads and opens, and Android installs over this one)
+    const Json* newest = nullptr;
+    std::string newest_version, apk, apk_name, sums;
+    uint64_t apk_size = 0;
+    for (const Json& release : releases.items) {
+        std::string url, name_of_apk, sums_url;
+        uint64_t size = 0;
+        for (const Json& asset : release["assets"].items) {
+            const std::string& name = asset["name"].text;
+            if (name.size() > 4 && name.compare(name.size() - 4, 4, ".apk") == 0 && name.find("DO-NOT-SHARE") == std::string::npos &&
+                safe_path(name) && name.find('/') == std::string::npos) {
+                url = asset["browser_download_url"].text;
+                name_of_apk = name;
+                size = std::strtoull(asset["size"].text.c_str(), nullptr, 10);
+            } else if (name == "SHA256SUMS.txt") {
+                sums_url = asset["browser_download_url"].text;
+            }
+        }
+        const std::string version = plain_version(release["tag_name"].text);
+        if (!release["draft"].boolean && !url.empty() && (beta || !release["prerelease"].boolean) &&
+            (!newest || compare_versions(version, newest_version) > 0)) {
+            newest = &release;
+            newest_version = version;
+            apk = url;
+            apk_name = name_of_apk;
+            apk_size = size;
+            sums = sums_url;
+        }
+    }
+    if (!newest || compare_versions(newest_version, version_) <= 0) {
+        set(State::UpToDate, "This is the newest version.");
+        return true;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        status_.version = newest_version;
+        status_.notes_url = (*newest)["html_url"].text;
+        status_.download_url = apk;
+    }
+    if (sums.empty() || apk_size == 0 || apk_folder().empty()) {
+        // (nothing to check the APK with here: the player downloads it in the browser)
+        set(State::NotInstalled, "You have " + version_ + ". Download the new one and open it: Android installs it over this one, and your " +
+                                     "settings, saves and ROM sets stay.");
+        return true;
+    }
+    if (apk_url_ != apk) {
+        apk_.clear();  // (a download of an older new version isn't this one)
+    }
+    apk_url_ = apk;
+    apk_name_ = apk_name;
+    apk_size_ = apk_size;
+    sums_url_ = sums;
+    set(State::Available, "You have " + version_ + ". The download is " + megabytes(apk_size_) + "; Android asks you to confirm, " +
+                              "and your settings, saves and ROM sets stay.");
+    return true;
+#endif
+    // The newest release with a manifest for this system (a beta only while this is a beta), and this one's own
     const Json* best = nullptr;
     std::string best_version, best_manifest, current_manifest;
     for (const Json& release : releases.items) {
@@ -805,7 +813,7 @@ bool Updater::do_install() {
     const fs::path staging = top_ / ".update";
     fs::remove_all(staging, error);
     if (!fs::create_directories(staging / "old", error) || error) {
-        set(State::Failed, "Couldn't update: the launcher can't write to its folder (" + top_.string() +
+        set(State::Failed, "Couldn't update: the launcher can't write to its folder (" + top_.u8string() +
                                "). Move it to a folder of your own, or download the new version from the releases page.");
         return false;
     }
@@ -816,23 +824,7 @@ bool Updater::do_install() {
     };
     // 1. The archive, downloaded and checked, unpacked, and every file that differs checked
     const fs::path archive = staging / next_.archive, unpacked = staging / "new";
-    std::atomic<bool> downloading{true};
-    std::thread progress([&] {  // (curl writes the file as it comes)
-        while (downloading) {
-            std::error_code ignored;
-            const uint64_t got = fs::exists(archive, ignored) ? fs::file_size(archive, ignored) : 0;
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                status_.fraction = next_.archive_size ? std::min(1.0, static_cast<double>(got) / static_cast<double>(next_.archive_size)) : 0.0;
-            }
-            set(State::Installing, "Downloading " + megabytes(got) + " of " + megabytes(next_.archive_size) + "…");
-            std::this_thread::sleep_for(std::chrono::milliseconds(250));
-        }
-    });
-    const int code = fetch_file(archive_url_, archive);
-    downloading = false;
-    progress.join();
-    if (code != 0) {
+    if (const int code = download(archive_url_, archive, next_.archive_size); code != 0) {
         return fail(curl_problem(code) + ".");
     }
     if (fs::file_size(archive, error) != next_.archive_size || sha256_of_file(archive) != next_.archive_sha256) {
@@ -917,6 +909,83 @@ bool Updater::do_install() {
     }
     set(State::Installed, "Starting the new version…");
     return true;
+}
+
+int Updater::download(const std::string& url, const fs::path& to, uint64_t size) {
+    std::atomic<bool> downloading{true};
+    std::thread progress([&] {  // (curl writes the file as it comes)
+        while (downloading) {
+            std::error_code ignored;
+            const uint64_t got = fs::exists(to, ignored) ? fs::file_size(to, ignored) : 0;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                status_.fraction = size ? std::min(1.0, static_cast<double>(got) / static_cast<double>(size)) : 0.0;
+            }
+            set(State::Installing, "Downloading " + megabytes(got) + " of " + megabytes(size) + "…");
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        }
+    });
+    const int code = fetch_file(url, to);
+    downloading = false;
+    progress.join();
+    return code;
+}
+
+bool Updater::do_install_apk() {
+#ifdef __ANDROID__
+    std::error_code error;
+    const fs::path folder = apk_folder();
+    auto fail = [&](const std::string& why) {
+        apk_.clear();
+        fs::remove_all(folder, error);
+        set(State::Failed, "Couldn't update: " + why + " Nothing was changed.");
+        return false;
+    };
+    // 1. The APK, downloaded and checked against the release's SHA256SUMS.txt (once: a second Update only opens the installer)
+    if (apk_.empty() || !fs::is_regular_file(apk_, error)) {
+        apk_.clear();
+        fs::remove_all(folder, error);
+        if (!fs::create_directories(folder, error) || error) {
+            return fail("the app can't write to its cache (" + folder.u8string() + ").");
+        }
+        std::string sums;
+        if (const int code = fetch_text(sums_url_, sums); code != 0) {
+            return fail("the release's checksums couldn't be downloaded: " + curl_problem(code) + ".");
+        }
+        const std::string sha256 = sum_in(sums, apk_name_);
+        if (sha256.empty()) {
+            return fail("the release's checksums don't name " + apk_name_ + ".");
+        }
+        const fs::path apk = folder / apk_name_;
+        if (const int code = download(apk_url_, apk, apk_size_); code != 0) {
+            return fail(curl_problem(code) + ".");
+        }
+        set(State::Installing, "Checking the download…");
+        if (fs::file_size(apk, error) != apk_size_ || sha256_of_file(apk) != sha256) {
+            return fail("the download was not what the release says it is.");
+        }
+        apk_ = apk;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        status_.fraction = 1.0;
+    }
+    // 2. Handed to Android's installer, which asks the player and installs it over this app (ending it)
+    switch (android_install(apk_)) {
+    case 0:
+        set(State::Downloaded, "Android asks you to install it: choose Install there. Your settings, saves and ROM sets stay. If you said not now, " +
+                                   std::string("choose Install here again."));
+        return true;
+    case 1:
+        set(State::Downloaded, "Android's Settings opened: allow this app to install apps, then come back, and Android asks you to install it. " +
+                                   std::string("If it doesn't, choose Install here."));
+        return true;
+    default:
+        return fail("Android's installer couldn't be opened.");
+    }
+#else
+    return false;
+#endif
 }
 
 bool Updater::relaunch(const std::vector<std::string>& args) const {

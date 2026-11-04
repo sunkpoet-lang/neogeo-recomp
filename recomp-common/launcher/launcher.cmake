@@ -14,7 +14,8 @@
 #                                                   sources define launcher::describe_collection(); the names
 #                                                   above are then the collection's
 #   LAUNCHER_UPDATE_REPO  owner/name                optional: the launcher updates its own folder from this
-#   LAUNCHER_VERSION      0.5.0                     GitHub repository's releases (src/update.h)
+#   LAUNCHER_VERSION      0.5.0                     GitHub repository's releases (src/update.h); the version
+#                                                   alone (no updates: an Android app) is shown and matched online
 #
 # It makes the target `launcher` (the program <LAUNCHER_GAME_EXE>-launcher), to which the port may add its
 # own definitions, include folders and libraries. SDL3 is the system's or is built in; Dear ImGui and the
@@ -74,9 +75,16 @@ add_custom_command(OUTPUT "${LAUNCHER_FONTS}"
     DEPENDS "${RECOMP_LAUNCHER_DIR}/embed_fonts.cmake"
     VERBATIM)
 
-add_executable(launcher
+# (Android: a library, which the app's activity loads and calls the main of; it starts each game's activity, whose
+# library is the game: src/game_process.cpp)
+if(ANDROID)
+    add_library(launcher SHARED)
+else()
+    add_executable(launcher)
+endif()
+target_sources(launcher PRIVATE
     ${RECOMP_LAUNCHER_DIR}/src/main.cpp ${RECOMP_LAUNCHER_DIR}/src/app.cpp ${RECOMP_LAUNCHER_DIR}/src/game_process.cpp
-    ${RECOMP_LAUNCHER_DIR}/src/steam.cpp ${RECOMP_LAUNCHER_DIR}/src/ui.cpp ${RECOMP_COMMON_SRC}/settings.cpp
+    ${RECOMP_LAUNCHER_DIR}/src/steam.cpp ${RECOMP_LAUNCHER_DIR}/src/online.cpp ${RECOMP_LAUNCHER_DIR}/src/run_program.cpp ${RECOMP_LAUNCHER_DIR}/src/ui.cpp ${RECOMP_COMMON_SRC}/settings.cpp
     ${LAUNCHER_PORT_SOURCES} "${LAUNCHER_FONTS}")
 set_target_properties(launcher PROPERTIES OUTPUT_NAME "${LAUNCHER_GAME_EXE}-launcher")
 target_include_directories(launcher PRIVATE ${RECOMP_LAUNCHER_DIR}/src ${RECOMP_COMMON_SRC})
@@ -88,10 +96,16 @@ if(LAUNCHER_COLLECTION)
     target_compile_definitions(launcher PRIVATE LAUNCHER_COLLECTION=1)
 endif()
 target_link_libraries(launcher PRIVATE launcher_imgui)
+if(ANDROID)
+    target_link_libraries(launcher PRIVATE log)
+endif()
 if(WIN32)
-    target_link_libraries(launcher PRIVATE ole32 uuid shell32)  # (the desktop shortcut, steam.cpp)
+    target_link_libraries(launcher PRIVATE iphlpapi ws2_32 ole32 uuid shell32) # (online.cpp: this machine's addresses; the desktop shortcut, steam.cpp)
+endif()
+if(LAUNCHER_VERSION)
+    target_compile_definitions(launcher PRIVATE LAUNCHER_VERSION="${LAUNCHER_VERSION}")
 endif()
 if(LAUNCHER_UPDATE_REPO)
     target_sources(launcher PRIVATE ${RECOMP_LAUNCHER_DIR}/src/update.cpp)
-    target_compile_definitions(launcher PRIVATE LAUNCHER_UPDATE_REPO="${LAUNCHER_UPDATE_REPO}" LAUNCHER_VERSION="${LAUNCHER_VERSION}")
+    target_compile_definitions(launcher PRIVATE LAUNCHER_UPDATE_REPO="${LAUNCHER_UPDATE_REPO}")
 endif()

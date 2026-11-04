@@ -496,7 +496,41 @@ bool text_box(const char* id_text, char* buffer, size_t size, const char* hint, 
     return changed;
 }
 
-bool nav_item(const char* label, bool active, float width, bool reachable) {
+bool text_field(const char* id_text, char* buffer, size_t size, const char* hint, float width) {
+    ImGuiWindow* window = ImGui::GetCurrentWindow();
+    const Palette& p = palette();
+    ImVec2 origin = window->DC.CursorPos;
+    ImVec2 box(px(width), px(36));
+    ImRect rect(origin, origin + box);
+    ImGuiID id = window->GetID(id_text);
+    bool active = ImGui::GetActiveID() == id;
+    float hover = animate(id + 1, active || ImGui::IsMouseHoveringRect(rect.Min, rect.Max) ? 1.0f : 0.0f, 22.0f);
+    window->DrawList->AddRectFilled(rect.Min, rect.Max, mix(p.control, p.control_hover, hover), px(10));
+    push_font(Font::Regular, size::kBody);
+    float line = ImGui::GetFontSize();
+    ImGui::SetCursorScreenPos(ImVec2(rect.Min.x + px(12), std::round(rect.Min.y + (box.y - line) * 0.5f)));
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled, p.tertiary);
+    ImGui::PushStyleColor(ImGuiCol_Text, p.text);
+    ImGui::PushStyleColor(ImGuiCol_NavCursor, IM_COL32(0, 0, 0, 0));  // (the ring is ours, round the whole box)
+    if (active && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceRight, false)) {
+        ImGui::ClearActiveID();
+    }
+    ImGui::SetNextItemWidth(box.x - px(24));
+    bool changed = ImGui::InputTextWithHint(id_text, hint, buffer, size);
+    if (g_focus_next) {
+        g_focus_next = false;
+        focus_item();
+    }
+    ImGui::PopStyleColor(4);
+    pop_font();
+    focus_ring(rect, id, px(10));
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::ItemSize(rect);
+    return changed;
+}
+
+bool nav_item(const char* label, bool active, float width, bool reachable, float indent, int fold) {
     ImGuiWindow* window = ImGui::GetCurrentWindow();
     ImGuiID id = window->GetID(label);
     ImVec2 box(px(width), px(36));
@@ -509,12 +543,26 @@ bool nav_item(const char* label, bool active, float width, bool reachable) {
     float on = animate(id + 2, active ? 1.0f : 0.0f, 18.0f);
     window->DrawList->AddRectFilled(rect.Min, rect.Max, fade(p.control, hover * 0.6f), px(10));
     Font font = on > 0.5f ? Font::Semibold : Font::Regular;
-    std::string shown = fit_end(label, font, size::kBody, box.x - px(16));  // (a long name in a narrow sidebar)
+    float chevron = fold >= 0 ? px(22) : 0.0f;
+    std::string shown = fit_end(label, font, size::kBody, box.x - px(16) - px(indent) - chevron);  // (a long name in a narrow sidebar)
     push_font(font, size::kBody);
     float line = ImGui::GetFontSize();
-    window->DrawList->AddText(ImVec2(rect.Min.x + px(14), std::round(rect.Min.y + (box.y - line) * 0.5f)), mix(p.secondary, p.text, on),
+    window->DrawList->AddText(ImVec2(rect.Min.x + px(14) + px(indent), std::round(rect.Min.y + (box.y - line) * 0.5f)), mix(p.secondary, p.text, on),
                               shown.c_str());
     pop_font();
+    if (fold >= 0) {
+        // (a "›" turning a quarter round as the rows under it open)
+        float turn = animate(id + 3, static_cast<float>(fold), 18.0f) * 1.5707963f;
+        ImVec2 center(rect.Max.x - px(18), rect.Min.y + box.y * 0.5f);
+        float s = px(3.5f);
+        ImVec2 points[3] = {ImVec2(-s * 0.5f, -s), ImVec2(s * 0.5f, 0.0f), ImVec2(-s * 0.5f, s)};
+        for (ImVec2& point : points) {
+            point = center + ImVec2(point.x * std::cos(turn) - point.y * std::sin(turn), point.x * std::sin(turn) + point.y * std::cos(turn));
+        }
+        for (int i = 0; i < 2; i++) {
+            window->DrawList->AddLine(points[i], points[i + 1], mix(p.tertiary, p.secondary, on), std::max(1.0f, px(1.5f)));
+        }
+    }
     focus_ring(rect, id, px(10), true);
     return pressed;
 }

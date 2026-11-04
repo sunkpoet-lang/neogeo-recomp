@@ -19,6 +19,7 @@
 
 #include <SDL3/SDL.h>
 
+#include <filesystem>
 #include <fstream>
 #include <string>
 
@@ -125,7 +126,12 @@ inline void ApplyBinding(Bindings &b, const BindTable &table, const std::string 
 // The player's choices from settings.ini (the usual layout where it says nothing, or there is no file)
 inline Bindings LoadBindings(const std::string &settingsPath, const BindTable &table) {
     Bindings b = DefaultBindings(table);
-    std::ifstream file(settingsPath);
+    // (the path is UTF-8: by its wide name on Windows, where a folder with an accent is not in the system's code page)
+#ifdef __cpp_char8_t
+    std::ifstream file(std::filesystem::path(std::u8string(settingsPath.begin(), settingsPath.end())));
+#else
+    std::ifstream file(std::filesystem::u8path(settingsPath));
+#endif
     std::string line, section;
     auto trim = [](std::string text) {
         const size_t first = text.find_first_not_of(" \t\r"), last = text.find_last_not_of(" \t\r");

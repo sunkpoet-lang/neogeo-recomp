@@ -77,7 +77,9 @@ void Menu::Open(bool withStates) {
 
 int Menu::SlowBy() const {
     // (the slower of the player's choice and what the game's sources ask for: runtime/game.h)
-    return std::max(kSlowBy[m_menu.Speed() < static_cast<int>(std::size(kSlowBy)) ? m_menu.Speed() : 0], cps2recomp::SlowMotion());
+    // (recomp-common's menu says -1 until a speed is chosen: full speed)
+    const int speed = m_menu.Speed();
+    return std::max(kSlowBy[speed >= 0 && speed < static_cast<int>(std::size(kSlowBy)) ? speed : 0], cps2recomp::SlowMotion());
 }
 
 void Menu::SetSlowBy(int by) {

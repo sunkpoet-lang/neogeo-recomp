@@ -19,7 +19,7 @@ namespace {
 
 void Menu::Configure(MenuConfig config) {
     m_config = std::move(config);
-    m_speed = std::clamp(m_speed, 0, std::max(static_cast<int>(m_config.speeds.size()) - 1, 0));
+    m_speed = std::clamp(m_speed < 0 ? m_config.normalSpeed : m_speed, 0, std::max(static_cast<int>(m_config.speeds.size()) - 1, 0));
     if (m_open) {
         Fill();
     }
@@ -49,7 +49,8 @@ bool Menu::Exists(const std::string &page) const {
         return true;
     }
     if (std::any_of(m_config.features.begin(), m_config.features.end(), [&](const MenuFeature &f) { return f.category == page; }) ||
-        std::any_of(m_config.commands.begin(), m_config.commands.end(), [&](const MenuCommand &c) { return c.category == page; })) {
+        std::any_of(m_config.commands.begin(), m_config.commands.end(), [&](const MenuCommand &c) { return c.category == page; }) ||
+        std::any_of(m_config.pages.begin(), m_config.pages.end(), [&](const MenuPage &p) { return p.name == page && !p.rows.empty(); })) {
         return true;
     }
     // (or a page under it has: looked at one level down, which is what a page of pages needs, and cannot go
@@ -164,6 +165,16 @@ void Menu::Fill() {
             }
         }
     } else {
+        // (the page's own Speed and Mute rows first)
+        for (const MenuPage &page : m_config.pages) {
+            for (const MenuRow::Kind kind : page.name == m_page ? page.rows : std::vector<MenuRow::Kind>()) {
+                if (kind == MenuRow::Speed && !m_config.speeds.empty()) {
+                    m_rows.push_back({kRowSpeed, 0, ""});
+                } else if (kind == MenuRow::Mute && m_config.muted && m_config.setMuted) {
+                    m_rows.push_back({kRowMute, 0, ""});
+                }
+            }
+        }
         for (size_t i = 0; i < m_config.commands.size(); i++) {
             if (m_page == m_config.commands[i].category) {
                 m_rows.push_back({kRowCommand, i, ""});
@@ -239,7 +250,23 @@ Menu::Chosen Menu::Buttons(unsigned pressed) {
             }
         } else {
             const int choices = static_cast<int>(feature.choices.size());
-            m_config.setValue(row.index, press ? (value + 1) % choices : std::clamp(value + step, 0, choices - 1));
+            auto offered = [&](int choice) { return choice == 0 || choice == value || !m_config.offered || m_config.offered(row.index, choice); };
+            int to = value;
+            if (press) {
+                // (around, to the next one offered: off at the latest)
+                do {
+                    to = (to + 1) % choices;
+                } while (!offered(to));
+            } else {
+                // (to the next one offered that way; none: as it is)
+                for (int at = value + step; at >= 0 && at < choices; at += step) {
+                    if (offered(at)) {
+                        to = at;
+                        break;
+                    }
+                }
+            }
+            m_config.setValue(row.index, to);
         }
         return {};
     }
@@ -298,14 +325,14 @@ void Menu::Draw(uint32_t *pixels, int width, int height) const {
         case kRowSpeed:
             title = "Speed";
             value = m_config.speeds[static_cast<size_t>(m_speed)];
-            valueColor = m_speed == 0 ? dim : on;
+            valueColor = m_speed == m_config.normalSpeed ? dim : on;
             rowDescription = m_config.speedDescription;
             break;
         case kRowMute:
-            title = "Sound";
-            value = m_config.muted() ? "Muted" : "On";
+            title = "Mute";
+            value = m_config.muted() ? "On" : "Off";
             valueColor = m_config.muted() ? on : dim;
-            rowDescription = "Switches the game's sound off and on.";
+            rowDescription = "Switches the game's sound off, and on again.";
             break;
         case kRowAction:
             title = m_first[row.index].title;

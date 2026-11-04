@@ -63,6 +63,42 @@ struct FolderChoice {
     const char *argument; // "--soundtrack"
 };
 
+// Online play: two players, each on their own machine, one hosting and the other joining it. The game page gets an
+// Online card under Play: Host starts the game with `host_argument` (it waits for the other player; the card says
+// this machine's addresses to give them), Join with `join_argument ADDRESS` (the address typed, kept in launcher.ini
+// under [online]). The game does the rest. nullptr: no card.
+struct Online {
+    const char *host_argument = nullptr; // "--host"
+    const char *join_argument = nullptr; // "--join"
+    int port = 0;                        // the UDP port the host waits on, as the card says it (0: none said)
+    bool codes = false;                  // the game gives a host a code to hand out, which Join takes as well as an address
+    const char *detail = "";             // the card's first lines: what a match is
+    // A lobby: the matches hosts have listed, shown on the card to join with a press. `lobby` is the URL of the
+    // game's list (JSON: {"matches": [{"code", "name", "waiting"}]}); a host lists its match when the player has
+    // switched that on, with `list_argument`, and its name with `name_argument NAME` (given to Host and Join whenever the
+    // player has a name, lobby or not: the game shows it to the other player). nullptr: no lobby.
+    const char *lobby = nullptr;
+    const char *list_argument = nullptr; // "--net-list"
+    const char *name_argument = nullptr; // "--net-name"
+    // Arcade while waiting: when the player switches it on ([online] arcade), Host adds `arcade_argument`, and the
+    // host plays the game alone until the other player comes, who joins the game as it is. nullptr: no such switch.
+    const char *arcade_argument = nullptr; // "--net-arcade"
+    // Inviting a player from the waiting room (Collection::room): Host with `invite_argument THEIRS:MINE` (the two
+    // players' ids) and `invite_name_argument NAME` (theirs), and the player's own name with `name_argument`; the match
+    // isn't listed. nullptr: no Invite.
+    const char *invite_argument = nullptr;      // "--net-invite"
+    const char *invite_name_argument = nullptr; // "--net-invite-name"
+    // The waiting room for a launcher of one game (a collection's is Collection::room, on its Online page): the URL a
+    // launcher checks in at every few seconds while the Game page, with this card, is open, and the protocol said with
+    // it. The card then has the invitations waiting for this player and the room's players to invite (with
+    // `invite_argument`). nullptr: none.
+    const char *room = nullptr;
+    int room_protocol = 0;
+    // The game's id as the online service knows it (the invitations a game hosts say it), for a launcher of one game:
+    // its game in the waiting room. A collection's games have theirs (CollectionGame::id).
+    const char *game = nullptr;
+};
+
 struct InfoRow {
     const char *label;
     const char *text;
@@ -98,6 +134,10 @@ struct Description {
 
     // The port's own pages (none: the launcher's three)
     std::vector<CustomPage> pages;
+    // true: the launcher opens on the Game page (not on the first of the port's own, which stay above it in the
+    // sidebar), and a dropped file goes to a page of the port's own only while that page is shown (else it is the
+    // game file): for pages that are extras, not the way in
+    bool open_on_game_page = false;
     // false: no Game page (and no game file, check or Display card): the port's pages have Play
     bool game_page = true;
 
@@ -137,6 +177,8 @@ struct Description {
     // ... and below it, folders the player may choose (none: only the switch)
     std::vector<FolderChoice> folders;
 
+    Online online;                            // the Online card (none unless its arguments are given)
+
     bool preset_summary = false;              // a line over Play saying which preset is chosen
     std::vector<Toggle> display;              // the Display card's switches (none: no card)
 
@@ -145,13 +187,14 @@ struct Description {
     const char *controls_heading = "WHILE PLAYING";
     std::vector<InfoRow> controls;            // what is fixed, as rows of text
 
-    // Optional: online play, for a game with netplay of its own over UDP, through the online tunnel beside the launcher
-    // (cps-tunel). The game's page then has an ONLINE card. `port`: the game's netplay port (0: none); `arguments`: what
-    // goes after the game's own to host (address "") or to join `address` ("127.0.0.1:PORT", the tunnel's).
-    struct Online {
+    // Optional (this fork): online play through the online tunnel beside the launcher (cps-tunel), for a game with
+    // netplay of its own over UDP. The game's page then has a card of its own (App::tunnel_card) besides `online`'s.
+    // `port`: the game's netplay port (0: none); `arguments`: what goes after the game's own to host (address "") or to
+    // join `address` ("127.0.0.1:PORT", the tunnel's).
+    struct Tunnel {
         int port = 0;
         std::function<std::vector<std::string>(const std::string &address)> arguments;
-    } online;
+    } tunnel;
 };
 
 // The port's own file defines this.
@@ -180,6 +223,10 @@ struct CollectionGame {
     const char *exe;         // its program, beside the launcher (as LAUNCHER_GAME_EXE)
     const char *home_env;    // a variable naming a folder to use instead of its own, for tests (LAUNCHER_HOME_ENV)
     Description description; // what a launcher of its own is told (its pages, if any, are not shown)
+    // The series it is one of, as the player reads it ("Street Fighter Alpha"), or nullptr. Two or more games of a series
+    // with a page of their own are under one row of the sidebar, which opens and closes and has a page of the series'
+    // games, and are kept together in the player's order and on the Games page.
+    const char *series = nullptr;
 };
 
 // A choice of a multi-game mode's: a row of its card on the Multi game page, kept in launcher.ini under
@@ -195,6 +242,14 @@ struct MultiChoice {
     int shown_value = 0;
 };
 
+// A key or button that does something while a multi-game mode's games play (the next game, say): a row on its card,
+// with keycaps for `keys` (a key, a gamepad's button: either does it).
+struct MultiButton {
+    const char *title;
+    const char *detail;
+    std::vector<const char *> keys;
+};
+
 // A mode that plays several of a collection's games one after another, on its own page (Multi game). The player
 // chooses which of the games that have it are played, in the sidebar's order or shuffled, and the mode's choices;
 // Start starts the first with what its Play starts it with and the mode's arguments after that. A game that ends with
@@ -206,6 +261,7 @@ struct MultiMode {
     const char *detail;              // what it is
     std::vector<const char *> games; // the ids of the games that have it
     std::vector<MultiChoice> choices;
+    std::vector<MultiButton> buttons; // what works while it plays (shown under its choices, and while it plays)
     // The arguments for it, by the choices' values (in the order of `choices`)
     std::function<std::vector<std::string>(const std::vector<int> &values)> arguments;
     int next_code = 3;
@@ -224,6 +280,26 @@ struct Collection {
     // Modes that play several of the games one after another (none: no Multi game page)
     std::vector<MultiMode> multi;
     const char *multi_intro = "";  // the Multi game page's first lines
+    // Online play's lobby for every game (a game's own is its Online card's: Online::lobby): the URL of every game's
+    // open matches ({"matches": [{"game", "code", "name", "waiting"}]}, `game` a CollectionGame's id). With it, an
+    // Online page after Multi game: every game's open matches to join, and a match to host in the lobby in any of
+    // the games (with its Online's list and name arguments). nullptr: no page.
+    const char *lobby = nullptr;
+    const char *online_intro = ""; // the Online page's first lines
+    // Join with a code, on the Online page: the URL a match's code is put at the end of, which answers which game it is
+    // for ({"game", "title"}; 404: none), so that the right game is started with its Online's join argument and the
+    // code. nullptr: no such section.
+    const char *code_lookup = nullptr;
+    // The waiting room, on the Online page: the URL a launcher checks in at every few seconds while the page is open
+    // (online.h: room_check_in; `/leave` and `/decline` after it), which lists the other players there to invite to
+    // a match (with their game's Online::invite_argument), and gives the invitations waiting for this one, each
+    // accepted by joining its code. `protocol` is said with it: only players with the same are listed. nullptr: none.
+    const char *room = nullptr;
+    int room_protocol = 0;
+    const char *file_name = "game file"; // what a game's file is called, as the Online page says it ("ROM set")
+    // The category of the features the Online page shows too, as the Features page does (what a match shows: the
+    // ping...), or nullptr
+    const char *online_features = nullptr;
 };
 
 // A collection's own file defines this (and not describe()).

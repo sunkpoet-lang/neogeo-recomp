@@ -38,6 +38,7 @@ void rmenu_configure(RMenu *menu, const RMenuConfig *c) {
             recomp::MenuRow::Mute,
         };
         config.groups.back().push_back({kKinds[row.kind], row.id, Str(row.title), Str(row.description)});
+        config.groups.back().back().bar = Str(row.bar);
     }
     for (int i = 0; i < c->featureCount; i++) {
         const RMenuFeature &feature = c->features[i];

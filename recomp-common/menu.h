@@ -42,12 +42,13 @@ struct MenuRow {
         Action, // the host's own: Chosen::Action with its id
         Quit,   // "Quit game": Chosen::Quit
         Resume, // closes the menu
-        Mute,   // "Sound": on or muted, through MenuConfig::muted and setMuted (left out without them)
+        Mute,   // "Mute": off or on, through MenuConfig::muted and setMuted (left out without them)
     };
     Kind kind;
     int id;                  // Action: handed back when chosen
     std::string title;       // Action; Page: the page's name
     std::string description; // Action
+    std::string bar;         // the menu bar's menu it is in (menubar.h's AddMenuEntries; "": by its kind)
     MenuRow(Kind kind, int id = 0, std::string title = {}, std::string description = {})
         : kind(kind), id(id), title(std::move(title)), description(std::move(description)) {}
 };
@@ -75,6 +76,8 @@ struct MenuPage {
     std::string parent;      // the page its row is on ("": the first page)
     std::string description; // what its row says ("": "The page of <name> choices.")
     bool counts = true;      // its row says how many of its features are on
+    // Speed and Mute rows at the top of this page, rather than on the first page (other kinds are left out here)
+    std::vector<MenuRow::Kind> rows = {};
 };
 
 struct MenuConfig {
@@ -88,8 +91,13 @@ struct MenuConfig {
     // A feature's value now (by its place in `features`), and changing it
     std::function<int(size_t feature)> value;
     std::function<void(size_t feature, int value)> setValue;
-    // The Speed row: the speeds' names, the first being full speed, and what the row's description says
+    // Optional: whether the menu offers a choice of a feature (settings.h, MenuChoices): Left, Right and Confirm pass
+    // over those it does not. Off (the first) and the one chosen now always are.
+    std::function<bool(size_t feature, int choice)> offered;
+    // The Speed row: the speeds' names, slowest first, and what the row's description says; full speed is the one
+    // at normalSpeed (the slower ones before it, the faster after), the speed the menu starts at
     std::vector<std::string> speeds;
+    int normalSpeed = 0;
     std::string speedDescription;
     // The Mute row: whether the game's sound is off now, and switching it off and on
     std::function<bool()> muted;
@@ -129,7 +137,7 @@ public:
     void SetSlot(int slot) { // 1-9, around
         m_slot = (slot + 8) % 9 + 1;
     }
-    // The speed chosen, by its place in MenuConfig::speeds (0: full speed)
+    // The speed chosen, by its place in MenuConfig::speeds (MenuConfig::normalSpeed: full speed)
     int Speed() const {
         return m_speed;
     }
@@ -161,7 +169,7 @@ private:
     std::string m_page;     // the category shown ("": the first page)
     int m_selected = 0;
     std::vector<int> m_left; // (the rows the pages above this one were left on, the first page's first)
-    int m_speed = 0;
+    int m_speed = -1; // (-1: not chosen yet, so full speed)
     int m_slot = 1;
     std::string m_note;
 };
