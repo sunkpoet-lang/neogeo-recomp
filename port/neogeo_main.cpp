@@ -9,6 +9,8 @@
 //          [--scale N] [--renderer sdl|gpu]
 //   <game> --host [PORT] | --join HOST:PORT [--delay N]   (online: neogeo_online.h; with --headless too, for tests)
 //   <game> --stress [--delay N]            (GekkoNet's stress session: rolled back every frame, the checksums compared)
+//   online, ForkAde's in-game chat (neogeo_chat.h): --nick NAME, --chat-log DIR; for the tests --net-say [FRAME:]TEXT
+//   (again for more) and --chat-loss PCT
 //   <game> --list-features                 (for the launcher: the optional features, one a line)
 //   <game> --headless [--rom ...] [--frames N] [--shot-every N] [--shot-dir DIR] [--hash-log FILE] [--audio-dump FILE]
 //          [--script "FRAME:BUTTON:FRAMES,..."] [--state-save FRAME:FILE] [--state-load FILE] [--menu FRAME:KEYS[:PNG]]
@@ -186,6 +188,21 @@ int main(int argc, char **argv) {
             o.online.delay = atoi(next());
         } else if (a == "--stress") {
             o.online.mode = port::OnlineOptions::Mode::Stress;
+        } else if (a == "--nick") {
+            o.online.name = next();
+        } else if (a == "--chat-log") {
+            o.online.chatLog = next();
+        } else if (a == "--chat-loss") {
+            o.online.chatLoss = atoi(next());
+        } else if (a == "--net-say") {
+            std::string say = next();
+            uint64_t at = 120;
+            const size_t colon = say.find(':');
+            if (colon != std::string::npos && colon > 0 && say.find_first_not_of("0123456789") == colon) {
+                at = strtoull(say.c_str(), nullptr, 10);
+                say.erase(0, colon + 1);
+            }
+            o.online.says.push_back({at, say});
         } else if (a == "--list-features") {
             // For the launcher: one optional feature per line (recomp-common/settings.h), not those whose switch is on
             // its first page (game.h, kFeatureFirstPage)

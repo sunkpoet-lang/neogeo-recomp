@@ -19,8 +19,13 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include "../recomp-common/chat.h"
+#include "neogeo_chat.h"
 
 struct GekkoSession;
 
@@ -33,6 +38,11 @@ struct OnlineOptions {
     uint16_t port = 7845; // the host's, or the one --join goes to
     std::string host;     // --join's address
     int delay = 1;
+    // ForkAde's in-game chat: --nick (this player's name, said in the hello), --chat-log DIR, and for the tests
+    // --net-say [FRAME:]TEXT and --chat-loss PCT (that share of the chat's packets dropped as sent)
+    std::string name, chatLog;
+    std::vector<std::pair<uint64_t, std::string>> says;
+    int chatLoss = 0;
 };
 
 class NeoGeoOnline {
@@ -65,6 +75,27 @@ public:
     float FramesAhead() const;
     void Stop();
 
+    // ForkAde's in-game chat (docs/chat-protocol.md): its C and A packets on the session's socket, never GekkoNet's,
+    // and each player's name after a 0 byte in the hello, outside the part both sides compare; the screen's part is
+    // Chat (neogeo_chat.h), which each tick runs
+    recomp::chat::Channel::Said ChatSay(const std::string &text, std::string &line);
+    std::vector<std::string> ChatHeard();
+    std::string ChatName(int player) const; // ("" for none given)
+    int ChatLocal() const;
+    bool ChatHost() const;
+    bool ChatReady() const; // (the match is on)
+    bool ChatOver() const;
+    std::vector<std::string> ChatUndelivered() const;
+    NeoGeoChat &Chat() {
+        return m_chatScreen;
+    }
+    const OnlineOptions &Options() const {
+        return m_options;
+    }
+    std::vector<std::pair<uint64_t, std::string>> &Says() {
+        return m_options.says;
+    }
+
     // (the adapter's, for GekkoNet's callbacks)
     struct Socket;
 
@@ -90,6 +121,9 @@ private:
     std::vector<uint8_t> m_state;
     int m_shown = 0;
     int m_coinFrames = 0;
+    std::unique_ptr<recomp::chat::Channel> m_chat; // (ForkAde's in-game chat)
+    std::string m_theirName;
+    NeoGeoChat m_chatScreen;
 };
 
 } // namespace port

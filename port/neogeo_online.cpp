@@ -12,6 +12,7 @@
 #include <zlib.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -41,6 +42,12 @@ using cps2recomp::NeoGeo;
 namespace {
     // Every packet starts with these three bytes and a kind: H, hello (before GekkoNet's own); G, GekkoNet's
     constexpr char kTag[3] = {'N', 'G', 'O'};
+
+    // (the chat's clock, in milliseconds)
+    uint64_t NowMs() {
+        return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                         std::chrono::steady_clock::now().time_since_epoch()).count());
+    }
     constexpr int kPredictionWindow = 8;
     constexpr unsigned kTimeoutMs = 5000; // (under the tunnel's 8 s without traffic)
     // The address GekkoNet is given for the other player: the socket knows where that is
@@ -70,6 +77,7 @@ struct NeoGeoOnline::Socket {
     std::deque<std::vector<uint8_t>> forGekko;   // GekkoNet's packets from the peer, until it asks
     std::vector<GekkoNetResult *> handedOver;    // (what receive_data last returned: the array is ours)
     std::vector<std::pair<sockaddr_in, std::vector<uint8_t>>> hellos;
+    std::vector<std::pair<char, std::vector<uint8_t>>> forChat; // (the chat's C and A, from the peer)
 
     ~Socket() {
         if (handle != kNoSocket) {
@@ -169,6 +177,8 @@ struct NeoGeoOnline::Socket {
                 hellos.emplace_back(from, std::vector<uint8_t>(buffer + 4, buffer + got));
             } else if (buffer[3] == 'G' && havePeer && Same(from, peer)) {
                 forGekko.emplace_back(buffer + 4, buffer + got);
+            } else if ((buffer[3] == 'C' || buffer[3] == 'A') && havePeer && Same(from, peer)) {
+                forChat.emplace_back(static_cast<char>(buffer[3]), std::vector<uint8_t>(buffer + 4, buffer + got));
             }
         }
     }
@@ -279,6 +289,15 @@ bool NeoGeoOnline::Start(NeoGeoPort &port, const OnlineOptions &options, std::st
     m_hello.assign(hello, hello + strlen(hello));
 
     m_socket = new Socket;
+    // ForkAde's in-game chat, on the session's socket
+    Socket *socket = m_socket;
+    m_chat = std::make_unique<recomp::chat::Channel>([socket, loss = options.chatLoss, seed = uint32_t{12345}](
+                                                         char kind, const std::vector<uint8_t> &payload) mutable {
+        seed = seed * 1103515245u + 12345u; // (--chat-loss: dropped at random, as a bad network would)
+        if (socket->havePeer && static_cast<int>((seed >> 16) % 100) >= loss) {
+            socket->Send(kind, payload.data(), payload.size(), socket->peer);
+        }
+    });
     g_socket = m_socket;
     const bool host = options.mode == OnlineOptions::Mode::Host;
     m_socket->host = host;
@@ -318,14 +337,20 @@ void NeoGeoOnline::End(const std::string &message, bool failed) {
 
 void NeoGeoOnline::SendHello() {
     if (m_socket->havePeer) {
-        m_socket->Send('H', m_hello.data(), m_hello.size(), m_socket->peer);
+        // (with this player's name after a 0 byte: the chat's)
+        const std::vector<uint8_t> hello = recomp::chat::HelloWithName(m_hello, m_options.name);
+        m_socket->Send('H', hello.data(), hello.size(), m_socket->peer);
     }
 }
 
 // The hellos that came: the host takes the first one's sender as its peer; each side checks it is the same game
 void NeoGeoOnline::Pump() {
     m_socket->Pump();
-    for (auto &[from, said] : m_socket->hellos) {
+    for (auto &[from, whole] : m_socket->hellos) {
+        // (the name after a 0 byte is not compared)
+        std::vector<uint8_t> said;
+        std::string name;
+        recomp::chat::SplitHello(whole, said, name);
         if (!m_socket->havePeer && m_socket->host) {
             m_socket->peer = from;
             m_socket->havePeer = true;
@@ -359,15 +384,32 @@ void NeoGeoOnline::Pump() {
             return;
         }
         m_heard = true;
+        m_theirName = name;
         m_status = Status::Connecting;
         m_message = "Connecting";
     }
     m_socket->hellos.clear();
+    // (the chat's packets, once the other side is known)
+    for (const auto &[kind, payload] : m_socket->forChat) {
+        if (m_heard && m_chat) {
+            m_chat->Receive(kind, payload.data(), payload.size(), NowMs());
+        }
+    }
+    m_socket->forChat.clear();
 }
 
 int NeoGeoOnline::Tick(const uint16_t local[2]) {
     m_ticks++;
     m_shown = 0;
+    // (after the tick, whatever it did, the chat's: lines heard, the tests' lines, the log, the end)
+    struct ChatAfter {
+        NeoGeoOnline *online;
+        ~ChatAfter() {
+            if (online) {
+                online->m_chatScreen.Tick(*online, online->m_port->board->Frames());
+            }
+        }
+    } chatAfter{m_options.mode == OnlineOptions::Mode::Stress ? nullptr : this};
     if (m_status == Status::Ended) {
         return 0;
     }
@@ -395,6 +437,9 @@ int NeoGeoOnline::Tick(const uint16_t local[2]) {
         return 0;
     }
     gekko_network_poll(m_session);
+    if (m_chat) {
+        m_chat->Pump(NowMs()); // (the chat's lines not acknowledged yet, again)
+    }
     gekko_add_local_input(m_session, m_local, &mine);
     Run();
     return m_shown;
@@ -500,6 +545,39 @@ std::string NeoGeoOnline::Stats() const {
                  rollbacks.last_frames);
     }
     return text;
+}
+
+// ForkAde's in-game chat over this session
+recomp::chat::Channel::Said NeoGeoOnline::ChatSay(const std::string &text, std::string &line) {
+    return m_chat ? m_chat->Say(text, NowMs(), &line) : recomp::chat::Channel::Said::Empty;
+}
+
+std::vector<std::string> NeoGeoOnline::ChatHeard() {
+    return m_chat ? m_chat->TakeHeard() : std::vector<std::string>{};
+}
+
+std::string NeoGeoOnline::ChatName(int player) const {
+    return player == ChatLocal() ? recomp::chat::Printable(m_options.name, recomp::chat::kNameMost) : m_theirName;
+}
+
+int NeoGeoOnline::ChatLocal() const {
+    return m_options.mode == OnlineOptions::Mode::Join ? 1 : 0;
+}
+
+bool NeoGeoOnline::ChatHost() const {
+    return m_options.mode == OnlineOptions::Mode::Host;
+}
+
+bool NeoGeoOnline::ChatReady() const {
+    return m_chat && m_heard && m_status == Status::Playing;
+}
+
+bool NeoGeoOnline::ChatOver() const {
+    return m_status == Status::Ended;
+}
+
+std::vector<std::string> NeoGeoOnline::ChatUndelivered() const {
+    return m_chat ? m_chat->Unacknowledged() : std::vector<std::string>{};
 }
 
 float NeoGeoOnline::FramesAhead() const {

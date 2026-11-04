@@ -3,6 +3,13 @@
 **Note:** All dates are in Mexico City CST (UTC-6).
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
+## [2026-11-04] - In-game chat
+
+- feat: chat with the other player during an online match (ForkAde's in-game chat): T opens a line (Y where T is a game key), Enter sends and Esc cancels, the lines shown at the bottom-left for eight seconds, Chat and Chat history in the in-game menu, each player's name in the hello outside the compared part, and each match's log with --chat-log; --nick, and --net-say and --chat-loss for tests.
+- chore: sync recomp-common with ForkAde's fork at 1b18eac (the chat module, the font's Spanish letters, the menu bar and the launcher's CHAT card), and take the launcher's tunnel card from Description::tunnel.
+- fix: read the in-game menu's speed as full speed until one is chosen, as recomp-common's menu now says -1 for it.
+- test: KOF '97, KOF '98, KOF 2002 and Magic Plus II keep their offline frame hashes and audio; KOF '97 and KOF '98 chat online with the same frame hashes as without, every line once and in order, also with half the chat's packets dropped.
+
 ## [2026-11-03] - Player acceptance of KOF98, KOF2002 and Magic Plus II
 
 - docs: record the player's acceptance of KOF98 (about three hours with nearly every team), KOF2002 and Magic Plus II, with sound and GekkoNet play correct and offline play to the ending, in their validation reports, tasks and the README.

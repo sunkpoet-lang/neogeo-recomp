@@ -222,6 +222,27 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     uint16_t previousPad = 0, heldAtClose = 0;
     unsigned previousMenu = 0;
     bool bothHeld = false;
+    // ForkAde's in-game chat (neogeo_chat.h): its key (T, or Y where T is a game key) opens a line to type, through the
+    // system's text input (the keyboard layout's accents and signs); Enter sends it, Esc puts it away. Meanwhile the
+    // keyboard is the chat's, and after it, not the game's until every key is let go
+    NeoGeoChat &chat = online.Chat();
+    SDL_Scancode chatKey = SDL_SCANCODE_T;
+    bool chatWas = false, keysAfterChat = false;
+    uint64_t openedByKey = 0;
+    auto chatOpen = [&](bool open) {
+        if (open == chat.typing || (open && !NeoGeoChat::Available(online))) {
+            return;
+        }
+        chat.typing = open;
+        chat.typed.clear();
+        if (open) {
+            SDL_StartTextInput(window);
+            openedByKey = SDL_GetTicks();
+        } else {
+            SDL_StopTextInput(window);
+            keysAfterChat = true;
+        }
+    };
     auto toggleMenu = [&]() {
         if (port.menu.IsOpen()) {
             port.menu.Close();
@@ -269,13 +290,49 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     };
     bool running = true;
     while (running && !port.quit && (port.opt.frames == 0 || port.frame < port.opt.frames)) {
+        // (a match to chat in, or none: the chat's key chosen from the player's keys as it begins)
+        const bool chatNow = isOnline && NeoGeoChat::Available(online);
+        if (chatNow && !chatWas) {
+            const bool t = KeyBound(SDL_SCANCODE_T), y = KeyBound(SDL_SCANCODE_Y);
+            chatKey = t && !y ? SDL_SCANCODE_Y : SDL_SCANCODE_T;
+            chat.key = t && !y ? "Y" : "T";
+            chat.keyShared = t && y;
+        }
+        if (!chatNow && chat.typing) {
+            chatOpen(false); // (the match over)
+        }
+        chatWas = chatNow;
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
+            if (chat.typing && ev.type == SDL_EVENT_TEXT_INPUT) {
+                // (the chat's key's own letter, if the system sends it as text too, is not the line's)
+                const bool keyLetter = ev.text.text[0] && !ev.text.text[1] &&
+                                       toupper(static_cast<unsigned char>(ev.text.text[0])) == chat.key[0];
+                if (!(keyLetter && openedByKey && SDL_GetTicks() - openedByKey < 250)) {
+                    chat.Type(ev.text.text);
+                }
+                openedByKey = 0;
+                continue;
+            }
+            if (chat.typing && ev.type == SDL_EVENT_KEY_DOWN) {
+                if (ev.key.scancode == SDL_SCANCODE_RETURN || ev.key.scancode == SDL_SCANCODE_KP_ENTER) {
+                    if (chat.Say(online)) { // (kept, said to wait, when over the rate)
+                        chatOpen(false);
+                    }
+                } else if (ev.key.scancode == SDL_SCANCODE_ESCAPE) {
+                    chatOpen(false);
+                } else if (ev.key.scancode == SDL_SCANCODE_BACKSPACE) {
+                    chat.Backspace();
+                }
+                continue; // (every other key the line's, as text)
+            }
             switch (ev.type) {
             case SDL_EVENT_QUIT: running = false; break;
             case SDL_EVENT_KEY_DOWN:
                 if (ev.key.scancode == SDL_SCANCODE_ESCAPE || ev.key.scancode == SDL_SCANCODE_F1) {
                     toggleMenu();
+                } else if (chatNow && !port.menu.IsOpen() && ev.key.scancode == chatKey && !ev.key.repeat) {
+                    chatOpen(true); // (online the chat's key, even where T is a game key too)
                 } else if (KeyBound(ev.key.scancode)) {
                     // (a key the player has given to the game does only that)
                 } else if (ev.key.scancode == SDL_SCANCODE_F5 || ev.key.scancode == SDL_SCANCODE_F9) {
@@ -302,6 +359,8 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                     // (a button the player has given to the game does only that)
                 } else if (ev.gbutton.button == SDL_GAMEPAD_BUTTON_LEFT_STICK || ev.gbutton.button == SDL_GAMEPAD_BUTTON_GUIDE) {
                     toggleMenu();
+                } else if (chatNow && ev.gbutton.button == SDL_GAMEPAD_BUTTON_RIGHT_STICK) {
+                    chatOpen(!chat.typing); // (online: the chat, as in the Capcom games)
                 } else if (!port.menu.IsOpen() && ev.gbutton.button == SDL_GAMEPAD_BUTTON_RIGHT_STICK) {
                     port.Key('p');
                 }
@@ -327,8 +386,12 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         // The keyboard is both players' (each has the keys chosen for it); the first gamepad is player 1's, a second
         // player 2's
         uint16_t pads[2] = {};
-        const bool *keys = SDL_GetKeyboardState(nullptr);
-        if (!(SDL_GetModState() & SDL_KMOD_ALT)) {
+        int keyCount = 0;
+        const bool *keys = SDL_GetKeyboardState(&keyCount);
+        if (keysAfterChat) {
+            keysAfterChat = std::any_of(keys, keys + keyCount, [](bool down) { return down; });
+        }
+        if (!(SDL_GetModState() & SDL_KMOD_ALT) && !chat.typing && !keysAfterChat) {
             for (int player = 0; player < 2 && player < Table().table.players; player++) {
                 pads[player] |= ReadKeyboard(keys, player);
             }
@@ -372,7 +435,22 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         }
         if (port.menu.IsOpen()) {
             if (menuPressed) {
-                port.MenuAct(port.menu.Press(menuPressed));
+                const Menu::Action action = port.menu.Press(menuPressed);
+                if (action == Menu::Action::Chat || action == Menu::Action::ChatHistory) {
+                    // (ForkAde's in-game chat: online only)
+                    if (!NeoGeoChat::Available(online)) {
+                        port.menu.Note("Only in an online match.");
+                    } else {
+                        port.menu.Close();
+                        if (action == Menu::Action::Chat) {
+                            chatOpen(true);
+                        } else {
+                            chat.historyOpen = !chat.historyOpen;
+                        }
+                    }
+                } else {
+                    port.MenuAct(action);
+                }
                 menuDirty = true;
             } else if (pressed) {
                 port.menu.Note("");
@@ -427,6 +505,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         port.Shown(shown);
         if (isOnline) {
             DrawOnline(shown, online);
+            chat.Draw(shown, NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
         }
         presenter.Show(shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, where);
         pace();

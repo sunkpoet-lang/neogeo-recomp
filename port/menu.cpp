@@ -14,7 +14,7 @@ namespace port {
 
 namespace {
     // The first page's own rows
-    enum { kCoin = 1, kStart2, kReset, kTest };
+    enum { kCoin = 1, kStart2, kReset, kTest, kChat, kChatHistory };
 
     // The speeds: the game runs one frame in this many of the screen's
     const int kSlowBy[] = {1, 2, 4, 8};
@@ -50,6 +50,11 @@ void Menu::Open(bool withStates) {
         {recomp::MenuRow::Action, kTest, "Test menu",
          "The game's own operator menu (the board's test switch, F2): its settings, such as difficulty and rounds. "
          "Its Exit row goes back."},
+    });
+    // (ForkAde's in-game chat: online only, the window says so otherwise)
+    config.groups.push_back({
+        {recomp::MenuRow::Action, kChat, "Chat", "Online: a line to the other player (T, or Y where T is a game key)."},
+        {recomp::MenuRow::Action, kChatHistory, "Chat history", "Online: the match's chat, with the times, over the game."},
     });
     config.groups.push_back({
         {recomp::MenuRow::Action, kReset, "Reset", "Starts the board again, as if switched off and on."},
@@ -117,7 +122,8 @@ Menu::Action Menu::Press(unsigned buttons) {
         m_command = static_cast<size_t>(chosen.id);
         return Action::Command;
     case recomp::Menu::Chosen::Action:
-        return chosen.id == kCoin ? Action::Coin : chosen.id == kStart2 ? Action::Start2 : chosen.id == kTest ? Action::Test : Action::Reset;
+        return chosen.id == kCoin ? Action::Coin : chosen.id == kStart2 ? Action::Start2 : chosen.id == kTest ? Action::Test
+               : chosen.id == kChat ? Action::Chat : chosen.id == kChatHistory ? Action::ChatHistory : Action::Reset;
     default: return Action::None;
     }
 }
