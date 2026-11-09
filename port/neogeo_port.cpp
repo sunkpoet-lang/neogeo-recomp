@@ -260,6 +260,9 @@ void NeoGeoPort::MenuAct(Menu::Action action) {
         return;
     }
     switch (action) {
+    case Menu::Action::Chat:case Menu::Action::ChatHistory:
+    case Menu::Action::Host:case Menu::Action::CopyCode:case Menu::Action::HideNames:case Menu::Action::HideStreaks:
+        menu.Note("Available in the window.");return;
     case Menu::Action::None: return;
     case Menu::Action::Coin:
         coinFrames = 6;

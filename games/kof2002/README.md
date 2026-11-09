@@ -52,3 +52,20 @@ The important sound-layout distinction: this board stores linear M1 data. MAME's
 not be inserted here. The encrypted 128 KiB input is zero-extended to 512 KiB before address decryption; the Z80
 banks use MAME's 18-bit address limit. See the design and validation report under
 `openspec/changes/neo-kof2002-decrypt/` for sources and observed results.
+
+
+## Optional ForkAde match flow
+
+`--forkade-online` explicitly enables the native Esc-menu Host/Stop flow,
+arcade admission, independent Start prompts, player names/Hide toggles,
+completed-human-team streaks and same-peer recovery. The optional Windows
+room owner is built with `-DFORKADE_BROKER_DIR=/path/to/ForkAde`; it uses the
+bundled tunnel and leaves normal execution/netplay unchanged. This does not
+merge the separate menu-bar/training proposal or install a launcher update.
+
+Result addresses were independently verified for this set; see
+[the native observations](../../openspec/changes/neo-kof-family-match-flow/native-results.md).
+Run `tools/check_neogeo_flow.py --game GAME --forkade-root PRODUCT
+--baseline OLD_EXE --rom-dir SETS --out NEW_BUILD_DIRECTORY` for per-game
+local acceptance, replacing GAME with this directory's set ID. Local probes
+and loopback checks do not establish real Internet/player acceptance.

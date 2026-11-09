@@ -107,3 +107,15 @@ compatible licence and its line in `THIRD_PARTY_NOTICES.md`.
 ## Licence
 
 GPL-3.0 (`LICENSE`), as CPS-2 Recomp's.
+
+
+### ForkAde match flow for the KOF collection
+
+Explicit `--forkade-online` support covers `kof97`, `kof2002`, `kf2k2mp2`
+(Magic Plus II) and `kof98`, with native Esc-menu hosting, arcade wait,
+names/Hide toggles, independently verified completed-team streaks and bounded
+same-peer recovery. Default netplay and offline state/audio stay unchanged.
+Optional Windows product integration uses `FORKADE_BROKER_DIR`; there is no
+new service or installed package by default. See [KOF97 usage](games/kof97/README.md),
+the other sets' own READMEs and [four-game local acceptance](openspec/changes/neo-kof-family-match-flow/validation.md).
+Other sets and real Internet/player acceptance remain separate gates.

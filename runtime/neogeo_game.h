@@ -14,14 +14,22 @@
 #include "game.h"
 
 #include <vector>
+#include <array>
 
 namespace cps2recomp {
 
 class NeoGeo; // (machine/neogeo.h)
 
+struct NeoGeoMatchScore {
+    bool valid=false, humanFight=false;
+    std::array<int,2> wins{};
+};
+
 struct NeoGeoHooks {
     void (*beforeFrame)(NeoGeo &board) = nullptr;
     void (*frame)(NeoGeo &board) = nullptr;
+    // Read-only completed team-match counters; presentation owns their history.
+    NeoGeoMatchScore (*onlineMatchScore)(NeoGeo &board) = nullptr;
     std::vector<void (*)(NeoGeo &board)> commands;
 };
 

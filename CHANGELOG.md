@@ -3,6 +3,14 @@
 **Note:** All dates are in Mexico City CST (UTC-6).
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
+
+## [2026-11-06] - KOF97 ForkAde match flow
+
+- test: pass full local acceptance separately for KOF2002, Magic Plus II, KOF98 and the rebuilt KOF97 regression, including 80 peer pairs, unchanged offline state/audio, team streaks, rollback, recovery and native player-data preservation
+- feat: extend the explicit match-flow gate to KOF2002, Magic Plus II and KOF98 with independently observed native team-result readers and per-game acceptance recipes
+- test: verify unchanged 6000-frame state/audio, rollback stress, completed team-match streaks, 20 local pairs, recovery, native ownership, preserved player data, legacy wire and embedded icon resources
+- feat: add explicit KOF97-only native hosting, arcade admission, Start prompts, player names, team-match streaks and same-peer recovery with a fixed 60-second retry window
+
 ## [2026-11-04] - In-game chat
 
 - feat: chat with the other player during an online match (ForkAde's in-game chat): T opens a line (Y where T is a game key), Enter sends and Esc cancels, the lines shown at the bottom-left for eight seconds, Chat and Chat history in the in-game menu, each player's name in the hello outside the compared part, and each match's log with --chat-log; --nick, and --net-say and --chat-loss for tests.

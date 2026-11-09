@@ -31,6 +31,8 @@ struct NeoGeoOptions {
     bool headless = false, mute = false, fullscreen = false, stats = false;
     int scale = 0;             // --scale: the window this many times the board's lines (0: the Display page's)
     std::string renderer;      // --renderer sdl|gpu
+    bool forkadeOnline=false,observeFlow=false;
+    std::string forkadeService,forkadeVersion="0.1.0-beta",windowEvents,memoryWatch,memoryLog;
     OnlineOptions online;      // --host, --join, --delay, --stress (neogeo_online.h)
 };
 
@@ -47,7 +49,9 @@ struct NeoGeoPort {
     int coinFrames = 0, start2Frames = 0, testFrames = 0; // (the menu's coin, player 2's Start, test switch)
     // Online (neogeo_online.h): no stopping, slowing, save states, reset or test switch, and the menu's coin goes
     // through the session as this player's
-    bool online = false;
+    bool online = false,arcadeWaiting=false,cameIn=false,otherIn=false;
+    int streak[2]={},roundsWon[2]={},roundQuiet=0;
+    bool roundCounted=false;
 
     // Loads the set, the sources and the settings; false with a message
     bool Init(std::string &error);

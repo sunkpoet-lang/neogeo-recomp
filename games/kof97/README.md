@@ -51,3 +51,30 @@ system ROM tests the work RAM at power-on, and a write then fails that test.
 
 Next steps: the custom soundtrack (AST), the training mode (over fight/), spectators and replays for online play
 (GekkoNet has both), and the translation to C++.
+
+
+## ForkAde match flow (explicit opt-in)
+
+With a matching ForkAde-enabled build, `--forkade-online` enables native
+Esc-menu Host/Stop, Copy room code, Hide names/streaks, arcade wait, independent
+Start prompts and same-peer recovery. Direct examples:
+
+    kof97 --forkade-online --host 7845 --rom ROM/kof97.zip --nick PlayerOne
+    kof97 --forkade-online --join 127.0.0.1:7845 --rom ROM/kof97.zip --nick PlayerTwo
+
+For native hosting, build KOF97 with `-DFORKADE_BROKER_DIR=/path/to/ForkAde`
+and place the matching cps-tunel beside the EXE. The game reads the launcher's
+existing service/name settings (CPS2RECOMP_HOME override for isolated tests);
+`--forkade-service off` keeps long-code hosting without a service. The admitted
+room/tunnel remain owned during bounded60-second recovery; both boards restart
+from their initial state. Stop restores the player's offline board/backup.
+Default netplay stays compatible with the previous build. Opted-in peers must
+use matching recovery-capable builds. Streaks count completed human TEAM
+matches, not individual character defeats, and restore with rollback.
+
+Local evidence and reproducible recipes:
+[validation](../../openspec/changes/neo-kof97-match-flow/validation.md).
+This does not replace the installed beta or certify new Internet play.
+The full menu-bar/training proposal remains separate. The other verified KOF
+sets and the fresh KOF97 regression are recorded in
+[the collection acceptance](../../openspec/changes/neo-kof-family-match-flow/validation.md).

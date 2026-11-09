@@ -8,6 +8,7 @@
 // kof97 script documents it (github.com/peon2/fbneo-training-mode: its facts about the game's memory, not its code).
 #include "../../../runtime/neogeo_game.h"
 #include "../../../machine/neogeo.h"
+#include "match_score.h"
 
 namespace cps2recomp {
 
@@ -39,6 +40,7 @@ void RegisterGame() {
                              "Player 2's health (the computer's, in a one-player game) is full again every frame of a fight.",
                              kFeatureOwn});
     TheNeoGeoGame().frame = Frame;
+    TheNeoGeoGame().onlineMatchScore = kof97::ReadMatchScore<NeoGeo>;
 }
 
 } // namespace cps2recomp

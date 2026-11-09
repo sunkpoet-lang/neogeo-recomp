@@ -15,3 +15,20 @@ by ForkAde. The game carries its own title-screen icon in seven sizes.
 Online uses the existing GekkoNet implementation and ForkAde host/join controls. Both peers need the same build,
 sets and settings. Local peer/rollback checks are distinct from real Internet acceptance; see the OpenSpec report
 under openspec/changes/neo-kof98 for the exact tested scope. No deployment replaces the working beta automatically.
+
+
+## Optional ForkAde match flow
+
+`--forkade-online` explicitly enables the native Esc-menu Host/Stop flow,
+arcade admission, independent Start prompts, player names/Hide toggles,
+completed-human-team streaks and same-peer recovery. The optional Windows
+room owner is built with `-DFORKADE_BROKER_DIR=/path/to/ForkAde`; it uses the
+bundled tunnel and leaves normal execution/netplay unchanged. This does not
+merge the separate menu-bar/training proposal or install a launcher update.
+
+Result addresses were independently verified for this set; see
+[the native observations](../../openspec/changes/neo-kof-family-match-flow/native-results.md).
+Run `tools/check_neogeo_flow.py --game GAME --forkade-root PRODUCT
+--baseline OLD_EXE --rom-dir SETS --out NEW_BUILD_DIRECTORY` for per-game
+local acceptance, replacing GAME with this directory's set ID. Local probes
+and loopback checks do not establish real Internet/player acceptance.

@@ -26,6 +26,8 @@
 #include "../runtime/game.h"
 #include "../runtime/state.h"
 #include "neogeo_port.h"
+#include "neogeo_match_flow.h"
+#include <filesystem>
 #include "png_write.h"
 
 #include <SDL3/SDL.h>
@@ -171,6 +173,17 @@ int main(int argc, char **argv) {
             o.stateLoad = next();
         } else if (a == "--stats") {
             o.stats = true;
+        } else if(a=="--forkade-online") {
+            if(!port::VerifiedMatchFlowGame(GAME_ID)){fprintf(stderr,"ForkAde match flow is not verified for this game\n");return 2;}
+            o.forkadeOnline=true;o.online.matchFlow=true;o.online.arcadeWait=true;
+        } else if(a=="--forkade-service") {o.forkadeService=next();
+        } else if(a=="--forkade-version") {o.forkadeVersion=next();
+        } else if(a=="--window-events") {o.windowEvents=next();
+        } else if(a=="--gekko-checkpoint-log") {o.online.checkpointLog=next();
+        } else if(a=="--gekko-flow-log") {o.online.flowLog=next();
+        } else if(a=="--memory-watch") {o.memoryWatch=next();
+        } else if(a=="--memory-log") {o.memoryLog=next();
+        } else if(a=="--observe-flow") {o.observeFlow=true;
         } else if (a == "--host") {
             o.online.mode = port::OnlineOptions::Mode::Host;
             if (i + 1 < argc && argv[i + 1][0] != '-') {
@@ -218,6 +231,9 @@ int main(int argc, char **argv) {
         }
     }
     std::vector<Press> presses;
+    if(o.observeFlow && (!o.headless || !o.forkadeOnline || o.online.mode!=port::OnlineOptions::Mode::Off || o.online.flowLog.empty())){
+        fprintf(stderr,"--observe-flow requires headless KOF97 ForkAde mode, no session, and --gekko-flow-log\n");return 2;
+    }
     if (!ParseScript(o.script, presses)) {
         return 2;
     }
@@ -247,9 +263,25 @@ int main(int argc, char **argv) {
     NeoGeoSound &sound = board.Sound();
     sound.keep = !o.audioDump.empty() && !o.mute;
     std::vector<int16_t> recorded;
+    port::MatchFlow observedFlow;
+    FILE* observation=nullptr;
+    if(o.observeFlow){
+#ifdef _WIN32
+        observation=_wfopen(std::filesystem::u8path(o.online.flowLog).c_str(),L"w");
+#else
+        observation=fopen(o.online.flowLog.c_str(),"w");
+#endif
+        if(!observation)return 1;
+    }
     FILE *log = o.hashLog.empty() ? nullptr : fopen(o.hashLog.c_str(), "w");
+    std::vector<uint32_t> watches;
+    std::istringstream watchIn(o.memoryWatch);std::string watch;
+    while(std::getline(watchIn,watch,',')){char* end=nullptr;auto value=strtoul(watch.c_str(),&end,0);if(!end||*end||value<0x100000||value>0x10ffff){fprintf(stderr,"memory watch must be in work RAM\n");return 2;}watches.push_back(static_cast<uint32_t>(value));}
+    FILE* memory=o.memoryLog.empty()?nullptr:fopen(o.memoryLog.c_str(),"w");
+    if(!o.memoryLog.empty()&&!memory)return 1;
     const auto started = std::chrono::steady_clock::now();
-    const uint64_t first = board.Frames();
+    uint64_t first = board.Frames(),epoch=online.Epoch();
+    bool arcade=online.ArcadeWaiting();
     const uint64_t frames = o.frames ? o.frames : 600;
     // (by ticks, as the window goes: --keys can stop the game; a run stopped for good still ends)
     while (!port.quit && board.Frames() - first < frames && port.tick < (frames + 60) * 64) {
@@ -266,6 +298,8 @@ int main(int argc, char **argv) {
             const bool joined = o.online.mode == port::OnlineOptions::Mode::Join;
             const uint16_t local[2] = {static_cast<uint16_t>(joined ? players[0] | players[1] : players[0]), players[1]};
             const int shown = online.Tick(local);
+            if(epoch!=online.Epoch() || (arcade&&!online.ArcadeWaiting())){first=0;epoch=online.Epoch();}
+            arcade=online.ArcadeWaiting();
             if (online.GetStatus() == port::NeoGeoOnline::Status::Ended) {
                 break;
             }
@@ -280,10 +314,16 @@ int main(int argc, char **argv) {
         } else if (!port.Tick(players)) {
             continue; // (stopped by --keys: p; o goes on by a frame)
         }
+        if(observation){
+            port::AdvanceNeoGeoFlow(observedFlow,board,players);
+            const auto& s=observedFlow.state;
+            fprintf(observation,"%llu %d %d %d %d %d %d\n",static_cast<unsigned long long>(frame),int(s.joined[0]),int(s.joined[1]),s.streak[0],s.streak[1],s.score[0],s.score[1]);
+        }
         if (sound.keep) {
             recorded.insert(recorded.end(), sound.made.begin(), sound.made.end());
         }
         sound.made.clear();
+        if(memory){fprintf(memory,"%llu",static_cast<unsigned long long>(frame));for(auto at:watches)fprintf(memory," %02x",board.Peek8(at));fprintf(memory,"\n");}
         if (log) {
             fprintf(log, "%llu %08x\n", static_cast<unsigned long long>(frame), board.StateHash());
         }
@@ -300,6 +340,8 @@ int main(int argc, char **argv) {
             }
         }
     }
+    if(observation)fclose(observation);
+    if(memory)fclose(memory);
     if (log) {
         fclose(log);
     }

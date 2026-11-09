@@ -14,7 +14,7 @@ namespace port {
 
 namespace {
     // The first page's own rows
-    enum { kCoin = 1, kStart2, kReset, kTest, kChat, kChatHistory };
+    enum { kCoin = 1, kStart2, kReset, kTest, kChat, kChatHistory, kHost, kCopy, kHideNames, kHideStreaks };
 
     // The speeds: the game runs one frame in this many of the screen's
     const int kSlowBy[] = {1, 2, 4, 8};
@@ -24,6 +24,11 @@ namespace {
 void Menu::Open(bool withStates) {
     const cps2recomp::Game &game = cps2recomp::TheGame();
     recomp::MenuConfig config;
+    if(forkade)config.groups.push_back({
+      {recomp::MenuRow::Action,kHost,hosting?"Stop hosting":"Host a match",roomLabel},
+      {recomp::MenuRow::Action,kCopy,"Copy room code","Copy the hosted room code to invite a friend."},
+      {recomp::MenuRow::Action,kHideNames,hideNames?"Show names":"Hide names","Names under each player's life bar."},
+      {recomp::MenuRow::Action,kHideStreaks,hideStreaks?"Show streaks":"Hide streaks","Verified team-match wins only."}});
     // The game's pages that belong at the head; then three groups with a line between them: the save
     // states, what the game offers, and leaving
     std::vector<recomp::MenuRow> top;
@@ -122,6 +127,10 @@ Menu::Action Menu::Press(unsigned buttons) {
         m_command = static_cast<size_t>(chosen.id);
         return Action::Command;
     case recomp::Menu::Chosen::Action:
+        if(chosen.id==kHost)return Action::Host;
+        if(chosen.id==kCopy)return Action::CopyCode;
+        if(chosen.id==kHideNames)return Action::HideNames;
+        if(chosen.id==kHideStreaks)return Action::HideStreaks;
         return chosen.id == kCoin ? Action::Coin : chosen.id == kStart2 ? Action::Start2 : chosen.id == kTest ? Action::Test
                : chosen.id == kChat ? Action::Chat : chosen.id == kChatHistory ? Action::ChatHistory : Action::Reset;
     default: return Action::None;

@@ -35,3 +35,20 @@ netplay acceptance. Human sound-quality/controller verification remains a player
 The executable's seven-size Windows icon comes from this variant's own title screen, including MAGIC PLUS II.
 The collection's generic discovery includes this game.cfg; the separate maintained ForkAde package/catalogue
 has not been updated or deployed by this change.
+
+
+## Optional ForkAde match flow
+
+`--forkade-online` explicitly enables the native Esc-menu Host/Stop flow,
+arcade admission, independent Start prompts, player names/Hide toggles,
+completed-human-team streaks and same-peer recovery. The optional Windows
+room owner is built with `-DFORKADE_BROKER_DIR=/path/to/ForkAde`; it uses the
+bundled tunnel and leaves normal execution/netplay unchanged. This does not
+merge the separate menu-bar/training proposal or install a launcher update.
+
+Result addresses were independently verified for this set; see
+[the native observations](../../openspec/changes/neo-kof-family-match-flow/native-results.md).
+Run `tools/check_neogeo_flow.py --game GAME --forkade-root PRODUCT
+--baseline OLD_EXE --rom-dir SETS --out NEW_BUILD_DIRECTORY` for per-game
+local acceptance, replacing GAME with this directory's set ID. Local probes
+and loopback checks do not establish real Internet/player acceptance.

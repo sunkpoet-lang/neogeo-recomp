@@ -10,11 +10,15 @@
 
 #include "../machine/machine.h"
 #include "../runtime/game.h"
+#include "../runtime/state.h"
 #include "../recomp-common/text.h"
+#include "../recomp-common/settings.h"
+#include "../recomp-common/folders.h"
 #include "bindings.h"
 #include "neogeo_online.h"
 #include "neogeo_port.h"
 #include "present.h"
+#include "png_write.h"
 
 #include <SDL3/SDL.h>
 
@@ -24,6 +28,10 @@
 #include <cstring>
 #include <filesystem>
 #include <vector>
+#include <sstream>
+#ifdef FORKADE_GAME_BROKER
+#include "game_room.h"
+#endif
 
 #ifndef GAME_TITLE
 #define GAME_TITLE GAME_NAME
@@ -173,8 +181,9 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     const int height = NeoGeoVideo::kHeight * scale;
     const float shape = PictureShape(DisplayShape() == Shape::Arcade ? 384 : NeoGeoVideo::kWidth, NeoGeoVideo::kHeight,
                                      DisplayShape(), 4.0f / 3.0f);
+    const bool hidden=SDL_getenv("CPS2RECOMP_HIDDEN_WINDOW")!=nullptr;
     SDL_Window *window = SDL_CreateWindow(GAME_TITLE, static_cast<int>(std::lround(height * shape)), height,
-                                          SDL_WINDOW_RESIZABLE | (port.opt.fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
+                                          (SDL_WINDOW_RESIZABLE | (hidden?SDL_WINDOW_HIDDEN:0)) | (port.opt.fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
     Presenter presenter;
     std::string presentError;
     const bool wantGpu = port.opt.renderer != "sdl" && strcmp(SDL_GetCurrentVideoDriver(), "dummy") != 0;
@@ -201,8 +210,25 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     bool silent = false;
 
     // Online (neogeo_online.h): the session runs the frames, with this side's controls as its player's
+#ifdef FORKADE_GAME_BROKER
+    if(port.opt.forkadeOnline){
+        std::filesystem::path folder;
+        if(const auto home=SDL_getenv("CPS2RECOMP_HOME");home&&*home)folder=std::filesystem::u8path(home);
+        else {
+            const char* base=SDL_GetBasePath();
+            folder=recomp::PortableFolder(base?base:"");
+            const auto name=recomp::FolderName("CPS-2 Recomp");
+            if(!folder.empty())folder/=name;
+            else if(char* pref=SDL_GetPrefPath("",name.c_str())){folder=std::filesystem::u8path(pref);SDL_free(pref);}
+        }
+        recomp::Ini preferences(folder/"launcher.ini");preferences.load();
+        if(port.opt.online.name.empty())port.opt.online.name=preferences.get("online","name");
+        if(port.opt.forkadeService.empty())port.opt.forkadeService=preferences.get("online","service");
+        if(port.opt.forkadeService.empty())port.opt.forkadeService="off";
+    }
+#endif
     NeoGeoOnline online;
-    const bool isOnline = port.opt.online.mode != OnlineOptions::Mode::Off;
+    bool isOnline = port.opt.online.mode != OnlineOptions::Mode::Off;
     if (isOnline) {
         std::string error;
         if (!online.Start(port, port.opt.online, error)) {
@@ -215,6 +241,50 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         SDL_SetWindowTitle(window, (std::string(GAME_TITLE) + " - online, " + who).c_str());
     }
 
+    uint64_t displayedEpoch=online.Epoch(),loops=0;
+#ifdef FORKADE_GAME_BROKER
+    bool ownedSession=false;
+    std::vector<uint8_t> savedOffline;
+    forkade::GameRoom room([&](std::string& error){
+        if(isOnline){error="An online session is already active.";return false;}
+        savedOffline.clear();cps2recomp::Archive before(savedOffline,true);port.board->Serialize(before);
+        ownedSession=true;
+        std::vector<uint8_t> clean;
+        {NeoGeo fresh(port.board->Roms());cps2recomp::Archive save(clean,true);fresh.Serialize(save);}
+        cps2recomp::Archive load(clean,false);port.board->Serialize(load);
+        if(!load.Ok()){error="The clean online board could not be restored";return false;}
+        port.frame=0;port.paused=false;port.steps=0;
+        port.menu.Close();port.menu.SetSlowBy(1);port.coinFrames=port.start2Frames=0;
+        auto options=port.opt.online;options.mode=OnlineOptions::Mode::Host;options.port=7845;
+        options.matchFlow=options.arcadeWait=true;ownedSession=true;
+        if(!online.Start(port,options,error))return false;
+        isOnline=true;return true;
+    },[&]{
+        if(!ownedSession)return;
+        ownedSession=false;online.Stop();isOnline=false;
+        cps2recomp::Archive restore(savedOffline,false);port.board->Serialize(restore);port.frame=port.board->Frames();
+        port.board->Sound().made.clear();port.menu.hosting=false;
+    });
+    wchar_t exePath[32768]={};const auto exeLength=GetModuleFileNameW(nullptr,exePath,32768);
+    const std::filesystem::path program=exeLength&&exeLength<32768?std::filesystem::path(exePath):std::filesystem::path();
+    port.menu.forkade=port.opt.forkadeOnline;
+#endif
+    struct Event{uint64_t tick;std::string key;};std::vector<Event> scripted;
+    std::istringstream input(port.opt.windowEvents);std::string item;
+    while(std::getline(input,item,';')){const auto colon=item.find(':');if(colon!=std::string::npos)scripted.push_back({strtoull(item.c_str(),nullptr,10),item.substr(colon+1)});}
+    auto menuAction=[&](Menu::Action action){
+#ifdef FORKADE_GAME_BROKER
+        if(action==Menu::Action::Host){
+            if(room.Hosting())room.Stop();else room.Host(GAME_ID,GAME_NAME,program,program.parent_path()/"cps-tunel.exe",port.opt.forkadeService,port.opt.online.name,port.opt.forkadeVersion);
+            port.menu.Close();return;
+        }
+        if(action==Menu::Action::CopyCode){const bool copied=room.Copy();fprintf(stderr,"forkade room: copied=%d\n",int(copied));port.menu.Close();return;}
+#endif
+        if(action==Menu::Action::HideNames){port.menu.hideNames=!port.menu.hideNames;port.menu.Close();return;}
+        if(action==Menu::Action::HideStreaks){port.menu.hideStreaks=!port.menu.hideStreaks;port.menu.Close();return;}
+        port.MenuAct(action);
+    };
+    std::string lastRoomLabel;
     std::vector<SDL_Gamepad *> gamepads;
     std::vector<uint32_t> menuBase, menuPicture, shown;
     uint32_t menuWidth = 0, menuHeight = 0;
@@ -290,6 +360,25 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     };
     bool running = true;
     while (running && !port.quit && (port.opt.frames == 0 || port.frame < port.opt.frames)) {
+        for(const auto& event:scripted)if(event.tick==loops){
+            if(event.key=="q")running=false;
+            else if(event.key=="host")menuAction(port.menu.SelectOnline(0));
+            else if(event.key=="copy")menuAction(port.menu.SelectOnline(1));
+            else if(event.key=="names")menuAction(port.menu.SelectOnline(2));
+            else if(event.key=="streaks")menuAction(port.menu.SelectOnline(3));
+            else if(event.key=="menu")toggleMenu();
+        }
+        ++loops;
+#ifdef FORKADE_GAME_BROKER
+        if(port.opt.forkadeOnline){
+            room.Tick();if(ownedSession)room.Reconnecting(online.Recovering());
+            if(ownedSession&&online.GetStatus()==NeoGeoOnline::Status::Playing)room.Admitted();
+            if(ownedSession&&online.GetStatus()==NeoGeoOnline::Status::Ended)room.Stop(online.Message());
+            port.menu.hosting=room.Hosting();port.menu.roomLabel=room.Label();
+            if(lastRoomLabel!=room.Label()){lastRoomLabel=room.Label();fprintf(stderr,"forkade room: hosting=%d status=%s\n",int(room.Hosting()),lastRoomLabel.c_str());}
+        }
+#endif
+        if(isOnline&&displayedEpoch!=online.Epoch()){displayedEpoch=online.Epoch();if(audio)SDL_ClearAudioStream(audio);port.menu.Close();port.paused=false;port.steps=0;}
         // (a match to chat in, or none: the chat's key chosen from the player's keys as it begins)
         const bool chatNow = isOnline && NeoGeoChat::Available(online);
         if (chatNow && !chatWas) {
@@ -449,7 +538,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                         }
                     }
                 } else {
-                    port.MenuAct(action);
+                    menuAction(action);
                 }
                 menuDirty = true;
             } else if (pressed) {
@@ -479,7 +568,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             if (isOnline) {
                 // (online, the game goes on behind the menu, with this side's controls let go)
                 const uint16_t none[2] = {};
-                feedAudio(online.Tick(none) > 0, 1);
+                feedAudio(online.Tick(none,false) > 0, 1);
                 pace();
                 continue;
             }
@@ -505,11 +594,30 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         port.Shown(shown);
         if (isOnline) {
             DrawOnline(shown, online);
+            if(port.opt.forkadeOnline&&online.ChatReady()){
+                const recomp::text::Canvas canvas{shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight};
+                for(int player=0;player<2;++player){const auto name=online.ChatName(player);const float x=player?202.f:18.f;
+                    if(!port.menu.hideNames)canvas.Text(x,30,1,0,{255,255,255,255},name.c_str());
+                    if(!port.menu.hideStreaks&&port.streak[player]>=2){const auto line="STREAK "+std::to_string(port.streak[player]);canvas.Text(x,40,1,0,{255,220,100,255},line.c_str());}
+                }
+            }
+        if(port.opt.forkadeOnline && !port.menu.roomLabel.empty()){
+            const recomp::text::Canvas canvas{shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight};
+            canvas.Text(4,NeoGeoVideo::kHeight-10,1,0,{200,220,255,255},port.menu.roomLabel.c_str());
+        }
+        if(port.opt.shotEvery && loops%port.opt.shotEvery==0){
+            const auto path=std::filesystem::path(port.opt.shotDir)/("flow-"+std::to_string(loops)+".png");
+            const auto u8=path.u8string();const std::string file(reinterpret_cast<const char*>(u8.data()),u8.size());
+            WritePng(file.c_str(),shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight);
+        }
             chat.Draw(shown, NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
         }
         presenter.Show(shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, where);
         pace();
     }
+#ifdef FORKADE_GAME_BROKER
+    if(port.opt.forkadeOnline)room.Stop();
+#endif
     for (SDL_Gamepad *gp : gamepads) {
         SDL_CloseGamepad(gp);
     }

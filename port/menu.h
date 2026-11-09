@@ -20,7 +20,7 @@ namespace port {
 
 class Menu {
 public:
-    enum class Action { None, Save, Load, Coin, Start2, Test, Reset, Command, Quit, Chat, ChatHistory };
+    enum class Action { None, Save, Load, Coin, Start2, Test, Reset, Command, Quit, Chat, ChatHistory, Host, CopyCode, HideNames, HideStreaks };
 
     // withStates: show the save state rows
     void Open(bool withStates);
@@ -40,7 +40,17 @@ public:
     // stick; Space, Enter and A choose; Backspace and B go back.
     Action Press(unsigned buttons);
     // The "Sound" row: the frontend plays nothing while this is set (--mute starts with it set)
-    bool muted = false;
+    bool muted = false,forkade=false,hosting=false,hideNames=false,hideStreaks=false;
+    std::string roomLabel;
+    // Test injection uses the same real menu rows and Buttons path as a player.
+    Action SelectOnline(int index){
+        if(!forkade||index<0||index>3)return Action::None;
+        const int slot=m_menu.Slot(),speed=m_menu.Speed();
+        m_menu=recomp::Menu{};m_menu.SetSlot(slot);
+        Open(false);if(speed>=0)m_menu.SetSpeed(speed);
+        for(int i=0;i<index;++i)Press(recomp::kMenuDown);
+        return Press(recomp::kMenuConfirm);
+    }
     int Slot() const {
         return m_menu.Slot();
     }
