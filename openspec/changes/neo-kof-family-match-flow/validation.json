@@ -1,0 +1,427 @@
+{
+  "passed": true,
+  "date": "2026-11-06",
+  "base": "e3f334b821673161a6379542b91985fd7b268255",
+  "branch": "codex/kof97-match-flow",
+  "games": [
+    {
+      "game": "kof2002",
+      "passed": true,
+      "provenance": {
+        "base": "e3f334b821673161a6379542b91985fd7b268255",
+        "exe_sha256": "e566cdb0fcffa272752ce865bec66c6737bdb45796a730378360e60142144f87",
+        "baseline_sha256": "26f154e5ca2a8f6a095a2962940950230db27c5b1d6ec1d7a02633ec233e90c0",
+        "recipe_sha256": "0507f2077b5b4ec09dc7d3d5a187258b88a084831d3fc756ebeb601fbc6d50ab",
+        "compiler": "g++.exe (Rev6, Built by MSYS2 project) 16.2.0"
+      },
+      "offline_frames": 6000,
+      "offline_state_audio_identical": true,
+      "stress_frames": 6000,
+      "team_observer_frames": 34000,
+      "local_pairs": 20,
+      "minimum_pair_checkpoints": 369,
+      "icon_resources": 8,
+      "native_backup_preserved": true,
+      "recovery": [
+        {
+          "case": "both",
+          "passed": true,
+          "elapsed_seconds": 90.53,
+          "proxy": {
+            "drops": {
+              "guest": 100,
+              "host": 83
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "one-way",
+          "passed": true,
+          "elapsed_seconds": 90.48,
+          "proxy": {
+            "drops": {
+              "guest": 0,
+              "host": 139
+            },
+            "stale_injections": 6,
+            "triggered": true,
+            "mode": "one-way",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "forever",
+          "passed": true,
+          "elapsed_seconds": 72.92,
+          "proxy": {
+            "drops": {
+              "guest": 324,
+              "host": 307
+            },
+            "stale_injections": 0,
+            "triggered": true,
+            "mode": "forever",
+            "duration_seconds": 7
+          },
+          "exits": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "native-owner",
+          "passed": true,
+          "elapsed_seconds": 44.62,
+          "proxy": {
+            "drops": {
+              "guest": 116,
+              "host": 68
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 1316
+        }
+      ],
+      "legacy_wire_both_directions": true
+    },
+    {
+      "game": "kf2k2mp2",
+      "passed": true,
+      "provenance": {
+        "base": "e3f334b821673161a6379542b91985fd7b268255",
+        "exe_sha256": "11b19f10b42606a5946bf3cc2cf382d71ec0ece77bd17b43ea8e103cd6293fad",
+        "baseline_sha256": "3f752c05161971c43bbb08ebeec40bf56bf8e2e6b59b3989f9dc4b8f1ed464f4",
+        "recipe_sha256": "0507f2077b5b4ec09dc7d3d5a187258b88a084831d3fc756ebeb601fbc6d50ab",
+        "compiler": "g++.exe (Rev6, Built by MSYS2 project) 16.2.0"
+      },
+      "offline_frames": 6000,
+      "offline_state_audio_identical": true,
+      "stress_frames": 6000,
+      "team_observer_frames": 34000,
+      "local_pairs": 20,
+      "minimum_pair_checkpoints": 368,
+      "icon_resources": 8,
+      "native_backup_preserved": true,
+      "recovery": [
+        {
+          "case": "both",
+          "passed": true,
+          "elapsed_seconds": 90.12,
+          "proxy": {
+            "drops": {
+              "guest": 99,
+              "host": 82
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "one-way",
+          "passed": true,
+          "elapsed_seconds": 90.16,
+          "proxy": {
+            "drops": {
+              "guest": 0,
+              "host": 139
+            },
+            "stale_injections": 6,
+            "triggered": true,
+            "mode": "one-way",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "forever",
+          "passed": true,
+          "elapsed_seconds": 72.5,
+          "proxy": {
+            "drops": {
+              "guest": 324,
+              "host": 307
+            },
+            "stale_injections": 0,
+            "triggered": true,
+            "mode": "forever",
+            "duration_seconds": 7
+          },
+          "exits": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "native-owner",
+          "passed": true,
+          "elapsed_seconds": 44.2,
+          "proxy": {
+            "drops": {
+              "guest": 116,
+              "host": 68
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 1308
+        }
+      ],
+      "legacy_wire_both_directions": true
+    },
+    {
+      "game": "kof98",
+      "passed": true,
+      "provenance": {
+        "base": "e3f334b821673161a6379542b91985fd7b268255",
+        "exe_sha256": "d4783eab2663f70746d35039a1d39ea9b44078301cc54b97766a1d779218abb1",
+        "baseline_sha256": "91abe39ccc7d99755a0efbbcdf7e3efd0b2a37494a24ef07c8264fd4a8146cb9",
+        "recipe_sha256": "0507f2077b5b4ec09dc7d3d5a187258b88a084831d3fc756ebeb601fbc6d50ab",
+        "compiler": "g++.exe (Rev6, Built by MSYS2 project) 16.2.0"
+      },
+      "offline_frames": 6000,
+      "offline_state_audio_identical": true,
+      "stress_frames": 6000,
+      "team_observer_frames": 34000,
+      "local_pairs": 20,
+      "minimum_pair_checkpoints": 368,
+      "icon_resources": 8,
+      "native_backup_preserved": true,
+      "recovery": [
+        {
+          "case": "both",
+          "passed": true,
+          "elapsed_seconds": 87.98,
+          "proxy": {
+            "drops": {
+              "guest": 99,
+              "host": 83
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "one-way",
+          "passed": true,
+          "elapsed_seconds": 87.98,
+          "proxy": {
+            "drops": {
+              "guest": 0,
+              "host": 140
+            },
+            "stale_injections": 6,
+            "triggered": true,
+            "mode": "one-way",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "forever",
+          "passed": true,
+          "elapsed_seconds": 70.23,
+          "proxy": {
+            "drops": {
+              "guest": 326,
+              "host": 305
+            },
+            "stale_injections": 0,
+            "triggered": true,
+            "mode": "forever",
+            "duration_seconds": 7
+          },
+          "exits": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "native-owner",
+          "passed": true,
+          "elapsed_seconds": 43.08,
+          "proxy": {
+            "drops": {
+              "guest": 115,
+              "host": 68
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 1377
+        }
+      ],
+      "legacy_wire_both_directions": true
+    },
+    {
+      "game": "kof97",
+      "passed": true,
+      "provenance": {
+        "base": "e3f334b821673161a6379542b91985fd7b268255",
+        "exe_sha256": "54d40f75daafd4a284db7306df38c52c4dd4f8b0cf232bb546e69fb735e5d62e",
+        "baseline_sha256": "2337978bf99ac9686e7e2ba84f62fde0f76c28f21f6b5913163f6b825a1be7f9",
+        "recipe_sha256": "0507f2077b5b4ec09dc7d3d5a187258b88a084831d3fc756ebeb601fbc6d50ab",
+        "compiler": "g++.exe (Rev6, Built by MSYS2 project) 16.2.0"
+      },
+      "offline_frames": 6000,
+      "offline_state_audio_identical": true,
+      "stress_frames": 6000,
+      "team_observer_frames": 34000,
+      "local_pairs": 20,
+      "minimum_pair_checkpoints": 369,
+      "icon_resources": 8,
+      "native_backup_preserved": true,
+      "recovery": [
+        {
+          "case": "both",
+          "passed": true,
+          "elapsed_seconds": 85.55,
+          "proxy": {
+            "drops": {
+              "guest": 102,
+              "host": 80
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "one-way",
+          "passed": true,
+          "elapsed_seconds": 85.59,
+          "proxy": {
+            "drops": {
+              "guest": 0,
+              "host": 142
+            },
+            "stale_injections": 6,
+            "triggered": true,
+            "mode": "one-way",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 3689
+        },
+        {
+          "case": "forever",
+          "passed": true,
+          "elapsed_seconds": 69.81,
+          "proxy": {
+            "drops": {
+              "guest": 324,
+              "host": 307
+            },
+            "stale_injections": 0,
+            "triggered": true,
+            "mode": "forever",
+            "duration_seconds": 7
+          },
+          "exits": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "native-owner",
+          "passed": true,
+          "elapsed_seconds": 43.34,
+          "proxy": {
+            "drops": {
+              "guest": 116,
+              "host": 66
+            },
+            "stale_injections": 5,
+            "triggered": true,
+            "mode": "both",
+            "duration_seconds": 7
+          },
+          "exits": [
+            0,
+            0
+          ],
+          "matching_recovered_checkpoints": 1419
+        }
+      ],
+      "legacy_wire_both_directions": true
+    }
+  ],
+  "limits": [
+    "Loopback peers and synthetic native tunnel owner; no Internet/Iroh-game end-to-end acceptance",
+    "Installed beta, ROMs, source pins and Claude proposal unchanged",
+    "No commit, push or deployment"
+  ],
+  "documentation_checks": {
+    "openspec_strict": [
+      "neo-kof-family-match-flow",
+      "neo-kof97-match-flow",
+      "forkade-lobby"
+    ],
+    "utf8_neo_and_product": true,
+    "git_diff_check_neo_and_product": true,
+    "final_source_exe_fingerprints": true
+  }
+}

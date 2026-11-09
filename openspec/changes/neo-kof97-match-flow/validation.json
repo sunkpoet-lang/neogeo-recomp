@@ -1,0 +1,306 @@
+{
+  "passed": true,
+  "game": "kof97",
+  "date": "2026-11-06",
+  "provenance": {
+    "base": "e3f334b821673161a6379542b91985fd7b268255",
+    "exe_sha256": "2337978bf99ac9686e7e2ba84f62fde0f76c28f21f6b5913163f6b825a1be7f9",
+    "baseline_sha256": "fd2248f6e6ad5f22a5c1773523565d7bd8ce57ae2517a3c1fddb0b7e4b06b404",
+    "recipe_sha256": "6270b3c349d32725edb00e48435df780584683afd74ba44e7f86b32dac5f4238",
+    "compiler": "g++.exe (Rev6, Built by MSYS2 project) 16.2.0"
+  },
+  "source_manifest_sha256": "570e9bc1dccf7187c118676c0275ce9dc9cc95d1d8448b209f5b8ce264b6fe26",
+  "checks": [
+    {
+      "case": "menu-unit-build",
+      "passed": true
+    },
+    {
+      "case": "menu-unit",
+      "passed": true
+    },
+    {
+      "case": "score-unit-build",
+      "passed": true
+    },
+    {
+      "case": "score-unit",
+      "passed": true
+    },
+    {
+      "case": "recovery-unit-build",
+      "passed": true
+    },
+    {
+      "case": "recovery-unit",
+      "passed": true
+    },
+    {
+      "case": "fake-build",
+      "passed": true
+    },
+    {
+      "case": "offline-before",
+      "passed": true
+    },
+    {
+      "case": "offline-after",
+      "passed": true
+    },
+    {
+      "case": "offline6000-state-audio-identical",
+      "passed": true
+    },
+    {
+      "case": "stress6000",
+      "passed": true
+    },
+    {
+      "case": "stress6000-human-fight-armed",
+      "passed": true
+    },
+    {
+      "case": "two-team-matches",
+      "passed": true
+    },
+    {
+      "case": "two-real-team-matches-streak2",
+      "passed": true,
+      "observer_frames": 34000,
+      "last_streak": 2
+    },
+    {
+      "case": "pair1",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair2",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair3",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair4",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair5",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair6",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair7",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair8",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair9",
+      "passed": true,
+      "matching_checkpoints": 368
+    },
+    {
+      "case": "pair10",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair11",
+      "passed": true,
+      "matching_checkpoints": 368
+    },
+    {
+      "case": "pair12",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair13",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair14",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair15",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair16",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair17",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair18",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair19",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "pair20",
+      "passed": true,
+      "matching_checkpoints": 369
+    },
+    {
+      "case": "both",
+      "passed": true,
+      "elapsed_seconds": 86.69,
+      "proxy": {
+        "drops": {
+          "guest": 97,
+          "host": 83
+        },
+        "stale_injections": 5,
+        "triggered": true,
+        "mode": "both",
+        "duration_seconds": 7
+      },
+      "exits": [
+        0,
+        0
+      ],
+      "matching_recovered_checkpoints": 3689
+    },
+    {
+      "case": "one-way",
+      "passed": true,
+      "elapsed_seconds": 86.77,
+      "proxy": {
+        "drops": {
+          "guest": 0,
+          "host": 141
+        },
+        "stale_injections": 6,
+        "triggered": true,
+        "mode": "one-way",
+        "duration_seconds": 7
+      },
+      "exits": [
+        0,
+        0
+      ],
+      "matching_recovered_checkpoints": 3689
+    },
+    {
+      "case": "forever",
+      "passed": true,
+      "elapsed_seconds": 69.78,
+      "proxy": {
+        "drops": {
+          "guest": 324,
+          "host": 306
+        },
+        "stale_injections": 0,
+        "triggered": true,
+        "mode": "forever",
+        "duration_seconds": 7
+      },
+      "exits": [
+        3,
+        3
+      ]
+    },
+    {
+      "case": "native-owner",
+      "passed": true,
+      "elapsed_seconds": 42.72,
+      "proxy": {
+        "drops": {
+          "guest": 116,
+          "host": 65
+        },
+        "stale_injections": 5,
+        "triggered": true,
+        "mode": "both",
+        "duration_seconds": 7
+      },
+      "exits": [
+        0,
+        0
+      ],
+      "matching_recovered_checkpoints": 1383
+    },
+    {
+      "case": "old-guest-legacy-wire",
+      "passed": true
+    },
+    {
+      "case": "old-host-legacy-wire",
+      "passed": true
+    }
+  ],
+  "backup_check": {
+    "passed": true,
+    "backup_sha256": "e6f72ee56b67bbd361f197734117393d904317e1695c43e7ca73bb97c04c723b",
+    "backup_bytes_preserved": true,
+    "game_settings_preserved": true,
+    "unicode_launcher_preferences_preserved": true,
+    "owned_tunnel_instances": 1,
+    "exit_code": 0
+  },
+  "embedded_icon_identical": true,
+  "prediction_tail_excluded": 32,
+  "native_results": {
+    "p1_counter_bus": "10DAF5",
+    "p2_counter_bus": "10DAF7",
+    "p1_completed_matches": [
+      15980,
+      29738
+    ],
+    "p2_completed_match": 15789,
+    "active_native_fight_phases": [
+      1,
+      2
+    ]
+  },
+  "retained_nonpassing_runs": [
+    {
+      "run": "build/kof97-flow-acceptance-20261106",
+      "reason": "Phase1-only reader did not arm in a valid phase2 fight; owned run stopped and retained"
+    },
+    {
+      "run": "build/kof97-flow-acceptance-b-20261106",
+      "reason": "Combined34000 rollback stress timed out after900 seconds; not a pass"
+    },
+    {
+      "run": "work/neo97-menu-unit.txt",
+      "reason": "Scripted menu cursor retained previous row; fixed and unit rerun passed"
+    }
+  ],
+  "limits": [
+    "Loopback peers; synthetic native owner tunnel, no Internet/Iroh-game end-to-end",
+    "Other Neo Geo titles not enabled or certified",
+    "Installed beta and source pins unchanged",
+    "Two full team matches verified in normal headless observation, not34000 completed rollback stress frames",
+    "Native Esc-menu entries only; Claude menu-bar/training proposal stays separate",
+    "No commit/push/deploy or candidate/package promotion"
+  ]
+}
