@@ -11,6 +11,10 @@
 - feat: names and win streaks in one see-through strip at the top (player 1 blue, player 2 red), the ping, delay and rollback one a row at the top right in a small yellow font, and Tab online to show or hide them; offline frames unchanged
 - chore: recomp-common synced to 4a34db7 (the palette and small font, Tommy's languages and accented font, the launcher's volume slider)
 
+## [2026-11-10] - Speed keys
+
+- fix: [ and ] change the speed from the start, before the in-game menu was ever opened; offline frames unchanged
+
 ## [2026-11-09] - Sound level
 
 - feat: a sound level from silent to full in 5 percent steps (the in-game menu's Sound row, - and = or the keypad's - and +, --volume N), kept per game in settings.ini; full level sounds as before; the speed keys move to [ and ]

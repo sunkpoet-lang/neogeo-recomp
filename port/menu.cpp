@@ -86,13 +86,17 @@ void Menu::Open(bool withStates) {
     config.confirmName = "Enter or A";
     config.closeName = "Esc";
     m_menu.Configure(std::move(config));
+    if (!m_configured && m_wantedSpeed >= 0) {
+        m_menu.SetSpeed(m_wantedSpeed);
+    }
+    m_configured = true;
     m_menu.Open();
 }
 
 int Menu::SlowBy() const {
     // (the slower of the player's choice and what the game's sources ask for: runtime/game.h)
     // (recomp-common's menu says -1 until a speed is chosen: full speed)
-    const int speed = m_menu.Speed();
+    const int speed = m_configured ? m_menu.Speed() : m_wantedSpeed;
     return std::max(kSlowBy[speed >= 0 && speed < static_cast<int>(std::size(kSlowBy)) ? speed : 0], cps2recomp::SlowMotion());
 }
 
@@ -101,7 +105,11 @@ void Menu::SetSlowBy(int by) {
     while (speed < static_cast<int>(std::size(kSlowBy)) - 1 && kSlowBy[speed] < by) {
         speed++;
     }
-    m_menu.SetSpeed(speed);
+    if (m_configured) {
+        m_menu.SetSpeed(speed);
+    } else {
+        m_wantedSpeed = speed;
+    }
 }
 
 Menu::Action Menu::Buttons(uint16_t pressed) {
