@@ -4,6 +4,10 @@
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
 
+## [2026-11-10] - Speed keys
+
+- fix: [ and ] change the speed from the start, before the in-game menu was ever opened; offline frames unchanged
+
 ## [2026-11-09] - Sound level
 
 - feat: a sound level from silent to full in 5 percent steps (the in-game menu's Sound row, - and = or the keypad's - and +, --volume N), kept per game in settings.ini; full level sounds as before; the speed keys move to [ and ]

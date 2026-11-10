@@ -77,6 +77,10 @@ public:
 private:
     recomp::Menu m_menu;
     size_t m_command = 0;
+    // ([ and ] before the menu was ever opened: recomp-common's menu learns its speeds when it is opened, and until
+    // then keeps none, so the speed asked for is kept here and handed over then; -1: none asked for)
+    bool m_configured = false;
+    int m_wantedSpeed = -1;
 };
 
 } // namespace port
