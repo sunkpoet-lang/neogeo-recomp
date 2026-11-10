@@ -119,3 +119,8 @@ Optional Windows product integration uses `FORKADE_BROKER_DIR`; there is no
 new service or installed package by default. See [KOF97 usage](games/kof97/README.md),
 the other sets' own READMEs and [four-game local acceptance](openspec/changes/neo-kof-family-match-flow/validation.md).
 Other sets and real Internet/player acceptance remain separate gates.
+
+On screen, online, the names and streaks share one see-through strip at the top,
+above the life bars and the timer ("Name1  N  VS  M  Name2", player 1 blue,
+player 2 red), and ping, delay and rollback sit one a row in small yellow letters
+over player 2's portrait. Tab shows or hides both; the match's messages stay.

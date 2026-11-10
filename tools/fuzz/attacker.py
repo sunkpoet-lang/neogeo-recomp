@@ -9,6 +9,8 @@ import time
 
 port, seconds, seed = int(sys.argv[1]), float(sys.argv[2]), int(sys.argv[3])
 first = '--first-hello' in sys.argv
+# --forged: only forged host statuses (Q: phase 4, "stopped hosting", other names and streaks) and refusals (X)
+forged = '--forged' in sys.argv
 rng = random.Random(seed)
 tag = b'NGO'
 kinds = b'HWXQGCAUVNRKSTPL'
@@ -34,6 +36,13 @@ if first:
         time.sleep(0.05)
 end = time.monotonic() + seconds
 while time.monotonic() < end:
+    if forged:
+        q = bytes(16) + bytes([4, 6, 99, 99]) + b'FORGED\x00FAKE\x00'
+        send(tag + b'Q' + q)
+        send(tag + b'X' + b'You were thrown out')
+        if sent % 200 == 0:
+            time.sleep(0.01)
+        continue
     shape = rng.randrange(6)
     kind = bytes([kinds[rng.randrange(len(kinds))]])
     if shape == 0:

@@ -239,7 +239,7 @@ launcher::Description describe_game(const GameInfo& game) {
             return address.empty() ? std::vector<std::string>{"--host", "7845"} : std::vector<std::string>{"--join", address};
         };
     }
-    d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (forAll ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   - / =: speed   " + (forAll ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
+    d.controls = {{"Keys", keep(std::string("Esc, F1, the left stick's click, or Start and Select together: the in-game menu (") + (forAll ? "training mode and the other modes" : "the game's options") + ", save states, coin, cheats, quit)   P / O: stop, one frame on   [ / ]: speed   - / =: volume   Tab (online): names and ping shown or hidden   " + (forAll ? "Backspace: start over (training)   " : "") + "F5 / F9: save and load a state   F6 / F7: slot   F2: operator's test switch   F11: full screen. On a gamepad: right stick's click stops the game and starts it again, left trigger goes on a frame while it is stopped, left shoulder starts over. (A key or button given to the game above does only that.)")}};
     return d;
 }
 

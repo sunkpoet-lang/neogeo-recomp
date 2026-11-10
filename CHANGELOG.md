@@ -6,6 +6,8 @@
 
 ## [2026-11-10] - Online strip
 
+- fix: a stranger's garbage hello no longer ends the host's match (taken as the peer only if it is this game's; refusals once a second per address; pending hellos capped); checked with 455 000-515 800 hostile packets per KOF '97 match, both sides equal
+- docs: the README and the launcher's keys say the strip, the rows, Tab, [ ] for speed and - = for volume
 - feat: names and win streaks in one see-through strip at the top (player 1 blue, player 2 red), the ping, delay and rollback one a row at the top right in a small yellow font, and Tab online to show or hide them; offline frames unchanged
 - chore: recomp-common synced to 4a34db7 (the palette and small font, Tommy's languages and accented font, the launcher's volume slider)
 
