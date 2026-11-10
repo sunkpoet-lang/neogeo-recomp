@@ -308,6 +308,23 @@ struct NeoGeoOnline::Socket {
         return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
     }
 
+    // (online-abuse-protection) A refusal ('X', why) to someone this session will not take: at most one a second to
+    // each address, so the session cannot be used to send a flood at a third party's address (spoofed hellos); at
+    // most 512 addresses remembered
+    std::map<uint64_t, uint64_t> refusedAt;
+    void Refuse(const std::string &why, const sockaddr_in &to) {
+        const uint64_t key = (static_cast<uint64_t>(to.sin_addr.s_addr) << 16) | to.sin_port, now = NowMs();
+        const auto at = refusedAt.find(key);
+        if (at != refusedAt.end() && now - at->second < 1000) {
+            return;
+        }
+        if (refusedAt.size() >= 512) {
+            refusedAt.clear();
+        }
+        refusedAt[key] = now;
+        Send('X', why.data(), why.size(), to);
+    }
+
     // All payloads in an opted-in session are tied to the pinned peer/room/epoch.
     void Pump() {
         uint8_t buffer[65536];
@@ -327,7 +344,7 @@ struct NeoGeoOnline::Socket {
             }
             if(got<4 || memcmp(buffer,kTag,3)!=0)continue;
             const char kind=static_cast<char>(buffer[3]);
-            if(kind=='H'){hellos.emplace_back(from,std::vector<uint8_t>(buffer+4,buffer+got));continue;}
+            if(kind=='H'){if(hellos.size()<64)hellos.emplace_back(from,std::vector<uint8_t>(buffer+4,buffer+got));continue;}
             if(kind=='W'){if(host && watchHellos.size()<64)watchHellos.emplace_back(from,std::vector<uint8_t>(buffer+4,buffer+got));continue;}
             if(kind=='X'){if(!host && havePeer && Same(from,peer))refused.assign(reinterpret_cast<const char*>(buffer+4),static_cast<size_t>(got-4));continue;}
             if(kind=='Q'){if(!host && havePeer && Same(from,peer) && got>=24){status.assign(buffer+4,buffer+got);statusMs=NowMs();}continue;}
@@ -670,7 +687,8 @@ std::string NeoGeoOnline::Mismatch(const std::vector<uint8_t> &said, bool recove
             from = text.find('|', from);
             from = from == std::string::npos ? text.size() : from + 1;
         }
-        return text.substr(from, text.find('|', from) - from);
+        // (only what can be shown, and not too long: a hello may be anyone's bytes)
+        return recomp::chat::Printable(text.substr(from, text.find('|', from) - from), 48);
     };
     std::string why = "The other player has another game (" + field(theirs, 0) + ")";
     if (field(theirs, 0) == field(ours, 0)) {
@@ -791,7 +809,7 @@ void NeoGeoOnline::WatchHellos() {
     for(auto& [from,whole]:hellos) {
         std::vector<uint8_t> said;std::string name;
         recomp::chat::SplitHello(whole,said,name);
-        auto refuse=[&](const std::string& why){m_socket->Send('X',why.data(),why.size(),from);};
+        auto refuse=[&](const std::string& why){m_socket->Refuse(why,from);};
         if(!m_socket->WatcherName(from)) {
             const int most=std::clamp(m_options.spectators,0,kMostSpectators);
             uint64_t theirNonce=0;
@@ -833,14 +851,23 @@ void NeoGeoOnline::Pump() {
         std::string name;
         recomp::chat::SplitHello(whole, said, name);
         if (!m_socket->havePeer && m_socket->host) {
+            // (online-abuse-protection: the first hello is taken as the peer only if it is this game's; anything else
+            // is refused and the host goes on waiting, so a stranger's garbage cannot end its match. On a copy:
+            // RecoveryHelloNonce takes the nonce off what it is given, which the checks below need whole)
+            std::vector<uint8_t> checked = said;
+            uint64_t theirNonce = 0;
+            const bool compatible = !m_options.matchFlow || RecoveryHelloNonce(checked, theirNonce);
+            if (const std::string why = Mismatch(checked, compatible); !why.empty()) {
+                m_socket->Refuse(why, from);
+                continue;
+            }
             m_socket->peer = from;
             m_socket->havePeer = true;
         }
         if (!Socket::Same(from, m_socket->peer)) {
             // (someone else: not the player this session is with; told so, as a spectator would be)
             if (m_socket->host) {
-                const std::string why = "The match is full: two players are already playing";
-                m_socket->Send('X', why.data(), why.size(), from);
+                m_socket->Refuse("The match is full: two players are already playing", from);
             }
             continue;
         }
