@@ -91,6 +91,9 @@ public:
     }
     // A line for a corner of the screen: the ping, the delay and the frames taken back
     std::string Stats() const;
+    // (online-hud) The same values as rows: at the top right (PING, DELAY, ROLLBACK), and at the top left how
+    // many watch, or WATCHING on a spectator's screen; none while not playing
+    void StatRows(std::vector<std::string> &right, std::string &left) const;
     // How far this side is ahead of the other: the window waits a little longer when it is
     float FramesAhead() const;
     void Stop();

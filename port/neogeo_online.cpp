@@ -1185,6 +1185,33 @@ std::string NeoGeoOnline::Stats() const {
     return text;
 }
 
+void NeoGeoOnline::StatRows(std::vector<std::string> &right, std::string &left) const {
+    right.clear();
+    left.clear();
+    if (!m_session || m_status != Status::Playing) {
+        return;
+    }
+    if (m_options.mode == OnlineOptions::Mode::Stress) {
+        right.push_back(Stats());
+        return;
+    }
+    GekkoRollbackStats rollbacks{};
+    gekko_rollback_stats(m_session, &rollbacks);
+    GekkoNetworkStats net{};
+    gekko_network_stats(m_session, m_remote, &net);
+    right.push_back("PING " + std::to_string(net.last_ping));
+    if (Spectating()) {
+        left = "WATCHING";
+        return;
+    }
+    right.push_back("DELAY " + std::to_string(m_options.delay));
+    right.push_back("ROLLBACK " + std::to_string(rollbacks.last_frames));
+    const int watching = ChatHost() ? Watching() : m_seenWatching;
+    if (watching > 0) {
+        left = std::to_string(watching) + " WATCHING";
+    }
+}
+
 // ForkAde's in-game chat over this session
 recomp::chat::Channel::Said NeoGeoOnline::ChatSay(const std::string &text, std::string &line) {
     if(m_options.matchFlow&&Recovering())return recomp::chat::Channel::Said::Wait;

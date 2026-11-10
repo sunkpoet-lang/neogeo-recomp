@@ -148,8 +148,9 @@ namespace {
     }
 
     // Online: what the session says (waiting, connecting, a desync, the other player gone) in the middle, and while
-    // playing the ping, delay and rollbacks in a corner
-    void DrawOnline(std::vector<uint32_t> &pixels, const NeoGeoOnline &online) {
+    // playing the ping, delay and rollbacks in rows at the top right (online-hud: see-through, in the small yellow
+    // font, one value a row, ending at row 17, above the life bars; Tab hides them, not the session's messages)
+    void DrawOnline(std::vector<uint32_t> &pixels, const NeoGeoOnline &online, bool overlayHidden) {
         constexpr int kWidth = NeoGeoVideo::kWidth, kHeight = NeoGeoVideo::kHeight;
         const recomp::text::Canvas canvas{pixels.data(), kWidth, kHeight};
         const std::string &message = online.Message();
@@ -160,11 +161,25 @@ namespace {
             const recomp::text::Color colour = online.Failed() ? recomp::text::Color{255, 120, 110, 255} : recomp::text::Color{255, 255, 255, 255};
             canvas.Text(x, y, 1, 0, colour, message.c_str());
         }
-        const std::string stats = online.Stats();
-        if (!stats.empty()) {
-            const float width = recomp::text::TextWidth(stats.c_str(), 1);
-            canvas.Fill(kWidth - width - 6, 1, width + 4, 11, {20, 22, 30, 160});
-            canvas.Text(kWidth - width - 4, 2, 1, 0, {200, 220, 255, 255}, stats.c_str());
+        std::vector<std::string> right;
+        std::string left;
+        online.StatRows(right, left);
+        if (overlayHidden) {
+            return;
+        }
+        using recomp::text::Palette;
+        const float step = recomp::text::kSmallLineHeight;
+        for (size_t n = 0; n < right.size() && n < 3; n++) {
+            const float wide = recomp::text::SmallTextWidth(right[n].c_str());
+            // (flush with the right edge: in the KOFs the rows then sit over player 2's portrait, clear of the end
+            // of the life bar, which stops at about column 280)
+            canvas.Fill(kWidth - wide - 1, step * n, wide + 1, step, Palette::kBand);
+            canvas.SmallText(kWidth - wide + 1, 1 + step * n, Palette::kReadout, right[n].c_str());
+        }
+        if (!left.empty()) {
+            const float wide = recomp::text::SmallTextWidth(left.c_str());
+            canvas.Fill(0, 0, wide + 3, step, Palette::kBand);
+            canvas.SmallText(2, 1, Palette::kReadout, left.c_str());
         }
     }
 } // namespace
@@ -263,7 +278,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         isOnline=true;return true;
     },[&]{
         if(!ownedSession)return;
-        ownedSession=false;online.Stop();isOnline=false;
+        ownedSession=false;online.Stop();isOnline=false;overlayHidden=false;
         cps2recomp::Archive restore(savedOffline,false);port.board->Serialize(restore);port.frame=port.board->Frames();
         port.board->Sound().made.clear();port.menu.hosting=false;
     });
@@ -271,6 +286,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     const std::filesystem::path program=exeLength&&exeLength<32768?std::filesystem::path(exePath):std::filesystem::path();
     port.menu.forkade=port.opt.forkadeOnline;
 #endif
+    bool overlayHidden=false; // (online-hud: Tab online)
     struct Event{uint64_t tick;std::string key;};std::vector<Event> scripted;
     std::istringstream input(port.opt.windowEvents);std::string item;
     while(std::getline(input,item,';')){const auto colon=item.find(':');if(colon!=std::string::npos)scripted.push_back({strtoull(item.c_str(),nullptr,10),item.substr(colon+1)});}
@@ -441,6 +457,12 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                     chatOpen(true); // (online the chat's key, even where T is a game key too)
                 } else if (KeyBound(ev.key.scancode)) {
                     // (a key the player has given to the game does only that)
+                } else if (ev.key.scancode == SDL_SCANCODE_TAB && isOnline && (online.GetStatus() == NeoGeoOnline::Status::Playing ||
+                                                                             online.GetStatus() == NeoGeoOnline::Status::Recovering)) {
+                    // (online-hud: online, Tab shows or hides the names' strip and the connection rows, for the session)
+                    if (!ev.key.repeat) {
+                        overlayHidden = !overlayHidden;
+                    }
                 } else if (ev.key.scancode == SDL_SCANCODE_F5 || ev.key.scancode == SDL_SCANCODE_F9) {
                     if (!port.menu.IsOpen()) {
                         quickState(ev.key.scancode == SDL_SCANCODE_F5);
@@ -621,12 +643,33 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             canvas.Text(NeoGeoVideo::kWidth - wide - 5, 6, 1, 0, {255, 255, 255, 255}, port.volumeNote.c_str());
         }
         if (isOnline) {
-            DrawOnline(shown, online);
-            if(port.opt.forkadeOnline&&online.ChatReady()){
+            DrawOnline(shown, online, overlayHidden);
+            // (online-hud) The players' names and win streaks in one strip at the top, over the score row and above
+            // the life bars and the timer, see-through as Fightcade's: "Name1  N  VS  M  Name2"; names cut to 8
+            // letters, so the strip leaves the corners to the connection's rows; Tab hides it
+            if(port.opt.forkadeOnline&&online.ChatReady()&&!overlayHidden){
                 const recomp::text::Canvas canvas{shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight};
-                for(int player=0;player<2;++player){const auto name=online.ShownName(player);const float x=player?202.f:18.f;
-                    if(!port.menu.hideNames)canvas.Text(x,30,1,0,{255,255,255,255},name.c_str());
-                    if(!port.menu.hideStreaks&&port.streak[player]>=2){const auto line="STREAK "+std::to_string(port.streak[player]);canvas.Text(x,40,1,0,{255,220,100,255},line.c_str());}
+                auto cut=[](const std::string &name){ // (UTF-8's continuation bytes are not letters)
+                    size_t letters=0,at=0;
+                    for(;at<name.size();at++){if((static_cast<unsigned char>(name[at])&0xC0)!=0x80&&letters++==8)break;}
+                    return name.substr(0,at);
+                };
+                struct Part{std::string text;recomp::text::Color colour;};
+                using recomp::text::Palette; // (online-hud-palette: player 1 blue, player 2 red)
+                std::vector<Part> parts;
+                const std::string first=cut(online.ShownName(0)),second=cut(online.ShownName(1));
+                if(!port.menu.hideNames&&!first.empty())parts.push_back({first,Palette::kPlayer1});
+                if(!port.menu.hideStreaks)parts.push_back({std::to_string(port.streak[0]),Palette::kNumber});
+                parts.push_back({"VS",Palette::kVersus});
+                if(!port.menu.hideStreaks)parts.push_back({std::to_string(port.streak[1]),Palette::kNumber});
+                if(!port.menu.hideNames&&!second.empty())parts.push_back({second,Palette::kPlayer2});
+                if(parts.size()>1){
+                    const float gap=recomp::text::TextWidth("  ",1);
+                    float width=-gap;
+                    for(const Part &part:parts)width+=recomp::text::TextWidth(part.text.c_str(),1)+gap;
+                    float x=std::floor((NeoGeoVideo::kWidth-width)/2);
+                    canvas.Fill(x-4,0,width+8,10,Palette::kBand);
+                    for(const Part &part:parts){canvas.Text(x,1,1,0,part.colour,part.text.c_str());x+=recomp::text::TextWidth(part.text.c_str(),1)+gap;}
                 }
             }
         if(port.opt.forkadeOnline && !port.menu.roomLabel.empty()){
