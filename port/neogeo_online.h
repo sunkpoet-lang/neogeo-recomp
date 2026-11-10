@@ -9,6 +9,8 @@
 //   <game> --host [PORT]         player 1, waiting on that UDP port (7845)
 //   <game> --join HOST:PORT      player 2
 //   <game> --delay N             the local controls held back N frames (0-8; 1): fewer frames to take back
+//   <game> --watch HOST:PORT     a spectator: the match as the host's game confirms it, a little behind; --spectate
+//                                makes a --join one (ForkAde's launcher's Watch) (openspec change match-spectators)
 //   <game> --stress              no network: GekkoNet's stress session, rolling back every frame to check that the
 //                                game comes out the same (a game passes it before it is played online)
 //
@@ -20,6 +22,7 @@
 
 #include "match_flow.h"
 #include "recovery.h"
+#include <array>
 #include <cstdio>
 #include <cstdint>
 #include <memory>
@@ -41,7 +44,7 @@ inline bool VerifiedMatchFlowGame(const std::string& game) {
 }
 
 struct OnlineOptions {
-    enum class Mode { Off, Host, Join, Stress } mode = Mode::Off;
+    enum class Mode { Off, Host, Join, Stress, Watch } mode = Mode::Off;
     uint16_t port = 7845; // the host's, or the one --join goes to
     std::string host;     // --join's address
     int delay = 1;
@@ -52,7 +55,12 @@ struct OnlineOptions {
     std::string name, chatLog;
     std::vector<std::pair<uint64_t, std::string>> says;
     int chatLoss = 0;
+    // (match-spectators) the host's: how many may watch (0: none); a spectator's: frames behind; --spectate
+    int spectators = 6, spectatorDelay = 15;
+    bool spectate = false;
 };
+
+class ChatRelay;
 
 class NeoGeoOnline {
 public:
@@ -98,6 +106,17 @@ public:
     bool ChatReady() const; // (the match is on)
     bool ChatOver() const;
     std::vector<std::string> ChatUndelivered() const;
+    // (match-spectators) the lines that came, each with who said it ("" for the other player) and whether a
+    // spectator did; whether this side watches; how many watch
+    struct Heard {
+        std::string name, text;
+        bool spectator = false;
+    };
+    std::vector<Heard> ChatHeardLines();
+    bool Spectating() const { return m_options.mode == OnlineOptions::Mode::Watch; }
+    int Watching() const;
+    // (the players' names as the host's status says them, for a spectator's screen)
+    std::string ShownName(int player) const { return Spectating() ? m_statusNames[player] : ChatName(player); }
     NeoGeoChat &Chat() {
         return m_chatScreen;
     }
@@ -112,6 +131,16 @@ public:
     struct Socket;
 
 private:
+    std::string Mismatch(const std::vector<uint8_t> &said, bool recoveryCompatible) const;
+    std::vector<uint8_t> HelloOut() const;
+    void SendStatus(int phase);
+    void ApplyStatus();
+    void WatchHellos();
+    void AddSpectators();
+    void SpectatorLeft(int handle);
+    bool CreateSpectateSession();
+    void PumpChat();
+    void RelayLine(int role, const std::string &name, const std::string &text, const std::string &except);
     void UpdateFlowMessage();
     bool CreateGameSession();
     void SendControl(char kind,uint64_t epoch);
@@ -153,6 +182,19 @@ private:
     std::string m_lastFlowMessage;
     FILE* m_checkpointLog=nullptr;
     FILE* m_flowLog=nullptr;
+    // (match-spectators) the host's spectators: GekkoNet's name for each (its address is the socket's), its nickname,
+    // handle (-1 until the match runs for it) and chat channels; the host's relay to the other player, or this side's
+    // from the host; what the host's last status said
+    struct Spectator {
+        std::string name, nick;
+        int handle = -1;
+        std::shared_ptr<recomp::chat::Channel> own;
+        std::shared_ptr<ChatRelay> relay;
+    };
+    std::vector<Spectator> m_spectators;
+    std::shared_ptr<ChatRelay> m_relay;
+    int m_hostPhase = -1, m_seenWatching = 0;
+    std::array<std::string, 2> m_statusNames;
 };
 
 } // namespace port

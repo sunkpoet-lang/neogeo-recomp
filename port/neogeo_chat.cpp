@@ -5,6 +5,7 @@
 #include "neogeo_chat.h"
 
 #include "game_info.h"
+#include "../runtime/game.h"
 
 #include "../recomp-common/text.h"
 #include "neogeo_online.h"
@@ -48,7 +49,8 @@ bool NeoGeoChat::Say(NeoGeoOnline &online) {
     }
     if (said == recomp::chat::Channel::Said::Sent) {
         const std::string who = Shown(online, online.ChatLocal());
-        Add(who, line, true, true);
+        // (match-spectators: a spectator's own lines marked as they are on the others' screens)
+        Add((online.Spectating() ? "(spec) " : "") + who, line, true, true);
         if (m_log) {
             m_log->Sent(who, line);
         }
@@ -90,12 +92,17 @@ void NeoGeoChat::Tick(NeoGeoOnline &online, uint64_t frame) {
                 Shown(online, online.ChatLocal()).c_str());
     }
     if (ready) {
-        const std::string who = Shown(online, 1 - online.ChatLocal());
-        for (const std::string &line : online.ChatHeard()) {
-            fprintf(stderr, "online: chat: %s: %s\n", who.c_str(), line.c_str());
-            Add(who, line, false, true);
+        // (match-spectators: each line with who said it; a spectator's marked "(spec)", and left off this player's
+        // screen with Mute spectators, still logged)
+        for (const NeoGeoOnline::Heard &heard : online.ChatHeardLines()) {
+            const std::string who = (heard.spectator ? "(spec) " : "") + (heard.name.empty() ? Shown(online, 1 - online.ChatLocal()) : heard.name);
+            const bool muted = heard.spectator && !online.Spectating() && cps2recomp::FeatureSetting("online_mute_spectators") != 0;
+            fprintf(stderr, "online: chat: %s%s: %s\n", muted ? "(muted) " : "", who.c_str(), heard.text.c_str());
+            if (!muted) {
+                Add(who, heard.text, false, true);
+            }
             if (m_log) {
-                m_log->Received(who, line);
+                m_log->Received(who, heard.text);
             }
         }
         // (the tests' lines, at their frames)

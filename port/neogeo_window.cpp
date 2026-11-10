@@ -237,7 +237,8 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             return 1;
         }
         const OnlineOptions::Mode mode = port.opt.online.mode;
-        const char *who = mode == OnlineOptions::Mode::Host ? "player 1" : mode == OnlineOptions::Mode::Join ? "player 2" : "stress test";
+        const char *who = mode == OnlineOptions::Mode::Host ? "player 1" : mode == OnlineOptions::Mode::Join ? "player 2"
+                        : mode == OnlineOptions::Mode::Watch ? "watching" : "stress test";
         SDL_SetWindowTitle(window, (std::string(GAME_TITLE) + " - online, " + who).c_str());
     }
 
@@ -596,7 +597,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             DrawOnline(shown, online);
             if(port.opt.forkadeOnline&&online.ChatReady()){
                 const recomp::text::Canvas canvas{shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight};
-                for(int player=0;player<2;++player){const auto name=online.ChatName(player);const float x=player?202.f:18.f;
+                for(int player=0;player<2;++player){const auto name=online.ShownName(player);const float x=player?202.f:18.f;
                     if(!port.menu.hideNames)canvas.Text(x,30,1,0,{255,255,255,255},name.c_str());
                     if(!port.menu.hideStreaks&&port.streak[player]>=2){const auto line="STREAK "+std::to_string(port.streak[player]);canvas.Text(x,40,1,0,{255,220,100,255},line.c_str());}
                 }

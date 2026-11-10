@@ -197,6 +197,21 @@ int main(int argc, char **argv) {
             if (colon != std::string::npos) {
                 o.online.port = static_cast<uint16_t>(atoi(v.c_str() + colon + 1));
             }
+        } else if (a == "--watch") {
+            // (match-spectators) a spectator of the match at HOST:PORT
+            const std::string v = next();
+            const size_t colon = v.rfind(':');
+            o.online.mode = port::OnlineOptions::Mode::Watch;
+            o.online.host = v.substr(0, colon);
+            if (colon != std::string::npos) {
+                o.online.port = static_cast<uint16_t>(atoi(v.c_str() + colon + 1));
+            }
+        } else if (a == "--spectate" || a == "--gekko-spectate") {
+            o.online.spectate = true; // (ForkAde's launcher's Watch: its --join, as a spectator)
+        } else if (a == "--spectators") {
+            o.online.spectators = atoi(next());
+        } else if (a == "--spectator-delay") {
+            o.online.spectatorDelay = atoi(next());
         } else if (a == "--delay") {
             o.online.delay = atoi(next());
         } else if (a == "--stress") {
@@ -229,6 +244,9 @@ int main(int argc, char **argv) {
             fprintf(stderr, "%s: unknown option %s\n", argv[0], a.c_str());
             return 2;
         }
+    }
+    if (o.online.spectate && o.online.mode == port::OnlineOptions::Mode::Join) {
+        o.online.mode = port::OnlineOptions::Mode::Watch; // (match-spectators: --spectate, in a window too)
     }
     std::vector<Press> presses;
     if(o.observeFlow && (!o.headless || !o.forkadeOnline || o.online.mode!=port::OnlineOptions::Mode::Off || o.online.flowLog.empty())){

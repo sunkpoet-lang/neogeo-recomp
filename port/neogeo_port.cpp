@@ -86,6 +86,12 @@ namespace {
 } // namespace
 
 void RegisterNeoGeoPortFeatures() {
+    // (match-spectators: what this player sees of the spectators' chat, never part of the match)
+    TheGame().features.push_back({"online_mute_spectators", "Online", "Mute spectators",
+                                  "During an online match people are watching, their chat lines are not shown to you (they are "
+                                  "still in the match's chat log). Only your screen: the other player and the spectators still "
+                                  "see them.",
+                                  0});
     // (display_*: how the picture is fitted to the window, present.h; the same as the Capcom games')
     TheGame().features.push_back({"display_scaling", "Display", "Scaling",
                                   "Sharp: as large as fits, each pixel a crisp block. Whole pixels: every pixel the same whole "

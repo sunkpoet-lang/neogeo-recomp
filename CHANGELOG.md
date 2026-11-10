@@ -4,6 +4,10 @@
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
 
+## [2026-11-09] - Match spectators
+
+- feat: let up to six spectators watch an online match (--watch, or --join with --spectate), joining at any point from the host's confirmed state, through the arcade wait and same-peer recovery, with their own chat relayed by the host and a Mute spectators switch; KOF '97 and KOF '98 checked with offline, stress and chat regression unchanged
+
 ## [2026-11-06] - KOF97 ForkAde match flow
 
 - test: pass full local acceptance separately for KOF2002, Magic Plus II, KOF98 and the rebuilt KOF97 regression, including 80 peer pairs, unchanged offline state/audio, team streaks, rollback, recovery and native player-data preservation
