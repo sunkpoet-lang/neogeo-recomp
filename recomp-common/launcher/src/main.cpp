@@ -33,7 +33,7 @@
 #include <vector>
 
 #include "app.h"
-#include "proxy.h"
+#include "proxy.h"  // (and on Windows, windows.h: AttachConsole below)
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
 #include "imgui_internal.h"
@@ -251,6 +251,13 @@ struct TouchScroll {
 }  // namespace
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    // (a windowed program has no console: started from one, its output goes there, unless it was sent elsewhere)
+    if (!GetStdHandle(STD_ERROR_HANDLE) && AttachConsole(ATTACH_PARENT_PROCESS)) {
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+    }
+#endif
     std::string screenshot_prefix;
     std::string press;
     bool pressing = false;

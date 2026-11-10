@@ -60,6 +60,10 @@ struct MenuFeature {
     std::string description;
     // For a choice: the names, the first being the one that means off. Empty: on (1) or off (0).
     std::vector<std::string> choices = {};
+    // A choice of many (stages, say) whose player keeps favourites (MenuConfig::favourite): Confirm on its row marks the
+    // choice shown as one, or not (any of them: a list of stages may have none that means off), and a row under it goes
+    // through the favourites alone
+    bool favourites = false;
 };
 
 // Something the game can do when asked: Chosen::Command with its place in MenuConfig::commands.
@@ -94,6 +98,10 @@ struct MenuConfig {
     // Optional: whether the menu offers a choice of a feature (settings.h, MenuChoices): Left, Right and Confirm pass
     // over those it does not. Off (the first) and the one chosen now always are.
     std::function<bool(size_t feature, int choice)> offered;
+    // Optional: a favourites feature's (MenuFeature::favourites) choices the player has marked, and marking one or not
+    // (the host keeps them). Without these, such a feature is as any other.
+    std::function<bool(size_t feature, int choice)> favourite;
+    std::function<void(size_t feature, int choice, bool marked)> setFavourite;
     // The Speed row: the speeds' names, slowest first, and what the row's description says; full speed is the one
     // at normalSpeed (the slower ones before it, the faster after), the speed the menu starts at
     std::vector<std::string> speeds;
@@ -110,6 +118,16 @@ struct MenuConfig {
     // "A, B or C") and what closes the menu ("Esc", "Esc or Select")
     std::string confirmName = "a button";
     std::string closeName = "Esc";
+};
+
+// Presses, with the arrows repeating while held, for a host that knows whether each button is down: given what is down
+// each frame (kMenu... bits), what is pressed this frame: what has gone down since the last, and Up, Down, Left and
+// Right again while held alone (after kRepeatAfter frames, then every kRepeatEvery; faster after kFasterAfter)
+struct MenuRepeat {
+    static constexpr int kRepeatAfter = 18, kRepeatEvery = 4, kFasterAfter = 60, kFasterEvery = 2;
+    unsigned Step(unsigned held);
+    unsigned m_held = 0; // (what was down at the last step, and for how many frames the arrows have been)
+    int m_frames = 0;
 };
 
 class Menu {
@@ -129,7 +147,8 @@ public:
     bool IsOpen() const {
         return m_open;
     }
-    // Buttons newly pressed (kMenu... bits): Up/Down choose, Confirm changes a row or goes into a page,
+    // Buttons newly pressed (kMenu... bits; MenuRepeat makes them from those held): Up/Down choose, Confirm changes a row
+    // or goes into a page (on a favourites feature's row, marks the choice shown a favourite or not),
     // Left/Right change a row with several values, Right on a page's row goes into that page, Left and Back
     // leave a page (for the one it was reached from), Back on the first page closes.
     // Returns what the host is to do (with Slot() for Save and Load); the host closes the menu if that
@@ -161,6 +180,7 @@ private:
         bool divider = false; // a line above it: the first of a group of rows
     };
     void Fill();
+    bool Favourites(size_t feature) const;
     const MenuPage *PageOf(const std::string &name) const;
     std::string Parent(const std::string &page) const;
     bool Exists(const std::string &page) const;

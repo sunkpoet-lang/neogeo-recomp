@@ -384,6 +384,7 @@ launcher::Description describe_outside(const OutsideGame& game) {
     d.candidates = [game](const std::filesystem::path& folder) { return outside_candidates(*game.program, folder); };
     d.arguments = [](const launcher::Launch& launch) { return std::vector<std::string>{"--rom", launch.file}; };
     d.mute_argument = nullptr;  // (the program's own menu has the volume)
+    d.volume_argument = nullptr;
     if (game.netplay_port) {
         // (after "--", the bridge passes them to the program: outside_bridge.cpp)
         d.tunnel.port = game.netplay_port;

@@ -79,6 +79,9 @@ bool gamepad_in_use();
 
 bool button(const char* label, Kind kind, float width = 0.0f, bool enabled = true, float height = 36.0f);
 bool toggle(const char* id, bool value);
+// A level of 0 to 100 percent in steps of 5: dragged or clicked, or the arrow keys or a gamepad's pad left and right
+// while it has the focus, with the level written at its right; true when it changed
+bool slider(const char* id, int& value, float width);
 bool dropdown(const char* id, const std::vector<std::string>& labels, int& index, float width);
 // A field to type in, with a magnifying glass and (when it is not empty) a cross that empties it; Esc empties
 // it too, and a second Esc (or a gamepad's B, which keeps what was typed) leaves it. True when what is in it

@@ -104,6 +104,16 @@ struct InfoRow {
     const char *text;
 };
 
+// Something the player should do before playing and might not know of (a file of the port's that an earlier release
+// built, to build again, say): a card at the top of the Game page, in the accent, as an invitation's is
+struct Notice {
+    std::string heading; // over the card, in capitals ("REBUILD NEEDED")
+    std::string title;   // "" for none: no card
+    std::string detail;
+    std::string button;  // a button that opens the port's own page named `page`; "" for none
+    std::string page;
+};
+
 // What a page of the port's own is drawn with (ui.h and layout.h are the launcher's look)
 struct PageContext {
     float width;                                 // of the page's column
@@ -138,6 +148,13 @@ struct Description {
     // sidebar), and a dropped file goes to a page of the port's own only while that page is shown (else it is the
     // game file): for pages that are extras, not the way in
     bool open_on_game_page = false;
+    // Online play on a page of its own after Game (hosting, joining, the lobby, the waiting room, as a collection's
+    // Online page has them), rather than a card on the Game page. With Online::host_argument and join_argument.
+    bool online_page = false;
+    // The port's own pages after Game (and Online), before Features, rather than first
+    bool own_pages_after_game = false;
+    // Optional: the Game page's notice (Notice above), asked each time the page is drawn, with the player's folder
+    std::function<Notice(const std::filesystem::path &folder)> notice;
     // false: no Game page (and no game file, check or Display card): the port's pages have Play
     bool game_page = true;
 
@@ -160,6 +177,10 @@ struct Description {
     const char *file_key = "file";            // its key in launcher.ini, under [game]
     std::function<FileCheck(const std::string &path)> check;
     bool check_on_thread = false;             // for a check that reads a large file
+    // Optional: whether a feature is offered with the game file chosen (one that only some releases of the game
+    // have, say); false leaves it off the Features page (and a collection's game page). `file` is the chosen file
+    // once its check found it good, else "". Called while drawing: keep it quick (remember what `check` found).
+    std::function<bool(const std::string &feature, const std::string &file)> feature_shown;
     // Optional: a game file near the program (a build inside the source tree), or ""
     std::function<std::string(const std::filesystem::path &program_folder)> find_nearby;
     // Optional, for a collection: where in a folder the player chose this game's file may be (the names a
@@ -174,6 +195,10 @@ struct Description {
     // launcher.ini under [audio]). When it is on the game is started with this argument after the port's
     // own. nullptr: no card (a game with no sound to switch off).
     const char *mute_argument = "--mute";
+    // ... and below it a sound level, 0 to 100 percent (game-volume-control): the game keeps it in its settings.ini
+    // under [audio] volume, which the slider shows and changes, and it is started with this argument and the level.
+    // nullptr: no level (a program with a volume of its own, or older than --volume)
+    const char *volume_argument = "--volume";
     // ... and below it, folders the player may choose (none: only the switch)
     std::vector<FolderChoice> folders;
 

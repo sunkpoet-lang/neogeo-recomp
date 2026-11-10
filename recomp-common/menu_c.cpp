@@ -129,4 +129,14 @@ void rmenu_draw(const RMenu *menu, uint32_t *pixels, int width, int height) {
     menu->menu.Draw(pixels, width, height);
 }
 
+unsigned rmenu_repeat(RMenuRepeat *repeat, unsigned held) {
+    recomp::MenuRepeat r;
+    r.m_held = repeat->held;
+    r.m_frames = repeat->frames;
+    const unsigned pressed = r.Step(held);
+    repeat->held = r.m_held;
+    repeat->frames = r.m_frames;
+    return pressed;
+}
+
 } // extern "C"

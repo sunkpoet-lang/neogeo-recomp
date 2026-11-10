@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of recomp-common: https://github.com/tmcleroy/recomp-common
 #include "update.h"
 
+#include "i18n.h"
 #include "run_program.h"
 
 #include <algorithm>
@@ -671,7 +672,7 @@ bool Updater::do_check() {
     const std::string list_url = other && *other ? other : "https://api.github.com/repos/" + repo_ + "/releases?per_page=30";
     std::string text;
     if (int code = fetch_text(list_url, text); code != 0) {
-        set(State::Failed, "Couldn't check for a new version: " + curl_problem(code) + ".");
+        set(State::Failed, recomp::i18n::TrFormat("Couldn't check for a new version: {}.", {recomp::Tr(curl_problem(code))}));
         return false;
     }
     Json releases;
@@ -803,8 +804,10 @@ bool Updater::do_check() {
         }
     }
     const size_t n = needed_.size();
-    set(State::Available, "You have " + version_ + ". The download is " + megabytes(next_.archive_size) + "; " + std::to_string(n) +
-                              (n == 1 ? " file changes." : " files change."));
+    // (in the player's language: i18n.h)
+    set(State::Available, n == 1 ? recomp::i18n::TrFormat("You have {}. The download is {}; 1 file changes.", {version_, megabytes(next_.archive_size)})
+                                 : recomp::i18n::TrFormat("You have {}. The download is {}; {} files change.",
+                                                          {version_, megabytes(next_.archive_size), std::to_string(n)}));
     return true;
 }
 
@@ -819,7 +822,7 @@ bool Updater::do_install() {
     }
     auto fail = [&](const std::string& why) {
         fs::remove_all(staging, error);
-        set(State::Failed, "Couldn't update: " + why + " Nothing was changed.");
+        set(State::Failed, recomp::i18n::TrFormat("Couldn't update: {} Nothing was changed.", {recomp::Tr(why)}));
         return false;
     };
     // 1. The archive, downloaded and checked, unpacked, and every file that differs checked
@@ -921,7 +924,7 @@ int Updater::download(const std::string& url, const fs::path& to, uint64_t size)
                 std::lock_guard<std::mutex> lock(mutex_);
                 status_.fraction = size ? std::min(1.0, static_cast<double>(got) / static_cast<double>(size)) : 0.0;
             }
-            set(State::Installing, "Downloading " + megabytes(got) + " of " + megabytes(size) + "…");
+            set(State::Installing, recomp::i18n::TrFormat("Downloading {} of {}…", {megabytes(got), megabytes(size)}));
             std::this_thread::sleep_for(std::chrono::milliseconds(250));
         }
     });
@@ -938,7 +941,7 @@ bool Updater::do_install_apk() {
     auto fail = [&](const std::string& why) {
         apk_.clear();
         fs::remove_all(folder, error);
-        set(State::Failed, "Couldn't update: " + why + " Nothing was changed.");
+        set(State::Failed, recomp::i18n::TrFormat("Couldn't update: {} Nothing was changed.", {recomp::Tr(why)}));
         return false;
     };
     // 1. The APK, downloaded and checked against the release's SHA256SUMS.txt (once: a second Update only opens the installer)

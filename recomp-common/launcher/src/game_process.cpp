@@ -189,7 +189,7 @@ bool GameProcess::start(const std::filesystem::path& program, const std::vector<
             std::lock_guard<std::mutex> lock(mutex_);
             pid_ = 0;
         }
-        exit_code_ = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        exit_code_ = WIFEXITED(status) ? WEXITSTATUS(status) : WIFSIGNALED(status) ? -WTERMSIG(status) : -1;  // (a crash: minus its signal)
         running_ = false;
         SDL_Event event{};
         event.type = SDL_EVENT_USER;

@@ -107,6 +107,14 @@ void rmenu_note(RMenu* menu, const char* text);
 // over a picture of 32-bit pixels (red in the low byte)
 void rmenu_draw(const RMenu* menu, uint32_t* pixels, int width, int height);
 
+// Presses with the arrows repeating while held (menu.h, MenuRepeat): given what is down each frame (RMENU_... bits),
+// what is pressed this frame. Start with an RMenuRepeat of zeros.
+typedef struct {
+  unsigned held;
+  int frames;
+} RMenuRepeat;
+unsigned rmenu_repeat(RMenuRepeat* repeat, unsigned held);
+
 #ifdef __cplusplus
 }
 #endif
