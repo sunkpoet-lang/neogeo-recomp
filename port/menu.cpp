@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Tommy McLeroy. Part of cps2recomp.
 //
 // The in-game menu (menu.h): the shared menu told what a CPS-2 game's is made of.
+#include "../recomp-common/volume.h"
 #include "menu.h"
 
 #include "../machine/machine.h"
@@ -76,9 +77,12 @@ void Menu::Open(bool withStates) {
     config.setValue = [](size_t feature, int value) { cps2recomp::SetFeatureValue(cps2recomp::TheGame().features[feature].name, value); };
     config.speeds.assign(std::begin(kSpeedNames), std::end(kSpeedNames));
     config.speedDescription = "Left/Right: slow motion. While playing, P (or a click of the right stick) stops the game and starts it "
-                              "again; O (or, once stopped, the left trigger) goes on by one frame; - and = change the speed.";
+                              "again; O (or, once stopped, the left trigger) goes on by one frame; [ and ] change the speed.";
     config.muted = [this] { return muted; };
     config.setMuted = [this](bool to) { muted = to; };
+    // (game-volume-control: the Sound row's level)
+    config.volume = [this] { return volume; };
+    config.setVolume = [this](int percent) { volume = recomp::ClampVolume(percent); };
     config.confirmName = "Enter or A";
     config.closeName = "Esc";
     m_menu.Configure(std::move(config));

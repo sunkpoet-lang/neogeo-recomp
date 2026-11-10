@@ -71,6 +71,10 @@ void rmenu_configure(RMenu *menu, const RMenuConfig *c) {
         config.muted = [muted = c->muted, user = c->user] { return muted(user) != 0; };
         config.setMuted = [setMuted = c->setMuted, user = c->user](bool muted) { setMuted(user, muted ? 1 : 0); };
     }
+    if (c->volume && c->setVolume) {
+        config.volume = [volume = c->volume, user = c->user] { return volume(user); };
+        config.setVolume = [setVolume = c->setVolume, user = c->user](int percent) { setVolume(user, percent); };
+    }
     menu->menu.Configure(std::move(config));
 }
 

@@ -7,6 +7,8 @@
 
 #include "../machine/romset.h"
 #include "../recomp-common/text.h"
+#include "../recomp-common/settings.h"
+#include "../recomp-common/volume.h"
 #include "../runtime/neogeo_game.h"
 #include "../runtime/state.h"
 #include "hud.h"
@@ -122,6 +124,7 @@ bool NeoGeoPort::Init(std::string &error) {
     RegisterNeoGeoPortFeatures();
     LoadFeatures(opt.settingsPath, opt.features);
     menu.muted = opt.mute;
+    menu.volume = opt.volume >= 0 ? recomp::ClampVolume(opt.volume) : KeptVolume(); // (game-volume-control)
     // The backup RAM as the last run left it (a game started by the launcher: its saves folder); the tests start
     // with none, as a new board
     std::vector<uint8_t> backup;
@@ -402,7 +405,37 @@ bool NeoGeoPort::LoadState(const std::string &path, std::string &error) {
     return true;
 }
 
+// (game-volume-control) The level: - and = (and the keypad's - and +) a step at a time, the sound back on if it
+// was muted, the new level said for a second
+void NeoGeoPort::ChangeVolume(int steps) {
+    menu.volume = recomp::StepVolume(menu.volume, steps);
+    menu.muted = false;
+    volumeNote = "VOLUME " + std::to_string(menu.volume) + "%";
+    volumeNoteUntil = tick + 60;
+}
+
+int NeoGeoPort::KeptVolume() const {
+    if (opt.settingsPath.empty()) {
+        return recomp::kVolumeFull;
+    }
+    recomp::Ini settings(opt.settingsPath);
+    settings.load();
+    const std::string kept = settings.get("audio", "volume");
+    return kept.empty() ? recomp::kVolumeFull : recomp::ClampVolume(atoi(kept.c_str()));
+}
+
+void NeoGeoPort::KeepVolume() const {
+    if (opt.settingsPath.empty() || KeptVolume() == menu.volume) {
+        return;
+    }
+    recomp::Ini settings(opt.settingsPath);
+    settings.load(); // (the rest of settings.ini kept as it is)
+    settings.set("audio", "volume", std::to_string(menu.volume));
+    settings.save();
+}
+
 void NeoGeoPort::Finish() {
+    KeepVolume();
     // (not after playing online: the player's own backup RAM was not in it)
     if (!opt.savesPath.empty() && board && opt.online.mode == OnlineOptions::Mode::Off) {
         WriteFile(BackupPath(), board->BackupRam());

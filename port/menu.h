@@ -41,6 +41,7 @@ public:
     Action Press(unsigned buttons);
     // The "Sound" row: the frontend plays nothing while this is set (--mute starts with it set)
     bool muted = false,forkade=false,hosting=false,hideNames=false,hideStreaks=false;
+    int volume = 100; // (game-volume-control: the level, 0-100 percent, recomp-common/volume.h)
     std::string roomLabel;
     // Test injection uses the same real menu rows and Buttons path as a player.
     Action SelectOnline(int index){

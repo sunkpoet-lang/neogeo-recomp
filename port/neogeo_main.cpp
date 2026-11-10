@@ -144,6 +144,8 @@ int main(int argc, char **argv) {
             o.frames = strtoull(next(), nullptr, 10);
         } else if (a == "--headless") {
             o.headless = true;
+        } else if (a == "--volume") {
+            o.volume = std::clamp(atoi(next()), 0, 100); // (game-volume-control)
         } else if (a == "--mute") {
             o.mute = true;
         } else if (a == "--scale") {

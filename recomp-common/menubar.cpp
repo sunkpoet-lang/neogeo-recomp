@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "text.h"
+#include "volume.h"
 
 namespace recomp {
 
@@ -468,7 +469,7 @@ void MenuBar::Draw(uint32_t *pixels, int width, int height) const {
 namespace {
     // An entry's id: 0x40000000, what it is (4 bits), then two numbers of 12 bits (a slot, a feature and its
     // choice, a row's place...)
-    enum : int { kSave = 1, kLoad, kSlot, kSpeed, kCommand, kToggle, kChoice, kAction, kQuit, kMute };
+    enum : int { kSave = 1, kLoad, kSlot, kSpeed, kCommand, kToggle, kChoice, kAction, kQuit, kMute, kLouder, kQuieter };
     constexpr int kEntryBase = 0x40000000;
 
     int EntryId(int what, int a, int b = 0) {
@@ -628,6 +629,17 @@ void AddMenuEntries(std::vector<BarMenu> &menus, const MenuConfig &config, const
             case MenuRow::Mute:
                 if (config.muted && config.setMuted) {
                     into(row, "Audio", group).push_back(Item("Mute", EntryId(kMute, 0), config.muted() ? BarEntry::Check : BarEntry::NoMark));
+                    // ((ForkAde's fork) the level, as the Sound row and the - and = keys change it)
+                    if (config.volume && config.setVolume) {
+                        BarEntry louder = Item("Louder (" + std::to_string(config.volume()) + "%)", EntryId(kLouder, 0));
+                        louder.shortcut = "=";
+                        louder.enabled = config.volume() < kVolumeFull;
+                        BarEntry quieter = Item("Quieter", EntryId(kQuieter, 0));
+                        quieter.shortcut = "-";
+                        quieter.enabled = config.volume() > 0;
+                        into(row, "Audio", group).push_back(std::move(louder));
+                        into(row, "Audio", group).push_back(std::move(quieter));
+                    }
                 }
                 break;
             case MenuRow::Page:
@@ -705,6 +717,15 @@ Menu::Chosen ChooseMenuEntry(int id, const MenuConfig &config, Menu &menu) {
     case kMute:
         if (config.muted && config.setMuted) {
             config.setMuted(!config.muted());
+        }
+        break;
+    case kLouder:
+    case kQuieter:
+        if (config.volume && config.setVolume) {
+            config.setVolume(StepVolume(config.volume(), what == kLouder ? 1 : -1));
+            if (config.muted && config.setMuted && config.muted()) {
+                config.setMuted(false);
+            }
         }
         break;
     default: break;

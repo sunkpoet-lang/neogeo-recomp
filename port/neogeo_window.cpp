@@ -14,6 +14,7 @@
 #include "../recomp-common/text.h"
 #include "../recomp-common/settings.h"
 #include "../recomp-common/folders.h"
+#include "../recomp-common/volume.h"
 #include "bindings.h"
 #include "neogeo_online.h"
 #include "neogeo_port.h"
@@ -207,7 +208,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         }
     }
     sound.keep = audio != nullptr;
-    bool silent = false;
+    float gainNow = 1.0f; // (game-volume-control: the stream's gain now)
 
     // Online (neogeo_online.h): the session runs the frames, with this side's controls as its player's
 #ifdef FORKADE_GAME_BROKER
@@ -333,9 +334,15 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     const double kFrameNs = 1e9 * NeoGeo::kLines * NeoGeo::kCpuPerLine / 12000000.0; // (59.19 a second)
     uint64_t nextFrame = SDL_GetTicksNS();
     auto feedAudio = [&](bool ran, int slowBy) {
-            if (audio && silent != port.menu.muted) {
-                silent = port.menu.muted;
-                SDL_SetAudioStreamGain(audio, silent ? 0.0f : 1.0f);
+            // (game-volume-control) the level (and mute) as the stream's gain, followed over a few frames so a
+            // change does not click
+            if (audio) {
+                const float wanted = port.menu.muted ? 0.0f : recomp::VolumeGain(port.menu.volume);
+                const float before = gainNow;
+                gainNow += std::clamp(wanted - gainNow, -0.25f, 0.25f);
+                if (gainNow != before || SDL_GetAudioStreamGain(audio) != gainNow) {
+                    SDL_SetAudioStreamGain(audio, gainNow);
+                }
             }
             if (audio && ran && !sound.made.empty()) {
                 double waiting = SDL_GetAudioStreamQueued(audio) / (4.0 * NeoGeoSound::SampleRate()) * slowBy;
@@ -368,6 +375,15 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             else if(event.key=="names")menuAction(port.menu.SelectOnline(2));
             else if(event.key=="streaks")menuAction(port.menu.SelectOnline(3));
             else if(event.key=="menu")toggleMenu();
+            // (tests: "k KEY", a key pressed and let go, by SDL's name; "p", the level, the gain and the speed printed)
+            else if(event.key.rfind("k ",0)==0){
+                SDL_Event put{};put.key.scancode=SDL_GetScancodeFromName(event.key.substr(2).c_str());
+                put.key.key=SDL_GetKeyFromScancode(put.key.scancode,SDL_KMOD_NONE,false);
+                put.type=SDL_EVENT_KEY_DOWN;put.key.down=true;SDL_PushEvent(&put);
+                put.type=SDL_EVENT_KEY_UP;put.key.down=false;SDL_PushEvent(&put);
+            }
+            else if(event.key=="p")printf("window %llu: muted %s, volume %d%% (gain %.3f), slow by %d\n",static_cast<unsigned long long>(loops),
+                                          port.menu.muted?"yes":"no",port.menu.volume,static_cast<double>(gainNow),port.menu.SlowBy());
         }
         ++loops;
 #ifdef FORKADE_GAME_BROKER
@@ -435,8 +451,12 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                     port.Key('p');
                 } else if (!port.menu.IsOpen() && ev.key.scancode == SDL_SCANCODE_O) {
                     port.Key('o');
-                } else if (ev.key.scancode == SDL_SCANCODE_MINUS || ev.key.scancode == SDL_SCANCODE_EQUALS) {
-                    port.Key(ev.key.scancode == SDL_SCANCODE_MINUS ? '-' : '=');
+                } else if (ev.key.scancode == SDL_SCANCODE_MINUS || ev.key.scancode == SDL_SCANCODE_EQUALS ||
+                           ev.key.scancode == SDL_SCANCODE_KP_MINUS || ev.key.scancode == SDL_SCANCODE_KP_PLUS) {
+                    // (game-volume-control: the level, as Fightcade has it; online too)
+                    port.ChangeVolume(ev.key.scancode == SDL_SCANCODE_MINUS || ev.key.scancode == SDL_SCANCODE_KP_MINUS ? -1 : 1);
+                } else if (ev.key.scancode == SDL_SCANCODE_LEFTBRACKET || ev.key.scancode == SDL_SCANCODE_RIGHTBRACKET) {
+                    port.Key(ev.key.scancode == SDL_SCANCODE_LEFTBRACKET ? '-' : '='); // slower, faster
                 } else if (ev.key.scancode == SDL_SCANCODE_F2) {
                     port.test = !port.test; // the operator's test switch
                 } else if (ev.key.scancode == SDL_SCANCODE_F11 ||
@@ -593,6 +613,13 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         feedAudio(ran, slowBy);
 
         port.Shown(shown);
+        if (port.tick < port.volumeNoteUntil) {
+            // (game-volume-control: the level, as - and = changed it, for a second)
+            const recomp::text::Canvas canvas{shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight};
+            const float wide = recomp::text::TextWidth(port.volumeNote.c_str(), 1);
+            canvas.Fill(NeoGeoVideo::kWidth - wide - 8, 4, wide + 6, 11, {20, 22, 30, 200});
+            canvas.Text(NeoGeoVideo::kWidth - wide - 5, 6, 1, 0, {255, 255, 255, 255}, port.volumeNote.c_str());
+        }
         if (isOnline) {
             DrawOnline(shown, online);
             if(port.opt.forkadeOnline&&online.ChatReady()){

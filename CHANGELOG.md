@@ -4,6 +4,10 @@
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
 
+## [2026-11-09] - Sound level
+
+- feat: a sound level from silent to full in 5 percent steps (the in-game menu's Sound row, - and = or the keypad's - and +, --volume N), kept per game in settings.ini; full level sounds as before; the speed keys move to [ and ]
+
 ## [2026-11-09] - Match spectators
 
 - feat: let up to six spectators watch an online match (--watch, or --join with --spectate), joining at any point from the host's confirmed state, through the arcade wait and same-peer recovery, with their own chat relayed by the host and a Mute spectators switch; KOF '97 and KOF '98 checked with offline, stress and chat regression unchanged

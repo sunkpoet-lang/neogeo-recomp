@@ -102,6 +102,10 @@ struct MenuConfig {
     // The Mute row: whether the game's sound is off now, and switching it off and on
     std::function<bool()> muted;
     std::function<void(bool muted)> setMuted;
+    // (ForkAde's fork, game-volume-control) With these too, the Mute row is the Sound row: Left and Right change
+    // the level (0-100 percent, in 5 percent steps: volume.h) and turn the sound back on; a press mutes and unmutes
+    std::function<int()> volume;
+    std::function<void(int percent)> setVolume;
     // What the menu's buttons are called on this system, for the hint line: kMenuConfirm ("a button",
     // "A, B or C") and what closes the menu ("Esc", "Esc or Select")
     std::string confirmName = "a button";

@@ -29,6 +29,7 @@ struct NeoGeoOptions {
     std::string hashLog, script, audioDump, stateSave, stateLoad, shotDir = ".";
     uint64_t frames = 0, shotEvery = 0, saveAt = 0;
     bool headless = false, mute = false, fullscreen = false, stats = false;
+    int volume = -1; // --volume N: the level to start at (0-100); -1, the one kept in settings.ini (game-volume-control)
     int scale = 0;             // --scale: the window this many times the board's lines (0: the Display page's)
     std::string renderer;      // --renderer sdl|gpu
     bool forkadeOnline=false,observeFlow=false;
@@ -71,6 +72,13 @@ struct NeoGeoPort {
     bool LoadState(const std::string &path, std::string &error);
     // Keeps the backup RAM for the next run
     void Finish();
+    // (game-volume-control) The level changed by - and = (or the keypad's): said for a second; and the level kept
+    // in settings.ini ([audio] volume), read at the start and written when it changed
+    std::string volumeNote;
+    uint64_t volumeNoteUntil = 0;
+    void ChangeVolume(int steps);
+    int KeptVolume() const;
+    void KeepVolume() const;
 
 private:
     std::string BackupPath() const;

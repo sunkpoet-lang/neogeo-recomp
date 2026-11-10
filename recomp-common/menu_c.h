@@ -81,6 +81,9 @@ typedef struct {
   // the Mute row: whether the game's sound is off now (not 0), and switching it off and on
   int (*muted)(void* user);
   void (*setMuted)(void* user, int muted);
+  // (ForkAde's fork) with these too, the Sound row: the level now (0-100) and setting it (volume.h)
+  int (*volume)(void* user);
+  void (*setVolume)(void* user, int percent);
 } RMenuConfig;
 
 typedef enum { RMENU_NONE, RMENU_SAVE, RMENU_LOAD, RMENU_QUIT, RMENU_ACTION, RMENU_COMMAND } RMenuChosen;
