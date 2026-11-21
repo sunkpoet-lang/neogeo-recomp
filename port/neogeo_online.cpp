@@ -8,6 +8,7 @@
 #include "../runtime/game.h"
 #include "../runtime/state.h"
 #include "neogeo_port.h"
+#include "neogeo_replay.h"
 
 #include <gekkonet.h>
 #include <zlib.h>
@@ -441,6 +442,7 @@ NeoGeoOnline::~NeoGeoOnline() {
 }
 
 void NeoGeoOnline::Stop() {
+    ReplayEnd();
     if(m_socket && ChatHost())for(int i=0;i<3;++i)SendStatus(4); // (match-spectators: the spectators told, and the other player)
     if(m_options.matchFlow&&m_heard&&m_socket)for(int i=0;i<3;++i)SendControl('L',Epoch());
     if(m_checkpointLog){std::fclose(m_checkpointLog);m_checkpointLog=nullptr;}
@@ -465,10 +467,15 @@ void NeoGeoOnline::Stop() {
 }
 
 bool NeoGeoOnline::Start(NeoGeoPort &port, const OnlineOptions &options, std::string &error) {
+    if(port.replay){
+        if(port.replay->Playing()){error="Stop replay playback before starting an online session";return false;}
+        port.replay->StopRecord(); // finalise offline inputs before the session resets the board
+    }
     if(m_session||m_socket){error="An online session is already active";return false;}
     if(options.matchFlow&&!VerifiedMatchFlowGame(GAME_ID)){error="ForkAde match flow is not verified for this game";return false;}
     m_port = &port;
     m_options = options;
+    m_replayAttempted=false;
     m_status=Status::Waiting;m_failed=false;m_heard=false;m_ticks=0;m_theirName.clear();m_chatScreen={};
     m_recovery.Reset(options.mode==OnlineOptions::Mode::Host,NowMs());m_prepared=m_everPlayed=false;
     if(options.matchFlow){try{m_localNonce=FreshRecoveryNonce();}catch(...){error="A recovery session nonce could not be created";return false;}m_flow.Reset();PublishFlow();}
@@ -583,6 +590,7 @@ bool RecoveryHelloNonce(std::vector<uint8_t>& hello,uint64_t& nonce) {
 }
 
 bool NeoGeoOnline::CreateGameSession() {
+    m_replayAttempted=false;
     GekkoConfig config{};
     // (match-spectators: the host's only; added once the match runs, from its confirmed state)
     const int spectators=ChatHost() ? std::clamp(m_options.spectators,0,kMostSpectators) : 0;
@@ -608,6 +616,7 @@ void NeoGeoOnline::SendControl(char kind,uint64_t epoch) {
 void NeoGeoOnline::PrepareRecovery() {
     if(m_prepared)return;
     // Outside all SDK event iterations: keep socket, peer and reliable chat channel.
+    ReplayEnd();
     if(m_session)gekko_destroy(&m_session);
     m_socket->forGekko.clear();m_socket->forGekkoFrom.clear();m_socket->forChat.clear();
     for(Spectator& one:m_spectators)one.handle=-1; // (match-spectators: re-added when the new session runs)
@@ -625,6 +634,7 @@ void NeoGeoOnline::RequestRecovery() {
 }
 
 bool NeoGeoOnline::ResetRecoveryEpoch() {
+    ReplayEnd();
     if(m_session)gekko_destroy(&m_session);
     if(!LoadFrom(m_arcadeState,*m_port->board)){End("The initial recovery state could not be restored",true);return false;}
     m_socket->forGekko.clear();m_socket->forGekkoFrom.clear();m_socket->forChat.clear();
@@ -1071,6 +1081,7 @@ void NeoGeoOnline::Run() {
     if (!m_session) {
         return;
     }
+    ReplayBegin();
     Events();
     if (m_status == Status::Ended || m_status==Status::Recovering) {
         return;
@@ -1114,12 +1125,25 @@ void NeoGeoOnline::Run() {
         case GekkoAdvanceEvent: {
             uint16_t players[2] = {};
             memcpy(players, event->data.adv.inputs, std::min<size_t>(sizeof(players), event->data.adv.input_len));
+            const bool proof=m_replay&&m_replayBase&&!event->data.adv.running_ahead;
+            uint32_t beforeHash=0;
+            if(proof) {
+                if(event->data.adv.frame==0) {
+                    m_replay=m_port->replay->NewOnline();
+                    m_replayProof.initial=board.StateHash();
+                }
+                beforeHash=board.StateHash();
+            }
             // A frame run again (or ahead) is neither seen nor heard: the chip runs the same, its samples dropped
             auto &sound = board.Sound();
             const bool keep = sound.keep;
             const bool again = event->data.adv.rolling_back || event->data.adv.running_ahead;
             sound.keep = keep && !again;
             m_port->RunFrame(players);
+            if(proof&&m_replay) {
+                m_replayProof.Observe(event->data.adv.frame,{players[0],players[1],0,0},beforeHash,board.StateHash());
+                if(event->data.adv.frame>=int(ConfirmedReplayProof::Cap)+kPredictionWindow)m_replayCap=true;
+            }
             if(m_options.matchFlow&&!Spectating()&&!event->data.adv.running_ahead){
                 AdvanceNeoGeoFlow(m_flow,board,players);
                 PublishFlow();
@@ -1133,7 +1157,41 @@ void NeoGeoOnline::Run() {
         default: break;
         }
     }
+    if(m_replayCap)ReplayEnd();
     Events();
+}
+
+void NeoGeoOnline::ReplayBegin() {
+    if(m_replayAttempted||!m_session||!m_port||Spectating())return;
+    m_replayAttempted=true;
+    if(!m_port->opt.autoReplays||!m_port->replay)return;
+    m_replay=m_port->replay->NewOnline();
+    if(!m_replay)return;
+    m_replayProof={};m_replayCap=false;
+    if(!gekko_start_recording(m_session,false,true)){m_replay.reset();return;}
+    unsigned length=0;const auto* raw=gekko_peek_recording(m_session,&length);
+    std::vector<Replay::Pads> initial;
+    // Stress/local delay may already contain padding inputs at the first peek.
+    // The validated envelope is 50 bytes, not necessarily that first peek's length.
+    if(ConfirmedInputs(raw,length,50,initial))m_replayBase=50;
+    else {gekko_stop_recording(m_session,&length);m_replay.reset();}
+}
+
+void NeoGeoOnline::ReplayEnd() {
+    if(!m_session||!m_replayBase){m_replay.reset();return;}
+    unsigned length=0;const auto* raw=gekko_stop_recording(m_session,&length);
+    std::vector<Replay::Pads> confirmed;
+    const bool valid=ConfirmedInputs(raw,length,m_replayBase,confirmed);
+    m_replayBase=0;m_replayCap=false;
+    if(m_replay&&valid&&m_replayProof.Finish(confirmed,*m_replay)>=60) {
+        const bool host=m_options.mode!=OnlineOptions::Mode::Join;
+        const std::string mine=m_options.name.empty()?"Player":m_options.name;
+        const std::string theirs=m_theirName.empty()?"Player":m_theirName;
+        m_replay->info.role=m_options.mode==OnlineOptions::Mode::Stress?"stress":host?"host":"guest";
+        m_replay->info.players=host?std::vector<std::string>{mine,theirs}:std::vector<std::string>{theirs,mine};
+        m_port->replay->SaveOnline(*m_replay);
+    } else if(m_replay)fprintf(stderr,"online replay: no verified prefix of at least 60 frames%s\n",valid?"":" (SDK envelope rejected)");
+    m_replay.reset();m_replayProof={};
 }
 
 void NeoGeoOnline::Events() {

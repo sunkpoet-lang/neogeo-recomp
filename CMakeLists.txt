@@ -19,6 +19,19 @@ endif ()
 set(GAME "kof97" CACHE STRING "Game id (directory under games/)")
 set(GAME_DIR "${CMAKE_SOURCE_DIR}/games/${GAME}" CACHE PATH "The game's directory (game.cfg, src/)")
 set(WORK_DIR "${CMAKE_SOURCE_DIR}/work/${GAME}" CACHE PATH "Generated code directory")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+file(GLOB_RECURSE REPLAY_IDENTITY_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/machine/*.cpp" "${CMAKE_SOURCE_DIR}/machine/*.h"
+    "${CMAKE_SOURCE_DIR}/sound/z80.*" "${CMAKE_SOURCE_DIR}/video/neogeo_video.*"
+    "${CMAKE_SOURCE_DIR}/third_party/ymfm*" "${CMAKE_SOURCE_DIR}/runtime/no*_blocks.cpp"
+    "${CMAKE_SOURCE_DIR}/runtime/state.h" "${CMAKE_SOURCE_DIR}/runtime/training_recordings.h" "${CMAKE_SOURCE_DIR}/runtime/neogeo_game.*" "${CMAKE_SOURCE_DIR}/runtime/game.*" "${CMAKE_SOURCE_DIR}/runtime/no_game.cpp"
+    "${GAME_DIR}/src/*.cpp" "${GAME_DIR}/src/*.h"
+    "${CMAKE_SOURCE_DIR}/port/neogeo_port.*" "${CMAKE_SOURCE_DIR}/port/neogeo_replay.*" "${CMAKE_SOURCE_DIR}/port/replay_round_clock.h")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${REPLAY_IDENTITY_SOURCES}
+    "${GAME_DIR}/game.cfg" "${CMAKE_SOURCE_DIR}/replay_identity.txt" "${CMAKE_SOURCE_DIR}/tools/replay_identity.py")
+execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/replay_identity.py"
+    --root "${CMAKE_SOURCE_DIR}" --game "${GAME}" --abi "${CMAKE_SYSTEM_NAME}-${CMAKE_SIZEOF_VOID_P}" --output "${WORK_DIR}/gen/replay_identity.h"
+    COMMAND_ERROR_IS_FATAL ANY)
 
 # (macOS: 3.4.16 or later. 3.4.14's Metal GPU device takes a frame's fence still being worked on for one signalled, so
 # after the first frames every picture is skipped and the window stays black while the game runs and sounds)
@@ -55,11 +68,12 @@ if (NOT NEOGEO_GAME_SOURCES)
     set(NEOGEO_GAME_SOURCES runtime/no_game.cpp)
 endif ()
 add_executable(${GAME} port/neogeo_main.cpp port/neogeo_port.cpp port/neogeo_window.cpp port/present.cpp port/menu.cpp
-    port/hud.cpp recomp-common/menu.cpp recomp-common/settings.cpp runtime/game.cpp runtime/neogeo_game.cpp
+    port/hud.cpp recomp-common/menu.cpp recomp-common/menubar.cpp recomp-common/settings.cpp runtime/game.cpp runtime/neogeo_game.cpp
     machine/neogeo.cpp machine/neogeo_decrypt.cpp machine/neogeo_sound.cpp video/neogeo_video.cpp machine/m68k.cpp sound/z80.cpp machine/romset.cpp
     machine/kabuki.cpp machine/cps2crypt.cpp runtime/no_blocks.cpp runtime/no_z80_blocks.cpp ${YMFM_OPN}
     machine/soundtrack.cpp port/soundtrack.cpp port/decoders.cpp port/neogeo_online.cpp port/neogeo_chat.cpp recomp-common/chat.cpp
     ${NEOGEO_GAME_SOURCES})
+target_sources(${GAME} PRIVATE port/neogeo_replay.cpp port/fareplay.cpp port/neogeo_input_display.cpp recomp-common/replay_viewer.cpp)
 target_include_directories(${GAME} PRIVATE runtime port machine "${WORK_DIR}/gen" "${GAME_DIR}")
 # (the version both players of an online session must have: VERSION's)
 file(STRINGS "${CMAKE_SOURCE_DIR}/VERSION" NEOGEO_RECOMP_VERSION LIMIT_COUNT 1)

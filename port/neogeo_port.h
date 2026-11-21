@@ -11,6 +11,8 @@
 #include "../machine/neogeo.h"
 #include "menu.h"
 #include "neogeo_online.h"
+#include "present.h"
+#include "neogeo_replay.h"
 
 #include <cstdint>
 #include <memory>
@@ -32,14 +34,20 @@ struct NeoGeoOptions {
     int volume = -1; // --volume N: the level to start at (0-100); -1, the one kept in settings.ini (game-volume-control)
     int scale = 0;             // --scale: the window this many times the board's lines (0: the Display page's)
     std::string renderer;      // --renderer sdl|gpu
+    std::string recordReplay, replayPath, viewerScript;
+    std::string autoReplayDir;
+    bool autoReplays=true;
     bool forkadeOnline=false,observeFlow=false;
     std::string forkadeService,forkadeVersion="0.1.0-beta",windowEvents,memoryWatch,memoryLog;
     OnlineOptions online;      // --host, --join, --delay, --stress (neogeo_online.h)
+    std::string presentTest;   // --present-test F.png: (headless) the last picture drawn by the GPU path, no window
+    std::string presentBar;    // --present-bar [N[.K]]: ... with the menu bar's strip above it (menu N open; its entry K's)
 };
 
 struct NeoGeoPort {
     NeoGeoOptions opt;
     std::unique_ptr<cps2recomp::NeoGeo> board;
+    std::unique_ptr<NeoGeoReplay> replay;
     uint64_t frame = 0; // frames run
     uint64_t tick = 0;  // pictures of the screen (the game runs a frame in one of so many: menu.SlowBy())
     bool paused = false;
@@ -53,6 +61,8 @@ struct NeoGeoPort {
     bool online = false,arcadeWaiting=false,cameIn=false,otherIn=false;
     int streak[2]={},roundsWon[2]={},roundQuiet=0;
     bool roundCounted=false;
+    std::string notice;       // said at the top of the picture ...
+    uint64_t noticeUntil = 0; // ... until this tick
 
     // Loads the set, the sources and the settings; false with a message
     bool Init(std::string &error);
@@ -66,8 +76,14 @@ struct NeoGeoPort {
     void RunCommand(size_t index);
     // The picture with the HUD and the stopped / speed line over it, and the menu's background (4:3, three times)
     void Shown(std::vector<uint32_t> &pixels) const;
+    bool InputPresentation(const std::vector<uint32_t>& native,std::vector<uint32_t>& out) const;
     void MenuPicture(std::vector<uint32_t> &pixels, uint32_t &width, uint32_t &height) const;
     std::string StatePath(int slot) const;
+    // The small picture kept beside a save state (a quarter of the board's, for the menu bar's slots)
+    static std::string StatePicture(const std::string &statePath);
+    // The board's picture (no HUD, menu or notice) as a PNG in the screenshots folder beside the save states, named
+    // for the game and the time; false with the reason
+    bool Screenshot(std::string &file, std::string &error) const;
     bool SaveState(const std::string &path, std::string &error);
     bool LoadState(const std::string &path, std::string &error);
     // Keeps the backup RAM for the next run
@@ -88,5 +104,19 @@ private:
 void RegisterNeoGeoPortFeatures();
 
 int RunNeoGeoWindow(NeoGeoPort &port);
+
+// Where in a window `width` x `height` (its pixels) the picture goes, as the Display page says
+SDL_FRect NeoGeoWhere(int width, int height);
+// The Display page's shape and scaling now
+Shape DisplayShapeNow();
+Scaling DisplayScalingNow();
+// The window's menu bar (recomp-common/menubar.h), above the picture in a window: its menus (the in-game menu's rows
+// and the window's own, made again whenever what they show may have changed), how many of the window's pixels make a
+// dot of its letters in a window so many pixels tall, how tall its strip is then, and its picture as the presenter's
+// overlay (the strip, and the menus open)
+void BarMenus(NeoGeoPort &port, recomp::MenuBar &bar, bool fullscreen);
+int BarDot(int windowHeight);
+int BarStrip(int windowHeight);
+void BarPicture(const recomp::MenuBar &bar, int width, int height, std::vector<uint32_t> &pixels, std::vector<SDL_Rect> &regions);
 
 } // namespace port

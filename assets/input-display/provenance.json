@@ -1,0 +1,81 @@
+{
+  "repository": "https://github.com/Delta3-Studio/InputDisplay",
+  "revision": "3a60d387a07f5d472ed6934f1f8c0508fea71db6",
+  "files": [
+    {
+      "path": "LICENSE",
+      "git_blob": "f288702d2fa16d3cdf0035b15a9fcbc552cd88e7",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "path": "README.md",
+      "git_blob": "b63399637586859fab06cd9ceab7ded5a889182d",
+      "sha256": "29bd19f4cd8ba65a25db32895587b2e462cb114a660febc5a720c3610b283fcc"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/btn/neogeo/a.png",
+      "git_blob": "03d9b4c2311be9c7e2e69d3163e48794411d5e68",
+      "sha256": "9e6c4c8b2791d2640448f4c917ed196697b11a614d08f4d074a983ff9f5fa478"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/btn/neogeo/b.png",
+      "git_blob": "1bbc2b5e5ee1280ca816fd186c5e96ca0dd7b122",
+      "sha256": "51cff8a5b3fe82249e78d57d93bceea6fb25743f1366410930aca033c724cfda"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/btn/neogeo/c.png",
+      "git_blob": "4e8a0151aa8f63c9e66525939b308fe04b9cce8d",
+      "sha256": "709377b4ebf8201a2f61c90fc2a56983f2bea9db6e1fc6dcf903430752651ecf"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/btn/neogeo/d.png",
+      "git_blob": "aae775a9c5ec565fb3240cbc8253d9b75b2e56cb",
+      "sha256": "c84133f771ab18a276181f11447be46980fc9238e29e9dc6816e0a205c1486b0"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/1.png",
+      "git_blob": "56f6effde1d1c120a501fdb2680a26913d225782",
+      "sha256": "16990c9d08379014760638c846541c825b4ce168f925f01c1e363085b6a461b9"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/2.png",
+      "git_blob": "aa9a661f95d44e81d012706a33971c3ddd1624db",
+      "sha256": "717bc432b1843fecb62f50048a2afed53946b07b90bdc7095531e9db6ad7c029"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/3.png",
+      "git_blob": "8ffba3ee784b4689aa3275a8fbf0529b7a737eaf",
+      "sha256": "1fd8b5ddbfb936aed967f1c928c562d3d255608f57657ba817fb655ca0ae63e3"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/4.png",
+      "git_blob": "b28baaee7b69f3c39e2de65819e2ecaa083f17ba",
+      "sha256": "656de94e1910a6924a1a5860fa0ccfaffecf01b9905b9e9119d36fff37517716"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/5.png",
+      "git_blob": "45e54c358c267154c28ec55bca0f0db0a939596a",
+      "sha256": "707cc366fc1638250e4eff2f13e071551fcae99b93f4bca604f94f203b88e230"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/6.png",
+      "git_blob": "3b06348079c9c2ad436aaa529f864f7f2380e5bb",
+      "sha256": "a2aa761007f3a031fe788153d2c812ef0b62d4406880a67b82e37a8a36dacd8e"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/7.png",
+      "git_blob": "4fff8dc74fe530923572b8f7fd503a73fee76fc6",
+      "sha256": "a1107628798731f28acf7b72a214c4e7d664d97f709008605810cb0c7b9da748"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/8.png",
+      "git_blob": "3d2b07e2811910be4fc1966175600f108022b35e",
+      "sha256": "1268e5137c3fb652720bb2ff3219fe3a3e61537eabe969e7490a83e9c970eb61"
+    },
+    {
+      "path": "src/InputDisplay/Content/themes/dir/stick/9.png",
+      "git_blob": "e055033fcfadb540b6215490751244d30cee6340",
+      "sha256": "a23ac397198feb9c07aa3f42962e9f706d9eb89d2710d017411b03ec9db5e5d8"
+    }
+  ]
+}

@@ -126,3 +126,37 @@ recompiler is made on the machine of someone who has the game's ROM set, and is 
 
 Code added later from another project must have a license compatible with the GPL-3.0 and be listed here, with its
 notice kept in the file.
+
+## Format-2 replay codec and viewer
+
+`port/fareplay.{h,cpp}` adapts `port/replay.{h,cpp}` and
+`recomp-common/replay_viewer.{h,cpp}` reuses the shared viewer from
+[the CPS community fork](https://github.com/sunkpoet-lang/cps2recomp), revision
+`61d62cdde595c798f0de059e583e17fa76f12496` (local donor checkout: forkade-community).
+Original GPL-3.0 notices are retained. Neo Geo adds its own state adapter, validation,
+source identity and KOF95 local-versus/round hooks; this is not an upstream claim of
+Neo Geo replay compatibility. No recordings or initial game-state payloads are
+distributed in this repository.
+
+## InputDisplay Neo Geo artwork
+
+The unmodified `btn/neogeo` A/B/C/D PNGs and `dir/stick/1..9` direction PNGs
+come from [Delta3-Studio/InputDisplay](https://github.com/Delta3-Studio/InputDisplay),
+revision `3a60d387a07f5d472ed6934f1f8c0508fea71db6`, under its GPL-3.0 licence.
+Credit belongs to the InputDisplay authors/contributors. The licence and original
+files are retained in `assets/input-display/`, with source blob/SHA256 provenance.
+The optional historical `tools/embed_input_art.py` generator embeds decoded RGBA;
+its unused generated prototype is not required by the active renderer. The active controls use the user's recorder
+artwork below. No InputDisplay executable or .NET dependency is included.
+
+## Recorder controls and rendered Barlow lettering
+
+`assets/recorder-inputs/` contains controls generated with the user's existing
+recorder's `Pintor._boton`, `Pintor._bola` and gate artwork, reused at their explicit
+request. Source/font/output hashes are recorded in provenance.json. No recorder
+service, replay data, player profiles or history UI is included. Runtime assets
+are embedded RGBA; Python/Pillow are not runtime dependencies.
+
+The lettering was rendered using Barlow Condensed SemiBold, copyright2017 The
+Barlow Project Authors, under SIL Open Font License1.1; the notice is retained
+in assets/recorder-inputs/BarlowCondensed-OFL.txt. No font binary is bundled.

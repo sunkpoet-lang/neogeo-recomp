@@ -1,0 +1,29 @@
+{
+  "source_sha256": "c97165d785f9e0faa366336e943d3dd2cae1f9ba587c520f6c8a14c48c079b4c",
+  "font_sha256": "7b619d14bc2327509a9ef32b0890f709626f7ecc9ff61191c2a4314c5499d2d9",
+  "methods": [
+    "Pintor._boton",
+    "Pintor._bola",
+    "Pintor._base gate crop"
+  ],
+  "palette": "original recorder red/yellow/green/blue",
+  "sprites": {
+    "a-0": "b5ebe8dc4a92fc5ec65b1ff34d381ad7c137c7c3b7874fce675cdb84dcee163b",
+    "a-1": "d1a41d226b1ffe7a2dc262d17ff29da624568b141424f0878577cb3122040920",
+    "b-0": "8e66d538dcf319fa183b1cae7e3552a6657ef32dc58925cdb562118c5647ac5e",
+    "b-1": "c94ae45286d53d87c9e916b5f0e2485a6de237a3c679b34cf369e60fc1cbe0fd",
+    "c-0": "60eaa5e780c810d6f3b06a3c4592746642dda855e417e07031fa0c435edb4c22",
+    "c-1": "7f7e8d1971b18fc391bbd1722d23a4e115caaa920c4ab2997d7c6c25cacfb08b",
+    "d-0": "373c8b6cc1652b292e62683b778dbe68c3a2fa1a48230e1110cd35cba76f6344",
+    "d-1": "5f325bf73ac968b07f08df9e4e59014b5dd05132089d22cb211ab6a06efe88aa",
+    "stick-1": "c63cf57f5e9355824fbfdb88712f3fead7382036fc8e004588078350b2edc96e",
+    "stick-2": "ab7ddbc727a3381a94917877b18767790f9f99759efabbe7236a067c86be34a2",
+    "stick-3": "6bf68b7198f9e34ba78ba980891e8387322d5961e416c3e0d1cd57a09654b31c",
+    "stick-4": "6e165c24bf8a3098bd2ae53895d37becdd2ace0e3348158ac2bcf0cee0c45e60",
+    "stick-5": "95b914c30af543583f684cee3b5c2f117a8e140b4e78b26956fd423c692eda6c",
+    "stick-6": "1246fdd310f4fc1f80d5be380a966b283ffaeeedec6e5c5e35a6382ca02aff4f",
+    "stick-7": "561549a42a74ff827cece0af877ad37ff901d1384fb53a9f21e92e271afb996b",
+    "stick-8": "f30074b18d212c58743f5c2227c49f42a3338ccc1be6548b9efc2baf22ceb8b6",
+    "stick-9": "230d5bbfd6bc9c32ce5bd46c2ececd34d5a7c7065c9813255a848458da4b20c5"
+  }
+}

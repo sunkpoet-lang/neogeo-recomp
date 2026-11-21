@@ -1,0 +1,19 @@
+# Conservative gameplay/state identity. CRLF is normalised before hashing.
+machine/*.cpp
+machine/*.h
+sound/z80.cpp
+sound/z80.h
+third_party/ymfm*
+video/neogeo_video.cpp
+video/neogeo_video.h
+runtime/state.h
+runtime/training_recordings.h
+runtime/neogeo_game.*
+port/neogeo_port.*
+games/@GAME@/game.cfg
+runtime/game.*
+runtime/no_game.cpp
+runtime/no_blocks.cpp
+runtime/no_z80_blocks.cpp
+?games/@GAME@/src/*.cpp
+?games/@GAME@/src/*.h

@@ -1,5 +1,30 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set(ROOT "${CMAKE_SOURCE_DIR}")
+add_executable(neogeo_input_display_test neogeo_input_display_test.cpp ${ROOT}/port/neogeo_input_display.cpp)
+target_include_directories(neogeo_input_display_test PRIVATE ${ROOT}/port)
+target_link_libraries(neogeo_input_display_test PRIVATE ZLIB::ZLIB)
+add_test(NAME neogeo_input_display COMMAND neogeo_input_display_test)
+add_executable(training_recordings_test training_recordings_test.cpp)
+target_include_directories(training_recordings_test PRIVATE ${ROOT}/runtime)
+add_test(NAME training_recordings COMMAND training_recordings_test)
+add_executable(bounded_state_test bounded_state_test.cpp)
+target_include_directories(bounded_state_test PRIVATE ${ROOT}/runtime)
+add_test(NAME bounded_state COMMAND bounded_state_test)
+add_executable(confirmed_replay_test confirmed_replay_test.cpp)
+target_include_directories(confirmed_replay_test PRIVATE ${ROOT}/port)
+add_test(NAME confirmed_replay COMMAND confirmed_replay_test)
+add_executable(fareplay_codec_test fareplay_codec_test.cpp ${ROOT}/port/fareplay.cpp)
+target_include_directories(fareplay_codec_test PRIVATE ${ROOT}/port)
+target_link_libraries(fareplay_codec_test PRIVATE ZLIB::ZLIB)
+add_test(NAME fareplay_codec COMMAND fareplay_codec_test)
+add_executable(kof95_replay_phase_test kof95_replay_phase_test.cpp)
+add_test(NAME kof95_replay_phase COMMAND kof95_replay_phase_test)
+add_executable(state_preflight_test state_preflight_test.cpp)
+target_include_directories(state_preflight_test PRIVATE ${ROOT}/runtime)
+add_test(NAME state_preflight COMMAND state_preflight_test)
+add_executable(kof95_layout_test kof95_layout_test.cpp)
+target_include_directories(kof95_layout_test PRIVATE ${ROOT}/machine)
+add_test(NAME kof95_layout COMMAND kof95_layout_test)
 add_executable(neogeo_decrypt_test neogeo_decrypt_test.cpp
     ${ROOT}/machine/neogeo.cpp ${ROOT}/machine/neogeo_sound.cpp ${ROOT}/machine/neogeo_decrypt.cpp
     ${ROOT}/machine/romset.cpp ${ROOT}/machine/kabuki.cpp ${ROOT}/machine/cps2crypt.cpp
@@ -15,7 +40,3 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME neogeo_startup COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/neogeo_startup_test.py"
     --exe "$<TARGET_FILE:${GAME}>" --game "${GAME}" --scratch "${CMAKE_CURRENT_BINARY_DIR}/startup")
-
-add_executable(kof95_layout_test kof95_layout_test.cpp)
-target_include_directories(kof95_layout_test PRIVATE ${ROOT}/machine)
-add_test(NAME kof95_layout COMMAND kof95_layout_test)

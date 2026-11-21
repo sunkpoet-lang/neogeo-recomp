@@ -8,6 +8,7 @@
 #include "../recomp-common/text.h"
 
 #include <algorithm>
+#include <cstdio>
 
 namespace port {
 
@@ -22,6 +23,18 @@ std::vector<HudPanel> HudPanels(int width, int height) {
             continue;
         }
         HudPanel panel;
+        unsigned player,hp,pow;
+        if(std::sscanf(line.text.c_str(),"P%u HP %u POW %u",&player,&hp,&pow)==3&&player>=1&&player<=2){
+            panel.width=50;panel.height=9;panel.x=player==1?2:width-52;panel.y=0;
+            if(width<104||height<9)continue;
+            panel.pixels.assign(50*9,0xff17130fu);
+            const Canvas badge{panel.pixels.data(),50,9};
+            const Color accent=player==1?Color{80,175,255,255}:Color{255,120,86,255};
+            badge.Fill(0,0,50,1,accent);badge.Fill(0,0,1,9,accent);
+            char label[40];std::snprintf(label,sizeof(label),"HP%u POW%u",hp,pow);
+            badge.SmallText(3,2,{245,232,203,255},label);
+            panels.push_back(std::move(panel));continue;
+        }
         panel.width = static_cast<int>(TextWidth(line.text.c_str(), d)) + 2 * pad;
         panel.height = static_cast<int>(8 * d) + 2 * pad;
         const int at = static_cast<int>(line.x * static_cast<float>(width));

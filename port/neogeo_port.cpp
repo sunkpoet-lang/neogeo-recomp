@@ -2,6 +2,7 @@
 // Part of neogeo-recomp.
 
 #include "neogeo_port.h"
+#include "neogeo_input_display.h"
 
 #include "game_info.h"
 
@@ -18,6 +19,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
@@ -88,6 +90,7 @@ namespace {
 } // namespace
 
 void RegisterNeoGeoPortFeatures() {
+    TheGame().features.push_back({"input_display","Display","Neo Geo input panel","Current directions/buttons only. Automatic follows the training HUD.",0,{"Automatic","On","Off"}});
     // (match-spectators: what this player sees of the spectators' chat, never part of the match)
     TheGame().features.push_back({"online_mute_spectators", "Online", "Mute spectators",
                                   "During an online match people are watching, their chat lines are not shown to you (they are "
@@ -140,6 +143,12 @@ bool NeoGeoPort::Init(std::string &error) {
     if (!opt.stateLoad.empty() && !LoadState(opt.stateLoad, error)) {
         return false;
     }
+    replay = std::make_unique<NeoGeoReplay>(*this);
+    if(opt.autoReplayDir.empty()&&!opt.settingsPath.empty()){recomp::Ini settings(std::filesystem::u8path(opt.settingsPath));settings.load();opt.autoReplayDir=settings.get("replays","folder");}
+    if(opt.autoReplays&&!opt.autoReplayDir.empty())replay->AutoFolder(opt.autoReplayDir);
+    if((!opt.replayPath.empty()||!opt.recordReplay.empty()) && online){error="Replay playback/recording cannot run with an online session yet";return false;}
+    if (!opt.replayPath.empty() && !replay->Play(opt.replayPath)) {error=replay->Note();return false;}
+    if (!opt.recordReplay.empty() && !replay->Record(opt.recordReplay)) {error=replay->Note();return false;}
     return true;
 }
 
@@ -174,7 +183,7 @@ void NeoGeoPort::RunFrame(const uint16_t players[2]) {
     }
     uint16_t now[2] = {players[0], players[1]};
     // (online, the frame is the session's, with both players' controls as they were: nothing of this side's added)
-    if (!online) {
+    if (!online && !(replay&&replay->Playing())) {
         if (coinFrames > 0) {
             coinFrames--;
             now[0] |= NeoGeo::kCoin;
@@ -188,6 +197,7 @@ void NeoGeoPort::RunFrame(const uint16_t players[2]) {
             now[0] |= NeoGeo::kTest;
         }
     }
+    if(replay)replay->Before(now);
     board->players[0] = now[0];
     board->players[1] = now[1];
     if (TheNeoGeoGame().beforeFrame) {
@@ -198,6 +208,7 @@ void NeoGeoPort::RunFrame(const uint16_t players[2]) {
         TheNeoGeoGame().frame(*board);
     }
     frame++;
+    if(replay)replay->After();
 }
 
 void NeoGeoPort::Key(char key) {
@@ -205,6 +216,9 @@ void NeoGeoPort::Key(char key) {
         return; // (both boards run on together: no stopping or slowing)
     }
     switch (key) {
+    case 'r':
+        for(size_t i=0;i<TheGame().commands.size();++i)if(TheGame().commands[i].key==kKeyRestart){RunCommand(i);break;}
+        break;
     case 'p':
         paused = !paused;
         steps = 0;
@@ -241,6 +255,9 @@ bool NeoGeoPort::Tick(const uint16_t players[2]) {
                 if (eq != std::string::npos) {
                     SetFeatureValue(what.substr(0, eq).c_str(), atoi(what.c_str() + eq + 1));
                 }
+            } else if(key=='c') {
+                const auto name=opt.keys.substr(colon+2,end-colon-2);
+                for(size_t i=0;i<TheGame().commands.size();++i)if(name==TheGame().commands[i].name){RunCommand(i);break;}
             } else {
                 Key(key);
             }
@@ -286,6 +303,7 @@ void NeoGeoPort::MenuAct(Menu::Action action) {
         menu.Close();
         return;
     case Menu::Action::Reset:
+        if(replay)replay->StopRecord();
         EndSessionFeatures();
         board->Reset(false);
         menu.Close();
@@ -316,15 +334,30 @@ void NeoGeoPort::MenuAct(Menu::Action action) {
 }
 
 void NeoGeoPort::RunCommand(size_t index) {
+    if(online||(replay&&replay->Playing()))return;
     const auto &commands = TheNeoGeoGame().commands;
     if (index < commands.size() && commands[index]) {
         commands[index](*board);
+        frame=board->Frames();
     }
 }
 
+bool NeoGeoPort::InputPresentation(const std::vector<uint32_t>& native,std::vector<uint32_t>& out) const {
+    if(menu.IsOpen())return false;
+    const bool training=TheGame().inTraining&&TheGame().inTraining();
+    const int mode=FeatureValue("input_display");
+    if(mode==2||(mode==0&&!(training&&FeatureOn("training_hud"))))return false;
+    BuildNeoGeoInputPresentation(native,NeoGeoVideo::kWidth,NeoGeoVideo::kHeight,board->players,training,out,board->Picture());
+    return !out.empty();
+}
 void NeoGeoPort::Shown(std::vector<uint32_t> &pixels) const {
     constexpr int kWidth = NeoGeoVideo::kWidth, kHeight = NeoGeoVideo::kHeight;
     pixels.assign(board->Picture(), board->Picture() + kWidth * kHeight);
+    if(TheNeoGeoGame().inspect)TheNeoGeoGame().inspect(*board);
+    const bool trainingActive=TheGame().inTraining&&TheGame().inTraining();
+    const bool resourceHeaders=trainingActive&&FeatureOn("training_hud");
+    const int inputMode=FeatureValue("input_display");
+    if(inputMode==1||(inputMode==0&&resourceHeaders))DrawNeoGeoInputPanels(pixels.data(),kWidth,kHeight,board->players,trainingActive);
     DrawHud(pixels.data(), kWidth, kHeight);
     // Stopped or slowed: said at the bottom, with the frame's number (for counting frames by stepping)
     if (paused || menu.SlowBy() > 1) {
@@ -339,6 +372,14 @@ void NeoGeoPort::Shown(std::vector<uint32_t> &pixels) const {
         const float x = (kWidth - width) / 2, y = kHeight - 11;
         canvas.Fill(x - 3, y - 2, width + 6, 12, {20, 22, 30, 220});
         canvas.Text(x, y, 1, 0, {255, 255, 255, 255}, status);
+    }
+    // A note for a moment (a screenshot taken, full screen's hint), under where fighting games keep their bars
+    if (!notice.empty() && tick < noticeUntil) {
+        const recomp::text::Canvas canvas{pixels.data(), kWidth, kHeight};
+        const float width = recomp::text::TextWidth(notice.c_str(), 1);
+        const float x = (kWidth - width) / 2, y = 52;
+        canvas.Fill(x - 3, y - 2, width + 6, 12, {20, 22, 30, 220});
+        canvas.Text(x, y, 1, 0, {255, 255, 255, 255}, notice.c_str());
     }
 }
 
@@ -372,10 +413,65 @@ bool NeoGeoPort::SaveState(const std::string &path, std::string &error) {
         error = "cannot write " + path;
         return false;
     }
+    // (and beside it a small picture of the game: each pixel the average of four by four of the board's)
+    constexpr int kWidth = NeoGeoVideo::kWidth, w = kWidth / 4, h = NeoGeoVideo::kHeight / 4;
+    const uint32_t *picture = board->Picture();
+    std::vector<uint32_t> small(static_cast<size_t>(w) * h);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            uint32_t r = 0, g = 0, b = 0;
+            for (int dy = 0; dy < 4; dy++) {
+                for (int dx = 0; dx < 4; dx++) {
+                    const uint32_t p = picture[static_cast<size_t>(y * 4 + dy) * kWidth + x * 4 + dx];
+                    r += p & 0xFF;
+                    g += (p >> 8) & 0xFF;
+                    b += (p >> 16) & 0xFF;
+                }
+            }
+            small[static_cast<size_t>(y) * w + x] = 0xFF000000u | ((b / 16) << 16) | ((g / 16) << 8) | (r / 16);
+        }
+    }
+    WritePng(StatePicture(path).c_str(), small.data(), w, h);
+    return true;
+}
+
+std::string NeoGeoPort::StatePicture(const std::string &statePath) {
+    const size_t dot = statePath.rfind('.');
+    const size_t slash = statePath.find_last_of("/\\");
+    return (dot != std::string::npos && (slash == std::string::npos || dot > slash) ? statePath.substr(0, dot) : statePath) + ".png";
+}
+
+bool NeoGeoPort::Screenshot(std::string &file, std::string &error) const {
+    namespace fs = std::filesystem;
+    const std::string folder = FolderOf(opt.savesPath) + "screenshots";
+    std::error_code failed;
+    fs::create_directories(fs::u8path(folder), failed);
+    // (GAME-YYYYMMDD-HHMMSS.png, and -2, -3... after it when there is one already)
+    SDL_Time now = 0;
+    SDL_DateTime t{};
+    SDL_GetCurrentTime(&now);
+    SDL_TimeToDateTime(now, &t, true);
+    char stamp[32];
+    snprintf(stamp, sizeof(stamp), "%04d%02d%02d-%02d%02d%02d", t.year, t.month, t.day, t.hour, t.minute, t.second);
+    std::string name, path;
+    for (int n = 1;; n++) {
+        name = std::string(GAME_ID) + "-" + stamp + (n > 1 ? "-" + std::to_string(n) : std::string()) + ".png";
+        path = folder + "/" + name;
+        if (!fs::exists(fs::u8path(path), failed)) {
+            break;
+        }
+    }
+    WritePng(path.c_str(), board->Picture(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
+    if (!fs::exists(fs::u8path(path), failed)) {
+        error = "cannot write " + path;
+        return false;
+    }
+    file = name;
     return true;
 }
 
 bool NeoGeoPort::LoadState(const std::string &path, std::string &error) {
+    if(replay)replay->StopRecord();
     std::vector<uint8_t> data;
     if (!ReadFile(path, data)) {
         error = "cannot read " + path;
@@ -385,6 +481,7 @@ bool NeoGeoPort::LoadState(const std::string &path, std::string &error) {
     std::vector<uint8_t> before;
     Archive keep(before, true);
     board->Serialize(keep);
+    if(TheGame().state)TheGame().state(keep);
     Archive ar(data, false);
     ar.Mark(kStateMark);
     uint32_t version = 0;
@@ -399,9 +496,11 @@ bool NeoGeoPort::LoadState(const std::string &path, std::string &error) {
     if (!known || !ar.Ok()) {
         Archive back(before, false);
         board->Serialize(back);
+        if(TheGame().state)TheGame().state(back);
         error = path + " is not a state this build wrote";
         return false;
     }
+    frame = board->Frames();
     return true;
 }
 
@@ -435,6 +534,7 @@ void NeoGeoPort::KeepVolume() const {
 }
 
 void NeoGeoPort::Finish() {
+    if(replay){replay->StopRecord();replay->Stop();}
     KeepVolume();
     // (not after playing online: the player's own backup RAM was not in it)
     if (!opt.savesPath.empty() && board && opt.online.mode == OnlineOptions::Mode::Off) {

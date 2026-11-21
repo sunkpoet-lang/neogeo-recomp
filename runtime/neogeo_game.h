@@ -28,8 +28,11 @@ struct NeoGeoMatchScore {
 struct NeoGeoHooks {
     void (*beforeFrame)(NeoGeo &board) = nullptr;
     void (*frame)(NeoGeo &board) = nullptr;
+    // Fresh presentation-only inspection, also for paused frames and loaded states.
+    void (*inspect)(const NeoGeo &board) = nullptr;
     // Read-only completed team-match counters; presentation owns their history.
     NeoGeoMatchScore (*onlineMatchScore)(NeoGeo &board) = nullptr;
+    // Verified local two-human session boundary; not a winner or per-round reader.
     bool (*replayVersus)(NeoGeo &board) = nullptr;
     uint16_t (*replayClock)(NeoGeo &board) = nullptr;
     std::vector<void (*)(NeoGeo &board)> commands;

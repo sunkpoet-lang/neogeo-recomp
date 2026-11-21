@@ -12,9 +12,11 @@
 #pragma once
 
 #include "../recomp-common/menu.h"
+#include "../recomp-common/menubar.h"
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace port {
 
@@ -39,6 +41,12 @@ public:
     // gamepad buttons that are the same whatever the game's are set to: the arrows, the d-pad and the left
     // stick; Space, Enter and A choose; Backspace and B go back.
     Action Press(unsigned buttons);
+    // The same rows as the window's menu bar and right-click menu (recomp-common/menubar.h): put in `menus`
+    // (the Display page's choices in Video, the rest where AddMenuEntries puts them); withStates as Open's.
+    // Not while the menu is open.
+    void AddBarEntries(std::vector<recomp::BarMenu> &menus, bool withStates, const recomp::BarOptions &options = {});
+    // One of those entries chosen: what the frontend is to do, as Press returns (none for the bar's other ids)
+    Action Choose(int id);
     // The "Sound" row: the frontend plays nothing while this is set (--mute starts with it set)
     bool muted = false,forkade=false,hosting=false,hideNames=false,hideStreaks=false;
     int volume = 100; // (game-volume-control: the level, 0-100 percent, recomp-common/volume.h)
@@ -75,7 +83,10 @@ public:
     }
 
 private:
+    recomp::MenuConfig Config(bool withStates);
+    Action Did(const recomp::Menu::Chosen &chosen);
     recomp::Menu m_menu;
+    recomp::MenuConfig m_config; // (the rows last shown, kept for the bar's choices)
     size_t m_command = 0;
     // ([ and ] before the menu was ever opened: recomp-common's menu learns its speeds when it is opened, and until
     // then keeps none, so the speed asked for is kept here and handed over then; -1: none asked for)

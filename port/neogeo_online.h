@@ -22,6 +22,7 @@
 
 #include "match_flow.h"
 #include "recovery.h"
+#include "confirmed_replay.h"
 #include <array>
 #include <cstdio>
 #include <cstdint>
@@ -160,6 +161,12 @@ private:
     void SendHello();
     void Events();
     void Run();
+    void ReplayBegin();
+    void ReplayEnd();
+    std::unique_ptr<Replay> m_replay;
+    ConfirmedReplayProof m_replayProof;
+    unsigned m_replayBase=0;
+    bool m_replayAttempted=false,m_replayCap=false;
     void End(const std::string &message, bool failed);
 
     NeoGeoPort *m_port = nullptr;

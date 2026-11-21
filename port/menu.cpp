@@ -22,7 +22,7 @@ namespace {
     const char *const kSpeedNames[] = {"Full", "1/2", "1/4", "1/8"};
 } // namespace
 
-void Menu::Open(bool withStates) {
+recomp::MenuConfig Menu::Config(bool withStates) {
     const cps2recomp::Game &game = cps2recomp::TheGame();
     recomp::MenuConfig config;
     if(forkade)config.groups.push_back({
@@ -57,6 +57,12 @@ void Menu::Open(bool withStates) {
          "The game's own operator menu (the board's test switch, F2): its settings, such as difficulty and rounds. "
          "Its Exit row goes back."},
     });
+    // (in the menu bar: the coin and player 2 under Input, the operator's menu with the game's features)
+    for (recomp::MenuRow &row : config.groups.back()) {
+        if (row.kind == recomp::MenuRow::Action) {
+            row.bar = row.id == kTest ? "Features" : "Input";
+        }
+    }
     // (ForkAde's in-game chat: online only, the window says so otherwise)
     config.groups.push_back({
         {recomp::MenuRow::Action, kChat, "Chat", "Online: a line to the other player (T, or Y where T is a game key)."},
@@ -85,12 +91,41 @@ void Menu::Open(bool withStates) {
     config.setVolume = [this](int percent) { volume = recomp::ClampVolume(percent); };
     config.confirmName = "Enter or A";
     config.closeName = "Esc";
-    m_menu.Configure(std::move(config));
-    if (!m_configured && m_wantedSpeed >= 0) {
-        m_menu.SetSpeed(m_wantedSpeed);
-    }
+    return config;
+}
+
+void Menu::Open(bool withStates) {
+    m_config = Config(withStates);
+    m_menu.Configure(m_config);
+    if (!m_configured && m_wantedSpeed >= 0) m_menu.SetSpeed(m_wantedSpeed);
     m_configured = true;
     m_menu.Open();
+}
+
+void Menu::AddBarEntries(std::vector<recomp::BarMenu> &menus, bool withStates, const recomp::BarOptions &options) {
+    m_config = Config(withStates);
+    m_menu.Configure(m_config);
+    if (!m_configured && m_wantedSpeed >= 0) m_menu.SetSpeed(m_wantedSpeed);
+    m_configured = true;
+    recomp::AddMenuEntries(menus, m_config, m_menu, options);
+    // The Display page's choices (the window's size, the picture's shape and scaling) are the Video menu's
+    auto video = std::find_if(menus.begin(), menus.end(), [](const recomp::BarMenu &m) { return m.title == "Video"; });
+    if (video == menus.end()) {
+        return;
+    }
+    for (recomp::BarMenu &menu : menus) {
+        auto display = std::find_if(menu.entries.begin(), menu.entries.end(), [](const recomp::BarEntry &e) { return e.label == "Display"; });
+        if (&menu != &*video && display != menu.entries.end()) {
+            std::vector<recomp::BarEntry> moved = display->children;
+            menu.entries.erase(display);
+            video->entries.insert(video->entries.begin(), moved.begin(), moved.end());
+            break;
+        }
+    }
+}
+
+Menu::Action Menu::Choose(int id) {
+    return Did(recomp::ChooseMenuEntry(id, m_config, m_menu));
 }
 
 int Menu::SlowBy() const {
@@ -130,7 +165,10 @@ Menu::Action Menu::Buttons(uint16_t pressed) {
 }
 
 Menu::Action Menu::Press(unsigned buttons) {
-    const recomp::Menu::Chosen chosen = m_menu.Buttons(buttons);
+    return Did(m_menu.Buttons(buttons));
+}
+
+Menu::Action Menu::Did(const recomp::Menu::Chosen &chosen) {
     switch (chosen.kind) {
     case recomp::Menu::Chosen::Save: return Action::Save;
     case recomp::Menu::Chosen::Load: return Action::Load;

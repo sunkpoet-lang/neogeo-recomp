@@ -14,7 +14,8 @@
 //   <game> --list-features                 (for the launcher: the optional features, one a line)
 //   <game> --headless [--rom ...] [--frames N] [--shot-every N] [--shot-dir DIR] [--hash-log FILE] [--audio-dump FILE]
 //          [--script "FRAME:BUTTON:FRAMES,..."] [--state-save FRAME:FILE] [--state-load FILE] [--menu FRAME:KEYS[:PNG]]
-//          [--keys TICK:KEY,...] [--stats]
+//          [--keys TICK:KEY,...] [--stats] [--present-test PNG [--present-bar [N[.K]]]]
+//   <game> --window-events "LOOP:WHAT;..."   (tests: mouse and key events put to the window; neogeo_window.cpp)
 //
 // Without --rom: executable-relative roms/, ROM/, rom/, then beside the executable;
 // finally the legacy working-directory roms/ and current-directory ZIP.
@@ -35,6 +36,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -173,6 +175,16 @@ int main(int argc, char **argv) {
             o.stateSave = colon == std::string::npos ? "" : v.substr(colon + 1);
         } else if (a == "--state-load") {
             o.stateLoad = next();
+        } else if (a == "--record-replay") {
+            o.recordReplay = next();
+        } else if (a == "--replay") {
+            o.replayPath = next();
+        } else if (a == "--viewer-script") {
+            o.viewerScript = next();
+        } else if (a == "--replay-dir") {
+            o.autoReplayDir = next();
+        } else if (a == "--no-auto-replays") {
+            o.autoReplays = false;
         } else if (a == "--stats") {
             o.stats = true;
         } else if(a=="--forkade-online") {
@@ -186,6 +198,10 @@ int main(int argc, char **argv) {
         } else if(a=="--memory-watch") {o.memoryWatch=next();
         } else if(a=="--memory-log") {o.memoryLog=next();
         } else if(a=="--observe-flow") {o.observeFlow=true;
+        } else if (a == "--present-test") {
+            o.presentTest = next();
+        } else if (a == "--present-bar") {
+            o.presentBar = i + 1 < argc && argv[i + 1][0] >= '0' && argv[i + 1][0] <= '9' ? next() : "0";
         } else if (a == "--host") {
             o.online.mode = port::OnlineOptions::Mode::Host;
             if (i + 1 < argc && argv[i + 1][0] != '-') {
@@ -303,8 +319,9 @@ int main(int argc, char **argv) {
     uint64_t first = board.Frames(),epoch=online.Epoch();
     bool arcade=online.ArcadeWaiting();
     const uint64_t frames = o.frames ? o.frames : 600;
+    uint64_t replayTicks=0;
     // (by ticks, as the window goes: --keys can stop the game; a run stopped for good still ends)
-    while (!port.quit && board.Frames() - first < frames && port.tick < (frames + 60) * 64) {
+    while (!port.quit && ((!o.replayPath.empty()) ? replayTicks < frames : board.Frames() - first < frames) && port.tick < (frames + 60) * 64) {
         uint64_t frame = board.Frames() + 1; // (the frame about to be run, counting from 1)
         uint16_t players[2] = {};
         for (const Press &p : presses) {
@@ -312,7 +329,11 @@ int main(int argc, char **argv) {
                 players[p.player] |= p.bits;
             }
         }
-        if (isOnline) {
+        if (!o.replayPath.empty()) {
+            if(!port.replay->Playing()){fprintf(stderr,"replay: %s\n",port.replay->Note().c_str());return 1;}
+            port.replay->Script(replayTicks,o.viewerScript);
+            port.replay->Tick();++replayTicks;frame=port.replay->Frame();
+        } else if (isOnline) {
             // Online: the script's player 1 is this side's controls (its player 2's, too, with --join), the session runs
             // the frames; a tick a frame's time, so that the two sides keep pace
             const bool joined = o.online.mode == port::OnlineOptions::Mode::Join;
@@ -333,7 +354,7 @@ int main(int argc, char **argv) {
             frame = board.Frames();
         } else if (!port.Tick(players)) {
             continue; // (stopped by --keys: p; o goes on by a frame)
-        }
+        } else frame=board.Frames(); // a command may have restored a training checkpoint
         if(observation){
             port::AdvanceNeoGeoFlow(observedFlow,board,players);
             const auto& s=observedFlow.state;
@@ -352,6 +373,7 @@ int main(int argc, char **argv) {
             snprintf(path, sizeof(path), "%s/%s_%06llu.png", o.shotDir.c_str(), GAME_ID, static_cast<unsigned long long>(frame));
             std::vector<uint32_t> shown;
             port.Shown(shown);
+            if(port.replay)port.replay->Draw(shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight);
             WritePng(path, shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
         }
         if (!o.stateSave.empty() && frame == o.saveAt) {
@@ -374,7 +396,48 @@ int main(int argc, char **argv) {
                 static_cast<unsigned long long>(board.Frames() - first), seconds,
                 (board.Frames() - first) / (seconds > 0 ? seconds : 1), board.watchdogResets, board.unmapped.size());
     }
+    if(!o.replayPath.empty()&&!port.replay->Playing()){fprintf(stderr,"replay: %s\n",port.replay->Note().c_str());port.Finish();return 1;}
     fprintf(stderr, "state hash %08x at frame %llu\n", board.StateHash(), static_cast<unsigned long long>(board.Frames()));
+    if (!o.presentTest.empty()) {
+        // (the picture the run ended on, through the GPU path and read back: what a window 672 lines tall would show;
+        // --present-bar: as tall again as the menu bar's strip above it, menu N open, and its entry K's submenu)
+        std::vector<uint32_t> shown, drawn, overlay;
+        std::vector<SDL_Rect> regions;
+        port.Shown(shown);
+        if(port.replay)port.replay->Draw(shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight);
+        const int outHeight = 672;
+        const int outWidth = static_cast<int>(std::lround(outHeight * port::PictureShape(
+            port::DisplayShapeNow() == port::Shape::Arcade ? 384 : NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, port::DisplayShapeNow(), 4.0f / 3.0f)));
+        int windowHeight = outHeight;
+        SDL_FRect where = port::NeoGeoWhere(outWidth, outHeight);
+        if (!o.presentBar.empty()) {
+            windowHeight = outHeight + recomp::MenuBar::kHeightDots * std::max(1, outHeight / NeoGeoVideo::kHeight);
+            where.y += static_cast<float>(port::BarStrip(windowHeight));
+            recomp::MenuBar bar;
+            port::BarMenus(port, bar, false);
+            bar.SetArea(outWidth, windowHeight, port::BarDot(windowHeight));
+            const int open = atoi(o.presentBar.c_str());
+            const size_t sub = o.presentBar.find('.');
+            if (open > 0) {
+                bar.OpenMenu(static_cast<size_t>(open - 1));
+                if (sub != std::string::npos) {
+                    for (int k = atoi(o.presentBar.c_str() + sub + 1); k > 1; k--) {
+                        bar.Buttons(recomp::kMenuDown);
+                    }
+                    bar.Buttons(recomp::kMenuRight);
+                }
+            }
+            port::BarPicture(bar, outWidth, windowHeight, overlay, regions);
+        }
+        std::vector<uint32_t> inputPresented;const bool detailed=port.InputPresentation(shown,inputPresented);
+        if (SDL_Init(SDL_INIT_VIDEO) &&
+            port::Presenter::Render(detailed?inputPresented.data():shown.data(), NeoGeoVideo::kWidth*(detailed?3:1), NeoGeoVideo::kHeight*(detailed?3:1), outWidth, windowHeight, where, port::DisplayScalingNow(),
+                                    drawn, error, regions.empty() ? nullptr : &overlay, regions.empty() ? nullptr : &regions)) {
+            WritePng(o.presentTest.c_str(), drawn.data(), outWidth, windowHeight);
+        } else {
+            fprintf(stderr, "--present-test: %s\n", error.empty() ? SDL_GetError() : error.c_str());
+        }
+    }
     port.Finish();
     if (isOnline) {
         if (!online.Message().empty()) {

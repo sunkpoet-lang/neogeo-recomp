@@ -30,6 +30,8 @@
 #include <filesystem>
 #include <vector>
 #include <sstream>
+#include <ctime>
+#include <mutex>
 #ifdef FORKADE_GAME_BROKER
 #include "game_room.h"
 #endif
@@ -182,7 +184,193 @@ namespace {
             canvas.SmallText(2, 1, Palette::kReadout, left.c_str());
         }
     }
+    // The menu bar's own entries (the in-game menu's have ids of their own: recomp::IsMenuEntry)
+    enum { kBarQuickSave = 1, kBarQuickLoad, kBarFullscreen, kBarAbout, kBarKey, kBarScreenshot, kBarSource };
+    enum { kReplayRecord=100, kReplayPlay, kReplayStop, kReplayOpen, kReplayFolder, kReplayCommandBase=200 };
+    enum { kInputPanelBase=400 };
+    struct ReplayDialogState {std::mutex mutex;bool busy=false,ready=false,folder=false;std::string path,error;};
+    struct ReplayDialogRequest {std::weak_ptr<ReplayDialogState> state;bool folder;std::string initial;};
+    void SDLCALL ReplayDialogDone(void* data,const char* const* files,int) {
+        std::unique_ptr<ReplayDialogRequest> request(static_cast<ReplayDialogRequest*>(data));
+        if(auto state=request->state.lock()) {
+            std::lock_guard<std::mutex> lock(state->mutex);state->busy=false;state->ready=true;state->folder=request->folder;
+            state->path=files&&files[0]?files[0]:"";state->error=files?"":SDL_GetError();
+        }
+    }
+    std::filesystem::path ReplayFolder(const NeoGeoPort& port) {
+        if(!port.opt.autoReplayDir.empty())return std::filesystem::u8path(port.opt.autoReplayDir);
+        if(!port.opt.savesPath.empty())return std::filesystem::u8path(port.opt.savesPath).parent_path()/"replays";
+        char* pref=SDL_GetPrefPath("ForkAde",GAME_ID);const auto path=std::filesystem::u8path(pref?pref:"")/"replays";SDL_free(pref);return path;
+    }
+
+    // The keys that work while playing, for Help's list (each an entry that does nothing)
+    const char *const kKeys[][2] = {
+        {"In-game menu", "Esc, F1"}, {"Menu bar", "F10, Alt"}, {"Quick save", "F5"}, {"Quick load", "F9"},
+        {"Screenshot", "F8"},        {"Slot before, next", "F6, F7"}, {"Fullscreen", "F11"}, {"Test switch", "F2"},
+        {"Pause", "P"},              {"One frame", "O"},              {"Slower, faster", "[, ]"},
+    };
+
+    recomp::BarEntry BarItem(const char *label, int id, const char *shortcut = "", bool enabled = true) {
+        recomp::BarEntry e;
+        e.label = label;
+        e.id = id;
+        e.shortcut = shortcut;
+        e.enabled = enabled;
+        return e;
+    }
 } // namespace
+
+Shape DisplayShapeNow() {
+    return DisplayShape();
+}
+Scaling DisplayScalingNow() {
+    return DisplayScaling();
+}
+SDL_FRect NeoGeoWhere(int width, int height) {
+    return Where(width, height);
+}
+
+void BarMenus(NeoGeoPort &port, recomp::MenuBar &bar, bool fullscreen) {
+    std::vector<recomp::BarMenu> menus = {{"Game", {}}, {"Video", {}}, {"Audio", {}}, {"Input", {}}, {"Features", {}}, {"Help", {}}};
+    std::error_code error;
+    recomp::BarOptions options;
+    options.slotUsed = [&](int slot) { return std::filesystem::exists(std::filesystem::u8path(port.StatePath(slot)), error); };
+    // (a slot kept says when: the time today, the date before)
+    options.slotDetail = [&](int slot) -> std::string {
+        SDL_PathInfo info{};
+        SDL_Time now = 0;
+        SDL_DateTime then{}, today{};
+        if (!SDL_GetPathInfo(port.StatePath(slot).c_str(), &info) || info.type != SDL_PATHTYPE_FILE || !SDL_GetCurrentTime(&now) ||
+            !SDL_TimeToDateTime(info.modify_time, &then, true) || !SDL_TimeToDateTime(now, &today, true)) {
+            return "";
+        }
+        char text[24];
+        if (then.year == today.year && then.month == today.month && then.day == today.day) {
+            snprintf(text, sizeof(text), "%02d:%02d", then.hour, then.minute);
+        } else {
+            snprintf(text, sizeof(text), "%04d-%02d-%02d", then.year, then.month, then.day);
+        }
+        return text;
+    };
+    port.menu.AddBarEntries(menus, true, options);
+    // (and its small picture, where one was kept with it)
+    for (recomp::BarEntry &entry : menus[0].entries) {
+        if (entry.label != "Save state" && entry.label != "Load state") {
+            continue;
+        }
+        for (size_t i = 0; i < entry.children.size(); i++) {
+            SDL_Surface *loaded = SDL_LoadPNG(NeoGeoPort::StatePicture(port.StatePath(static_cast<int>(i) + 1)).c_str());
+            SDL_Surface *picture = loaded ? SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_XBGR8888) : nullptr;
+            if (picture) {
+                recomp::BarEntry &slot = entry.children[i];
+                slot.pictureWidth = picture->w;
+                slot.pictureHeight = picture->h;
+                slot.picture.resize(static_cast<size_t>(picture->w) * picture->h);
+                for (int y = 0; y < picture->h; y++) {
+                    memcpy(&slot.picture[static_cast<size_t>(y) * picture->w], static_cast<const uint8_t *>(picture->pixels) + y * picture->pitch,
+                           static_cast<size_t>(picture->w) * 4);
+                }
+                SDL_DestroySurface(picture);
+            }
+            if (loaded) {
+                SDL_DestroySurface(loaded);
+            }
+        }
+    }
+    // Game: the quick save and load (F5, F9) and a screenshot (F8) after the save states
+    std::vector<recomp::BarEntry> &game = menus[0].entries;
+    auto slot = std::find_if(game.begin(), game.end(), [](const recomp::BarEntry &e) { return e.label == "Slot"; });
+    const size_t after = slot == game.end() ? 0 : static_cast<size_t>(slot - game.begin()) + 1;
+    game.insert(game.begin() + static_cast<std::ptrdiff_t>(after),
+                {recomp::BarEntry::Line(), BarItem("Quick save", kBarQuickSave, "F5"),
+                 BarItem("Quick load", kBarQuickLoad, "F9", options.slotUsed(port.menu.Slot())), BarItem("Screenshot", kBarScreenshot, "F8")});
+    // Video: full screen (F11, Alt+Enter)
+    std::vector<recomp::BarEntry> &video = menus[1].entries;
+    if (!video.empty()) {
+        video.push_back(recomp::BarEntry::Line());
+    }
+    video.push_back(BarItem("Fullscreen", kBarFullscreen, "F11"));
+    video.back().mark = fullscreen ? recomp::BarEntry::Check : recomp::BarEntry::NoMark;
+    // Input: the controls are the launcher's (its Controllers page)
+    menus[3].entries.push_back(recomp::BarEntry::Line());
+    menus[3].entries.push_back(BarItem("Controls: in the launcher", 0, "", false));
+    auto inputPanel=BarItem("Neo Geo input panel",0);
+    for(int mode=0;mode<3;++mode){
+        auto e=BarItem(mode==0?"Automatic":mode==1?"On":"Off",kInputPanelBase+mode);
+        e.mark=cps2recomp::FeatureSetting("input_display")==mode?recomp::BarEntry::Dot:recomp::BarEntry::NoMark;
+        inputPanel.children.push_back(e);
+    }
+    menus[3].entries.push_back(std::move(inputPanel));
+    // Help: the keys, and what this is
+    recomp::BarEntry keys = BarItem("Keys", 0);
+    for (const auto &key : kKeys) {
+        keys.children.push_back(BarItem(key[0], kBarKey, key[1]));
+    }
+    menus[5].entries.push_back(std::move(keys));
+    menus[5].entries.push_back(BarItem("About", kBarAbout));
+    menus[5].entries.push_back(BarItem("Source code and licences", kBarSource));
+    const bool watching=port.replay&&port.replay->Playing();
+    recomp::BarEntry replays=BarItem("Replay",0);
+    replays.children={BarItem(port.replay&&port.replay->Recording()?"Stop recording":"Record from here",kReplayRecord,"",!port.online&&!watching),BarItem("Play latest replay",kReplayPlay,"",!port.online&&!watching),BarItem("Stop playback",kReplayStop,"",watching)};
+    replays.children.insert(replays.children.begin()+1,BarItem("Open replay...",kReplayOpen,"",!port.online));
+    replays.children.push_back(BarItem("Recording folder...",kReplayFolder));
+    using RC=recomp::replay::Command;
+    const std::pair<const char*,RC> controls[]={{"Play / pause",RC::PlayPause},{"Rewind x1-x8",RC::Rewind},{"Forward x2-x8",RC::Faster},{"Slow motion",RC::Slower},{"Normal speed",RC::Normal},{"Previous frame",RC::StepBack},{"Next frame",RC::StepForward},{"Back 5 seconds",RC::JumpBack},{"Forward 5 seconds",RC::JumpForward},{"Start",RC::ToStart},{"End",RC::ToEnd},{"Previous round marker",RC::PreviousMarker},{"Next round marker",RC::NextMarker},{"Mark A",RC::MarkA},{"Mark B",RC::MarkB},{"Clear loop",RC::ClearLoop},{"Frame counter",RC::FrameCounter},{"Pin HUD",RC::PinHud},{"Show / hide HUD",RC::ToggleHud}};
+    recomp::BarEntry groups[]={BarItem("Playback",0,"",watching),BarItem("Navigation",0,"",watching),BarItem("A-B loop",0,"",watching),BarItem("HUD",0,"",watching)};
+    for(const auto& [label,command]:controls){
+        int group=1;
+        if(command==RC::PlayPause||command==RC::Rewind||command==RC::Faster||command==RC::Slower||command==RC::Normal)group=0;
+        if(command==RC::MarkA||command==RC::MarkB||command==RC::ClearLoop)group=2;
+        if(command==RC::FrameCounter||command==RC::PinHud||command==RC::ToggleHud)group=3;
+        groups[group].children.push_back(BarItem(label,kReplayCommandBase+static_cast<int>(command),"",watching));
+    }
+    for(auto& group:groups)replays.children.push_back(std::move(group));
+    menus[0].entries.insert(menus[0].entries.begin(),std::move(replays));
+    if (!port.online) {
+        for (auto &entry : menus[0].entries)
+            if (entry.label == "Chat" || entry.label == "Chat history") entry.enabled = false;
+    }
+    // Online, what would change the match or put the two boards out of step is dim (as the in-game menu says
+    // "Not while playing online"): the save states, Reset, player 2's Start, the game's features and its speed
+    if (port.online || watching) {
+        for (recomp::BarMenu &menu : menus) {
+            for (recomp::BarEntry &entry : menu.entries) {
+                const std::string &l = entry.label;
+                if (menu.title == "Features" || l == "Save state" || l == "Load state" || l == "Quick save" || l == "Quick load" ||
+                    l == "Reset" || l == "Player 2 joins") {
+                    entry.enabled = false;
+                }
+            }
+        }
+    }
+    // (a menu with nothing in it is left out)
+    menus.erase(std::remove_if(menus.begin(), menus.end(), [](const recomp::BarMenu &m) { return m.entries.empty(); }), menus.end());
+    bar.Configure(std::move(menus));
+}
+
+int BarDot(int windowHeight) {
+    // (a window opens the board's lines and the bar's dots tall, so many times: a dot is as many pixels)
+    return std::max(1, windowHeight / (NeoGeoVideo::kHeight + recomp::MenuBar::kHeightDots));
+}
+
+int BarStrip(int windowHeight) {
+    return recomp::MenuBar::kHeightDots * BarDot(windowHeight);
+}
+
+void BarPicture(const recomp::MenuBar &bar, int width, int height, std::vector<uint32_t> &pixels, std::vector<SDL_Rect> &regions) {
+    pixels.assign(static_cast<size_t>(std::max(width, 0)) * std::max(height, 0), 0xFF000000u);
+    regions.clear();
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+    bar.Draw(pixels.data(), width, height);
+    if (bar.BarShown()) {
+        regions.push_back({0, 0, width, bar.Height()});
+    }
+    for (const recomp::MenuBar::Box &box : bar.Boxes()) {
+        regions.push_back({static_cast<int>(box.x), static_cast<int>(box.y), static_cast<int>(std::ceil(box.w)), static_cast<int>(std::ceil(box.h))});
+    }
+}
 
 int RunNeoGeoWindow(NeoGeoPort &port) {
     SDL_SetHint(SDL_HINT_AUDIO_DEVICE_SAMPLE_FRAMES, "256");
@@ -195,11 +383,14 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     }
     const int scale = port.opt.scale > 0 ? port.opt.scale : WindowSize();
     const int height = NeoGeoVideo::kHeight * scale;
-    const float shape = PictureShape(DisplayShape() == Shape::Arcade ? 384 : NeoGeoVideo::kWidth, NeoGeoVideo::kHeight,
-                                     DisplayShape(), 4.0f / 3.0f);
-    const bool hidden=SDL_getenv("CPS2RECOMP_HIDDEN_WINDOW")!=nullptr;
-    SDL_Window *window = SDL_CreateWindow(GAME_TITLE, static_cast<int>(std::lround(height * shape)), height,
-                                          (SDL_WINDOW_RESIZABLE | (hidden?SDL_WINDOW_HIDDEN:0)) | (port.opt.fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
+    auto windowShape = []() {
+        return PictureShape(DisplayShape() == Shape::Arcade ? 384 : NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, DisplayShape(), 4.0f / 3.0f);
+    };
+    // (and above the picture the menu bar's strip, as many times its dots: none full screen)
+    const int strip = port.opt.fullscreen ? 0 : recomp::MenuBar::kHeightDots * scale;
+    SDL_Window *window = SDL_CreateWindow(GAME_TITLE, static_cast<int>(std::lround(height * windowShape())), height + strip,
+                                          SDL_WINDOW_RESIZABLE | (port.opt.fullscreen ? SDL_WINDOW_FULLSCREEN : 0) |
+                                              (getenv("CPS2RECOMP_HIDDEN_WINDOW") ? SDL_WINDOW_HIDDEN : 0)); // (hidden: for tests)
     Presenter presenter;
     std::string presentError;
     const bool wantGpu = port.opt.renderer != "sdl" && strcmp(SDL_GetCurrentVideoDriver(), "dummy") != 0;
@@ -259,6 +450,8 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     }
 
     uint64_t displayedEpoch=online.Epoch(),loops=0;
+    std::string lastReplayNote;
+    bool overlayHidden=false; // (online-hud: Tab online; also captured by the room callback)
 #ifdef FORKADE_GAME_BROKER
     bool ownedSession=false;
     std::vector<uint8_t> savedOffline;
@@ -286,7 +479,6 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     const std::filesystem::path program=exeLength&&exeLength<32768?std::filesystem::path(exePath):std::filesystem::path();
     port.menu.forkade=port.opt.forkadeOnline;
 #endif
-    bool overlayHidden=false; // (online-hud: Tab online)
     struct Event{uint64_t tick;std::string key;};std::vector<Event> scripted;
     std::istringstream input(port.opt.windowEvents);std::string item;
     while(std::getline(input,item,';')){const auto colon=item.find(':');if(colon!=std::string::npos)scripted.push_back({strtoull(item.c_str(),nullptr,10),item.substr(colon+1)});}
@@ -304,7 +496,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     };
     std::string lastRoomLabel;
     std::vector<SDL_Gamepad *> gamepads;
-    std::vector<uint32_t> menuBase, menuPicture, shown;
+    std::vector<uint32_t> menuBase, menuPicture, shown, inputPresented;
     uint32_t menuWidth = 0, menuHeight = 0;
     bool menuDirty = false;
     uint16_t previousPad = 0, heldAtClose = 0;
@@ -332,6 +524,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         }
     };
     auto toggleMenu = [&]() {
+        if(port.replay&&port.replay->Playing()){port.replay->Command(recomp::replay::Command::Pause);return;}
         if (port.menu.IsOpen()) {
             port.menu.Close();
         } else {
@@ -341,15 +534,164 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         }
     };
     auto quickState = [&](bool save) {
+        if (port.online || (port.replay&&port.replay->Playing())) {
+            return; // (no save states online)
+        }
         std::string error;
         const std::string path = port.StatePath(port.menu.Slot());
         if (!(save ? port.SaveState(path, error) : port.LoadState(path, error))) {
             fprintf(stderr, "state %d: %s\n", port.menu.Slot(), error.c_str());
         }
     };
+    // The menu bar above the picture, and the same menus where the picture is right-clicked (neogeo_port.h's Bar...).
+    // While one of its menus is open the game stands still, as with the in-game menu (online it goes on, as there); a
+    // click or a key that works the bar does not reach the game.
+    recomp::MenuBar bar;
+    std::vector<uint32_t> barPixels;
+    std::vector<SDL_Rect> barRegions;
+    bool barDirty = true;
+    int barWidth = 0, barHeight = 0;
+    auto isFullscreen = [&]() { return (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0; };
+    // Full screen there is no strip: the bar is drawn over the top of the picture while the pointer is at the
+    // screen's top edge, or one of its menus is open (not the right-click menu's, which needs no bar)
+    bool barRevealed = false, barPopup = false;
+    auto showBar = [&]() {
+        const bool shownNow = !isFullscreen() || barRevealed || (bar.IsOpen() && !barPopup);
+        if (shownNow != bar.BarShown()) {
+            bar.ShowBar(shownNow);
+            barDirty = true;
+        }
+    };
+    // (no wider than the board's picture says: 53 of its letters)
+    const std::string kFullscreenHint = "F11 leaves full screen. Menu: top, right click, F10";
+    auto fullscreenHint = [&]() {
+        port.notice = kFullscreenHint;
+        port.noticeUntil = port.tick + 300;
+    };
+    auto toggleFullscreen = [&]() {
+        const bool to = !isFullscreen();
+        SDL_SetWindowFullscreen(window, to);
+        barRevealed = false;
+        if (to) {
+            fullscreenHint();
+        } else if (port.notice == kFullscreenHint) {
+            port.noticeUntil = 0; // (back in a window, the hint has nothing to say)
+        }
+        barDirty = true;
+    };
+    if (port.opt.fullscreen) {
+        fullscreenHint();
+    }
+    auto barOpened = [&](bool popup = false) {
+        BarMenus(port, bar, isFullscreen());
+        barPopup = popup;
+        barDirty = true;
+    };
+    BarMenus(port, bar, isFullscreen());
+    if(port.opt.autoReplays)port.replay->AutoFolder(ReplayFolder(port).string());
+    auto screenshot = [&]() {
+        std::string file, error;
+        if (port.Screenshot(file, error)) {
+            port.notice = "Screenshot: " + file;
+        } else {
+            port.notice = "No screenshot: " + error;
+            fprintf(stderr, "screenshot: %s\n", error.c_str());
+        }
+        port.noticeUntil = port.tick + 150;
+    };
+    auto replayDialog=std::make_shared<ReplayDialogState>();
+    auto barChose = [&](const recomp::MenuBar::Chosen &chosen) {
+        barDirty = true;
+        heldAtClose = previousPad;
+        if (!chosen.chosen) {
+            return;
+        }
+        if(chosen.id==kReplayOpen||chosen.id==kReplayFolder) {
+            bool busy;{std::lock_guard<std::mutex> lock(replayDialog->mutex);busy=replayDialog->busy;if(!busy)replayDialog->busy=true;}
+            if(!busy){
+                if(port.replay->Playing())port.replay->Command(recomp::replay::Command::Pause);
+                auto request=new ReplayDialogRequest{replayDialog,chosen.id==kReplayFolder,ReplayFolder(port).string()};
+                static const SDL_DialogFileFilter filter={"ForkAde replay","fareplay"};
+                if(request->folder)SDL_ShowOpenFolderDialog(ReplayDialogDone,request,window,request->initial.c_str(),false);
+                else SDL_ShowOpenFileDialog(ReplayDialogDone,request,window,&filter,1,request->initial.c_str(),false);
+            }
+        } else if(chosen.id>=kInputPanelBase&&chosen.id<kInputPanelBase+3) {
+            cps2recomp::SetFeatureValue("input_display",chosen.id-kInputPanelBase);
+        } else if(chosen.id==kReplayRecord) {
+            if(port.replay->Recording())port.replay->StopRecord();
+            else port.replay->Record((ReplayFolder(port)/(std::string(GAME_ID)+"_"+std::to_string(std::time(nullptr))+"_"+std::to_string(SDL_GetTicks())+".fareplay")).string());
+            port.notice=port.replay->Note();port.noticeUntil=port.tick+240;
+        } else if(chosen.id==kReplayPlay) {
+            std::error_code ec;std::filesystem::path latest;std::filesystem::file_time_type time{};
+            for(const auto& file:std::filesystem::directory_iterator(ReplayFolder(port),ec))
+                if(file.is_regular_file(ec)&&file.path().extension()==".fareplay"&&(latest.empty()||file.last_write_time(ec)>time)){latest=file.path();time=file.last_write_time(ec);}
+            if(latest.empty())port.notice="No replay files found";
+            else {port.replay->Play(latest.string());port.notice=port.replay->Note();}
+            port.noticeUntil=port.tick+240;
+        } else if(chosen.id==kReplayStop)port.replay->Stop();
+        else if(chosen.id>=kReplayCommandBase&&chosen.id<kReplayCommandBase+100)port.replay->Command(static_cast<recomp::replay::Command>(chosen.id-kReplayCommandBase));
+        else if (recomp::IsMenuEntry(chosen.id)) {
+            port.MenuAct(port.menu.Choose(chosen.id));
+        } else if (chosen.id == kBarQuickSave || chosen.id == kBarQuickLoad) {
+            if (!port.online) {
+                quickState(chosen.id == kBarQuickSave);
+            }
+        } else if (chosen.id == kBarFullscreen) {
+            toggleFullscreen();
+        } else if (chosen.id == kBarScreenshot) {
+            screenshot();
+        } else if (chosen.id == kBarAbout) {
+            port.notice = std::string(GAME_TITLE) + " - Neo Geo runtime (interpreted CPUs)";
+            port.noticeUntil = port.tick + 240;
+        } else if (chosen.id == kBarSource) {
+            SDL_OpenURL("https://github.com/sunkpoet-lang/neogeo-recomp");
+        }
+        BarMenus(port, bar, isFullscreen());
+    };
+    // (the pointer's place in the window's pixels: events give it in the window's points)
+    auto pixelsOf = [&](float x, float y, float &px, float &py) {
+        const float density = SDL_GetWindowPixelDensity(window);
+        px = x * (density > 0 ? density : 1.0f);
+        py = y * (density > 0 ? density : 1.0f);
+    };
+    // (tests: --window-events, what is put to the window at which turn of the loop; a turn is a frame, or a
+    // wait of the menus')
+    struct Scripted {
+        uint64_t loop;
+        std::string what;
+        float x = 0, y = 0;
+        std::string key;
+    };
+    std::vector<Scripted> script;
+    for (size_t at = 0; at < port.opt.windowEvents.size();) {
+        size_t end = port.opt.windowEvents.find(';', at);
+        if (end == std::string::npos) {
+            end = port.opt.windowEvents.size();
+        }
+        const std::string one = port.opt.windowEvents.substr(at, end - at);
+        const size_t colon = one.find(':');
+        if (colon != std::string::npos) {
+            Scripted s{strtoull(one.c_str(), nullptr, 10), {}};
+            char what[8] = {};
+            if (sscanf(one.c_str() + colon + 1, "%7s %f %f", what, &s.x, &s.y) >= 1) {
+                s.what = what;
+                // (a key's name is the rest: "Left Alt")
+                const size_t space = one.find(' ', colon + 1);
+                if (space != std::string::npos) {
+                    s.key = one.substr(space + 1);
+                }
+                script.push_back(s);
+            }
+        }
+        at = end + 1;
+    }
+    // The pointer is hidden over the game after a moment still, and seen again when it moves
+    uint64_t pointerMoved = SDL_GetTicksNS();
+    bool pointerShown = true;
+    bool altAlone = false; // (Alt went down, and nothing else since: let go, it opens the bar's Game menu)
     const double kFrameNs = 1e9 * NeoGeo::kLines * NeoGeo::kCpuPerLine / 12000000.0; // (59.19 a second)
     uint64_t nextFrame = SDL_GetTicksNS();
-    auto feedAudio = [&](bool ran, int slowBy) {
+    auto feedAudio = [&](bool ran, double slowBy) {
             // (game-volume-control) the level (and mute) as the stream's gain, followed over a few frames so a
             // change does not click
             if (audio) {
@@ -384,6 +726,65 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
     };
     bool running = true;
     while (running && !port.quit && (port.opt.frames == 0 || port.frame < port.opt.frames)) {
+        for (const Scripted &s : script) {
+            if (s.loop != loops) {
+                continue;
+            }
+            SDL_Event put{};
+            const SDL_WindowID id = SDL_GetWindowID(window);
+            if (s.what == "m") {
+                put.type = SDL_EVENT_MOUSE_MOTION;
+                put.motion.windowID = id;
+                put.motion.x = s.x;
+                put.motion.y = s.y;
+                SDL_PushEvent(&put);
+            } else if (s.what == "l" || s.what == "r") {
+                put.button.windowID = id;
+                put.button.button = s.what == "l" ? SDL_BUTTON_LEFT : SDL_BUTTON_RIGHT;
+                put.button.x = s.x;
+                put.button.y = s.y;
+                put.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+                put.button.down = true;
+                SDL_PushEvent(&put);
+                put.type = SDL_EVENT_MOUSE_BUTTON_UP;
+                put.button.down = false;
+                SDL_PushEvent(&put);
+            } else if (s.what == "g") {
+                put.gbutton.button=SDL_GetGamepadButtonFromString(s.key.c_str());
+                put.type=SDL_EVENT_GAMEPAD_BUTTON_DOWN;SDL_PushEvent(&put);
+                put.type=SDL_EVENT_GAMEPAD_BUTTON_UP;SDL_PushEvent(&put);
+            } else if (s.what == "k" || s.what == "kd" || s.what == "ku") {
+                put.key.windowID = id;
+                put.key.scancode = SDL_GetScancodeFromName(s.key.c_str());
+                put.key.key = SDL_GetKeyFromScancode(put.key.scancode, SDL_KMOD_NONE, false);
+                if (s.what != "ku") {
+                    put.type = SDL_EVENT_KEY_DOWN;
+                    put.key.down = true;
+                    SDL_PushEvent(&put);
+                }
+                if (s.what != "kd") {
+                    put.type = SDL_EVENT_KEY_UP;
+                    put.key.down = false;
+                    SDL_PushEvent(&put);
+                }
+            } else if (s.what == "p") {
+                int windowWidth = 0, windowHeight = 0;
+                SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+                std::string picked;
+                for (const int p : bar.Picked()) {
+                    picked += (picked.empty() ? "" : ",") + std::to_string(p);
+                }
+                printf("window %llu: bar %s [%s] (%zu open, strip %s), in-game menu %s, frame %llu, pointer %s, fullscreen %s, "
+                       "window %dx%d, slot %d, muted %s, slow by %d, notice \"%s\", online %s\"%s\"\n",
+                       static_cast<unsigned long long>(loops), bar.IsOpen() ? "open" : "closed", picked.c_str(), bar.Boxes().size(),
+                       bar.BarShown() ? "shown" : "hidden", port.menu.IsOpen() ? "open" : "closed", static_cast<unsigned long long>(port.frame),
+                       pointerShown ? "shown" : "hidden", isFullscreen() ? "yes" : "no", windowWidth, windowHeight, port.menu.Slot(),
+                       port.menu.muted ? "yes" : "no", port.menu.SlowBy(), port.tick < port.noticeUntil ? port.notice.c_str() : "",
+                       online.Failed() ? "FAILED " : "", online.Message().c_str());
+                fflush(stdout);
+                if(port.replay&&port.replay->Playing()){printf("viewer %llu: frame %u, audio rate %.2f\n",static_cast<unsigned long long>(loops),port.replay->Frame(),port.replay->AudioRate());fflush(stdout);}
+            }
+        }
         for(const auto& event:scripted)if(event.tick==loops){
             if(event.key=="q")running=false;
             else if(event.key=="host")menuAction(port.menu.SelectOnline(0));
@@ -391,17 +792,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             else if(event.key=="names")menuAction(port.menu.SelectOnline(2));
             else if(event.key=="streaks")menuAction(port.menu.SelectOnline(3));
             else if(event.key=="menu")toggleMenu();
-            // (tests: "k KEY", a key pressed and let go, by SDL's name; "p", the level, the gain and the speed printed)
-            else if(event.key.rfind("k ",0)==0){
-                SDL_Event put{};put.key.scancode=SDL_GetScancodeFromName(event.key.substr(2).c_str());
-                put.key.key=SDL_GetKeyFromScancode(put.key.scancode,SDL_KMOD_NONE,false);
-                put.type=SDL_EVENT_KEY_DOWN;put.key.down=true;SDL_PushEvent(&put);
-                put.type=SDL_EVENT_KEY_UP;put.key.down=false;SDL_PushEvent(&put);
-            }
-            else if(event.key=="p")printf("window %llu: muted %s, volume %d%% (gain %.3f), slow by %d\n",static_cast<unsigned long long>(loops),
-                                          port.menu.muted?"yes":"no",port.menu.volume,static_cast<double>(gainNow),port.menu.SlowBy());
         }
-        ++loops;
 #ifdef FORKADE_GAME_BROKER
         if(port.opt.forkadeOnline){
             room.Tick();if(ownedSession)room.Reconnecting(online.Recovering());
@@ -424,8 +815,30 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             chatOpen(false); // (the match over)
         }
         chatWas = chatNow;
+        ++loops;
+        {
+            std::string path,error;bool ready=false,folder=false;
+            {std::lock_guard<std::mutex> lock(replayDialog->mutex);ready=replayDialog->ready;if(ready){replayDialog->ready=false;path=replayDialog->path;error=replayDialog->error;folder=replayDialog->folder;}}
+            if(ready&&!path.empty()) {
+                if(folder){
+                    port.opt.autoReplayDir=path;port.replay->AutoFolder(path);
+                    if(!port.opt.settingsPath.empty()){recomp::Ini settings(std::filesystem::u8path(port.opt.settingsPath));settings.load();settings.set("replays","folder",path);settings.save();}
+                    port.notice="Recording folder updated";
+                }else{port.replay->Play(path);port.notice=port.replay->Note();}
+                port.noticeUntil=port.tick+240;barDirty=true;
+            }else if(ready&&!error.empty()){port.notice=error;port.noticeUntil=port.tick+240;}
+        }
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
+            if(port.replay&&port.replay->Playing()&&!bar.IsOpen()&&!port.menu.IsOpen()) {
+                if(ev.type==SDL_EVENT_GAMEPAD_BUTTON_DOWN&&ev.gbutton.button==SDL_GAMEPAD_BUTTON_GUIDE){barOpened();bar.OpenMenu(0);continue;}
+                if(port.replay->Event(ev))continue;
+                if(ev.type==SDL_EVENT_MOUSE_BUTTON_DOWN&&ev.button.button==SDL_BUTTON_LEFT) {
+                    float x,y;pixelsOf(ev.button.x,ev.button.y,x,y);int w,h;SDL_GetWindowSizeInPixels(window,&w,&h);
+                    const int strip=isFullscreen()?0:BarStrip(h);auto view=Where(w,h-strip);view.y+=strip;
+                    if(view.w>0&&view.h>0&&port.replay->Click((x-view.x)*NeoGeoVideo::kWidth/view.w,(y-view.y)*NeoGeoVideo::kHeight/view.h))continue;
+                }
+            }
             if (chat.typing && ev.type == SDL_EVENT_TEXT_INPUT) {
                 // (the chat's key's own letter, if the system sends it as text too, is not the line's)
                 const bool keyLetter = ev.text.text[0] && !ev.text.text[1] &&
@@ -450,8 +863,93 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             }
             switch (ev.type) {
             case SDL_EVENT_QUIT: running = false; break;
+            case SDL_EVENT_WINDOW_FOCUS_LOST: altAlone = false; break;
+            case SDL_EVENT_MOUSE_MOTION:
+                pointerMoved = SDL_GetTicksNS();
+                if (!pointerShown) {
+                    SDL_ShowCursor();
+                    pointerShown = true;
+                }
+                {
+                    float x, y;
+                    pixelsOf(ev.motion.x, ev.motion.y, x, y);
+                    if (isFullscreen()) {
+                        // (at the top edge the bar comes; below it, with none of its menus open, it goes)
+                        if (y < 4) {
+                            barRevealed = true;
+                        } else if (y >= bar.Height() && !bar.IsOpen()) {
+                            barRevealed = false;
+                        }
+                        showBar();
+                    }
+                    if (bar.IsOpen() && !port.menu.IsOpen()) {
+                        barDirty = bar.Pointer(x, y) || barDirty;
+                    }
+                }
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                if (!port.menu.IsOpen()) {
+                    float x, y;
+                    pixelsOf(ev.button.x, ev.button.y, x, y);
+                    if (ev.button.button == SDL_BUTTON_LEFT && (bar.IsOpen() || bar.Hit(x, y))) {
+                        if (!bar.IsOpen()) {
+                            barOpened();
+                        }
+                        barChose(bar.Click(x, y));
+                    } else if (ev.button.button == SDL_BUTTON_RIGHT) {
+                        barOpened(true);
+                        bar.OpenPopup(x, y);
+                    } else if (bar.IsOpen()) {
+                        bar.Close();
+                        barDirty = true;
+                    }
+                }
+                break;
+            case SDL_EVENT_KEY_UP:
+                if ((ev.key.scancode == SDL_SCANCODE_LALT || ev.key.scancode == SDL_SCANCODE_RALT) && altAlone &&
+                    !KeyBound(ev.key.scancode) && !port.menu.IsOpen()) {
+                    if (bar.IsOpen()) {
+                        bar.Close();
+                        barDirty = true;
+                    } else {
+                        barOpened();
+                        bar.OpenMenu(0);
+                    }
+                }
+                altAlone = false;
+                break;
             case SDL_EVENT_KEY_DOWN:
-                if (ev.key.scancode == SDL_SCANCODE_ESCAPE || ev.key.scancode == SDL_SCANCODE_F1) {
+                if (!ev.key.repeat) {
+                    altAlone = ev.key.scancode == SDL_SCANCODE_LALT || ev.key.scancode == SDL_SCANCODE_RALT;
+                }
+                if (bar.IsOpen() && ev.key.scancode == SDL_SCANCODE_ESCAPE) {
+                    barChose(bar.Buttons(recomp::kMenuBack)); // (a level of the bar's menus closes)
+                } else if (bar.IsOpen() && !port.menu.IsOpen() && ev.key.scancode != SDL_SCANCODE_F10) {
+                    // While the bar's menu is open the keys work it, and nothing else (the gamepad: below)
+                    unsigned button = 0;
+                    switch (ev.key.scancode) {
+                    case SDL_SCANCODE_UP: button = recomp::kMenuUp; break;
+                    case SDL_SCANCODE_DOWN: button = recomp::kMenuDown; break;
+                    case SDL_SCANCODE_LEFT: button = recomp::kMenuLeft; break;
+                    case SDL_SCANCODE_RIGHT: button = recomp::kMenuRight; break;
+                    case SDL_SCANCODE_RETURN:
+                    case SDL_SCANCODE_KP_ENTER:
+                    case SDL_SCANCODE_SPACE: button = (ev.key.mod & SDL_KMOD_ALT) ? 0 : recomp::kMenuConfirm; break;
+                    case SDL_SCANCODE_BACKSPACE: button = recomp::kMenuBack; break;
+                    default: break;
+                    }
+                    if (button) {
+                        barChose(bar.Buttons(button));
+                    }
+                } else if (ev.key.scancode == SDL_SCANCODE_F10 && !KeyBound(SDL_SCANCODE_F10) && !port.menu.IsOpen()) {
+                    if (bar.IsOpen()) {
+                        bar.Close();
+                        barDirty = true;
+                    } else {
+                        barOpened();
+                        bar.OpenMenu(0);
+                    }
+                } else if (ev.key.scancode == SDL_SCANCODE_ESCAPE || ev.key.scancode == SDL_SCANCODE_F1) {
                     toggleMenu();
                 } else if (chatNow && !port.menu.IsOpen() && ev.key.scancode == chatKey && !ev.key.repeat) {
                     chatOpen(true); // (online the chat's key, even where T is a game key too)
@@ -467,6 +965,10 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                     if (!port.menu.IsOpen()) {
                         quickState(ev.key.scancode == SDL_SCANCODE_F5);
                     }
+                } else if (ev.key.scancode == SDL_SCANCODE_F8 && !ev.key.repeat) {
+                    if (!port.menu.IsOpen()) {
+                        screenshot(); // the board's picture, as it is now
+                    }
                 } else if (ev.key.scancode == SDL_SCANCODE_F6 || ev.key.scancode == SDL_SCANCODE_F7) {
                     port.menu.SetSlot(port.menu.Slot() + (ev.key.scancode == SDL_SCANCODE_F7 ? 1 : -1));
                 } else if (!port.menu.IsOpen() && ev.key.scancode == SDL_SCANCODE_P && !ev.key.repeat) {
@@ -479,11 +981,13 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                     port.ChangeVolume(ev.key.scancode == SDL_SCANCODE_MINUS || ev.key.scancode == SDL_SCANCODE_KP_MINUS ? -1 : 1);
                 } else if (ev.key.scancode == SDL_SCANCODE_LEFTBRACKET || ev.key.scancode == SDL_SCANCODE_RIGHTBRACKET) {
                     port.Key(ev.key.scancode == SDL_SCANCODE_LEFTBRACKET ? '-' : '='); // slower, faster
+                } else if (ev.key.scancode == SDL_SCANCODE_BACKSPACE) {
+                    port.Key('r');
                 } else if (ev.key.scancode == SDL_SCANCODE_F2) {
                     port.test = !port.test; // the operator's test switch
                 } else if (ev.key.scancode == SDL_SCANCODE_F11 ||
                            (ev.key.scancode == SDL_SCANCODE_RETURN && (ev.key.mod & SDL_KMOD_ALT))) {
-                    SDL_SetWindowFullscreen(window, !(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN));
+                    toggleFullscreen();
                 }
                 break;
             case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
@@ -491,6 +995,8 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
                     // (a button the player has given to the game does only that)
                 } else if (ev.gbutton.button == SDL_GAMEPAD_BUTTON_LEFT_STICK || ev.gbutton.button == SDL_GAMEPAD_BUTTON_GUIDE) {
                     toggleMenu();
+                } else if (ev.gbutton.button == SDL_GAMEPAD_BUTTON_LEFT_SHOULDER) {
+                    port.Key('r');
                 } else if (chatNow && ev.gbutton.button == SDL_GAMEPAD_BUTTON_RIGHT_STICK) {
                     chatOpen(!chat.typing); // (online: the chat, as in the Capcom games)
                 } else if (!port.menu.IsOpen() && ev.gbutton.button == SDL_GAMEPAD_BUTTON_RIGHT_STICK) {
@@ -545,7 +1051,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         bothHeld = both;
         // The menu's own buttons: the arrows, the d-pad and the left stick (and the game's directions); Space, Enter
         // and A choose; Backspace and B go back
-        unsigned menuNow = 0;
+        unsigned menuNow = 0, padMenu = 0;
         menuNow |= (previousPad & cps::kUp) || keys[SDL_SCANCODE_UP] ? recomp::kMenuUp : 0;
         menuNow |= (previousPad & cps::kDown) || keys[SDL_SCANCODE_DOWN] ? recomp::kMenuDown : 0;
         menuNow |= (previousPad & cps::kLeft) || keys[SDL_SCANCODE_LEFT] ? recomp::kMenuLeft : 0;
@@ -560,12 +1066,27 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             menuNow |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_SOUTH) ? recomp::kMenuConfirm : 0;
             menuNow |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_EAST) ? recomp::kMenuBack : 0;
         }
+        // (the gamepad's part of it)
+        for (SDL_Gamepad *gp : gamepads) {
+            padMenu |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_DPAD_UP) ? recomp::kMenuUp : 0;
+            padMenu |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_DPAD_DOWN) ? recomp::kMenuDown : 0;
+            padMenu |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_DPAD_LEFT) ? recomp::kMenuLeft : 0;
+            padMenu |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) ? recomp::kMenuRight : 0;
+            padMenu |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_SOUTH) ? recomp::kMenuConfirm : 0;
+            padMenu |= SDL_GetGamepadButton(gp, SDL_GAMEPAD_BUTTON_EAST) ? recomp::kMenuBack : 0;
+        }
         unsigned menuPressed = menuNow & ~previousMenu;
         previousMenu = menuNow;
         if (both) {
             menuPressed = 0;
         }
-        if (port.menu.IsOpen()) {
+        if (bar.IsOpen() && !port.menu.IsOpen()) {
+            // (the gamepad's presses: the keys' came as events)
+            if (menuPressed & padMenu) {
+                barChose(bar.Buttons(menuPressed & padMenu));
+            }
+            heldAtClose = previousPad;
+        } else if (port.menu.IsOpen()) {
             if (menuPressed) {
                 const Menu::Action action = port.menu.Press(menuPressed);
                 if (action == Menu::Action::Chat || action == Menu::Action::ChatHistory) {
@@ -596,10 +1117,68 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         const uint16_t players[2] = {ToNeoGeo(pads[0] & ~heldAtClose), ToNeoGeo(pads[1] & ~heldAtClose)};
         uint16_t service = keys[SDL_SCANCODE_9] && !KeyBound(SDL_SCANCODE_9) ? NeoGeo::kService : 0;
 
+        // The window takes the Display page's shape and size again when they change: a window only, not full screen
+        // or maximized
+        {
+            static int shownSize = scale;
+            static Shape shownShape = DisplayShape();
+            const int size = port.opt.scale > 0 ? port.opt.scale : WindowSize();
+            if (DisplayShape() != shownShape || size != shownSize) {
+                if (!(SDL_GetWindowFlags(window) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED))) {
+                    int windowWidth = 0, windowHeight = 0;
+                    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+                    // (the picture's part of it: below the bar's strip, in the window's points)
+                    const float density = SDL_GetWindowPixelDensity(window) > 0 ? SDL_GetWindowPixelDensity(window) : 1.0f;
+                    int pictureHeight = windowHeight - static_cast<int>(std::lround(BarStrip(static_cast<int>(windowHeight * density)) / density));
+                    if (size != shownSize) {
+                        pictureHeight = NeoGeoVideo::kHeight * size;
+                        windowHeight = pictureHeight + recomp::MenuBar::kHeightDots * size;
+                    }
+                    SDL_SetWindowSize(window, static_cast<int>(std::lround(pictureHeight * windowShape())), windowHeight);
+                }
+                shownShape = DisplayShape();
+                shownSize = size;
+            }
+        }
+        if (pointerShown && !bar.IsOpen() && !port.menu.IsOpen() && SDL_GetTicksNS() - pointerMoved > 2000000000ull) {
+            SDL_HideCursor();
+            pointerShown = false;
+        }
         int width = 0, height = 0;
         presenter.Size(width, height);
         presenter.SetScaling(DisplayScaling());
-        const SDL_FRect where = Where(width, height);
+        // (in a window, below the menu bar's strip; full screen, the whole screen)
+        const int barStrip = isFullscreen() ? 0 : BarStrip(height);
+        SDL_FRect where = Where(width, height - barStrip);
+        where.y += barStrip;
+        showBar();
+        if (barDirty || width != barWidth || height != barHeight) {
+            bar.SetArea(width, height, BarDot(height));
+            BarPicture(bar, width, height, barPixels, barRegions);
+            presenter.SetOverlay(barPixels, width, height, barRegions);
+            barDirty = false;
+            barWidth = width;
+            barHeight = height;
+        }
+        bool replayDialogBusy;{std::lock_guard<std::mutex> lock(replayDialog->mutex);replayDialogBusy=replayDialog->busy;}
+        if ((bar.IsOpen() || (replayDialogBusy&&!isOnline)) && !port.menu.IsOpen()) {
+            // Keep offline play still while choosing a local replay/folder as well.
+            if (shown.empty()) {
+                port.Shown(shown);
+            }
+            const bool detailed=port.InputPresentation(shown,inputPresented);
+            presenter.Show(detailed?inputPresented.data():shown.data(), NeoGeoVideo::kWidth*(detailed?3:1), NeoGeoVideo::kHeight*(detailed?3:1), where);
+            if (isOnline) {
+                // (online, the game goes on behind the menu, as behind the in-game menu: this side's controls let go)
+                const uint16_t none[2] = {};
+                feedAudio(online.Tick(none) > 0, 1);
+                pace();
+                continue;
+            }
+            SDL_Delay(8);
+            nextFrame = SDL_GetTicksNS();
+            continue;
+        }
 
         if (port.menu.IsOpen()) {
             if (menuDirty) {
@@ -623,7 +1202,10 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         const uint16_t withService[2] = {static_cast<uint16_t>(players[0] | service), players[1]};
         const int slowBy = port.paused || isOnline ? 1 : port.menu.SlowBy();
         bool ran;
-        if (isOnline) {
+        if (port.replay&&port.replay->Playing()) {
+            ran=port.replay->Tick();
+            if(!port.replay->Playing()){port.notice=port.replay->Note();port.noticeUntil=port.tick+300;fprintf(stderr,"replay: %s\n",port.notice.c_str());}
+        } else if (isOnline) {
             // (this side's player: the keyboard's two players' keys and the gamepads together; the stress test's two)
             const bool stress = port.opt.online.mode == OnlineOptions::Mode::Stress;
             const uint16_t local[2] = {static_cast<uint16_t>(stress ? players[0] : players[0] | players[1]), stress ? players[1] : uint16_t{0}};
@@ -632,7 +1214,10 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             ran = port.Tick(withService);
         }
 
-        feedAudio(ran, slowBy);
+        const double replayAudioRate=port.replay&&port.replay->Playing()?port.replay->AudioRate():1;
+        if(port.replay&&port.replay->Note()!=lastReplayNote){lastReplayNote=port.replay->Note();port.notice=lastReplayNote;port.noticeUntil=port.tick+240;}
+        if(audio&&port.replay&&port.replay->Playing()&&!replayAudioRate)SDL_ClearAudioStream(audio);
+        feedAudio(ran, port.replay&&port.replay->Playing()&&replayAudioRate?1.0/replayAudioRate:slowBy);
 
         port.Shown(shown);
         if (port.tick < port.volumeNoteUntil) {
@@ -642,6 +1227,7 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
             canvas.Fill(NeoGeoVideo::kWidth - wide - 8, 4, wide + 6, 11, {20, 22, 30, 200});
             canvas.Text(NeoGeoVideo::kWidth - wide - 5, 6, 1, 0, {255, 255, 255, 255}, port.volumeNote.c_str());
         }
+        if(port.replay)port.replay->Draw(shown.data(),NeoGeoVideo::kWidth,NeoGeoVideo::kHeight);
         if (isOnline) {
             DrawOnline(shown, online, overlayHidden);
             // (online-hud) The players' names and win streaks in one strip at the top, over the score row and above
@@ -683,7 +1269,8 @@ int RunNeoGeoWindow(NeoGeoPort &port) {
         }
             chat.Draw(shown, NeoGeoVideo::kWidth, NeoGeoVideo::kHeight);
         }
-        presenter.Show(shown.data(), NeoGeoVideo::kWidth, NeoGeoVideo::kHeight, where);
+        const bool detailed=port.InputPresentation(shown,inputPresented);
+        presenter.Show(detailed?inputPresented.data():shown.data(), NeoGeoVideo::kWidth*(detailed?3:1), NeoGeoVideo::kHeight*(detailed?3:1), where);
         pace();
     }
 #ifdef FORKADE_GAME_BROKER

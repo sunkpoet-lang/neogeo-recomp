@@ -54,17 +54,30 @@ public:
     void SetScaling(Scaling scaling) {
         m_scaling = scaling;
     }
+    // What is drawn over the window after the picture (the menu bar's strip, the menus open): a picture as big
+    // as the window, in its pixels as Show's, of which only `regions` are drawn (each pixel as it is, none
+    // blended). Kept, and shown with every picture, until set again; with no regions nothing is drawn. A
+    // picture not the window's size (it was resized since) is not drawn either.
+    void SetOverlay(const std::vector<uint32_t> &pixels, int width, int height, const std::vector<SDL_Rect> &regions);
 
     // For tests: the GPU path with no window. The picture is drawn into `outWidth` x `outHeight` at `where`
     // as Show would draw it, and read back. False (with the reason) where there is no GPU device.
     static bool Render(const uint32_t *pixels, int width, int height, int outWidth, int outHeight, const SDL_FRect &where,
-                       Scaling scaling, std::vector<uint32_t> &out, std::string &error);
+                       Scaling scaling, std::vector<uint32_t> &out, std::string &error,
+                       const std::vector<uint32_t> *overlay = nullptr, const std::vector<SDL_Rect> *regions = nullptr);
 
 private:
     bool OpenGpu(SDL_Window *window, std::string &error);
     bool MakePipeline(SDL_GPUTextureFormat target, std::string &error);
-    bool Upload(SDL_GPUCommandBuffer *commands, const uint32_t *pixels, int width, int height);
-    void Draw(SDL_GPUCommandBuffer *commands, SDL_GPUTexture *target, const SDL_FRect &where);
+    struct Texture {
+        SDL_GPUTexture *texture = nullptr;
+        SDL_GPUTransferBuffer *transfer = nullptr;
+        int width = 0, height = 0;
+    };
+    bool Upload(SDL_GPUCommandBuffer *commands, const uint32_t *pixels, int width, int height, Texture &to);
+    void Release(Texture &texture);
+    void Draw(SDL_GPUCommandBuffer *commands, SDL_GPUTexture *target, int targetWidth, int targetHeight, const SDL_FRect &where);
+    void Finish(); // (SDL's renderer: the overlay drawn, and the window shown)
 
     SDL_Window *m_window = nullptr;
     Scaling m_scaling = Scaling::Sharp;
@@ -72,9 +85,15 @@ private:
     SDL_GPUDevice *m_device = nullptr;
     SDL_GPUGraphicsPipeline *m_pipeline = nullptr;
     SDL_GPUSampler *m_sampler = nullptr;
-    SDL_GPUTexture *m_picture = nullptr;
-    SDL_GPUTransferBuffer *m_transfer = nullptr;
-    int m_width = 0, m_height = 0;
+    Texture m_picture;
+    Texture m_overlayGpu;
+    int m_width = 0, m_height = 0; // (SDL's renderer: the picture's texture's size)
+    // The overlay (SetOverlay), uploaded when it has changed
+    std::vector<uint32_t> m_overlay;
+    std::vector<SDL_Rect> m_regions;
+    int m_overlayWidth = 0, m_overlayHeight = 0;
+    bool m_overlayChanged = false;
+    SDL_Texture *m_overlayTexture = nullptr;
     // SDL's renderer
     SDL_Renderer *m_renderer = nullptr;
     SDL_Texture *m_texture = nullptr, *m_enlarged = nullptr;
