@@ -1,0 +1,26 @@
+{
+  "hitboxes/kof-hitboxes.lua": {
+    "bytes": 19309,
+    "sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531"
+  },
+  "guipages.lua": {
+    "bytes": 31027,
+    "sha256": "2ea6b33ab87c326afb9bc1f65f09c0d9b24fe6c21f1d42bfb5b58f4edcfd8939"
+  },
+  "games/kof98/kof98.lua": {
+    "bytes": 2373,
+    "sha256": "a4e1463baeb086b0bc7f760f4958a5aaca7758cd15c7dfa16676bd9b5472ef2c"
+  },
+  "fbneo-training-mode.lua": {
+    "bytes": 125239,
+    "sha256": "2f141225b259a520f64321cbd028452bc09d07c1b350f2cc3730cfaebc36f299"
+  },
+  "addon/addons.lua": {
+    "bytes": 79,
+    "sha256": "b1a3a9d3842f1fb4cb88b483967e73bacf32a5d39976d5ad2d31230de0089632"
+  },
+  "addon/missions.lua": {
+    "bytes": 34554,
+    "sha256": "e26e78a0782b69cb64cc54fc1ba0e07ee46a8943954b64d991e3ea1ab6ffc5a0"
+  }
+}

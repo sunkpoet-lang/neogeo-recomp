@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "be00d5b8524e81a2d56826ecc99cbc5749769a4381284e03bce2c7e773d22497",
+  "capture": "actual native GPU game capture; menu capture links exact production objects",
+  "images": {
+    "projectiles.png": "7574fb70e7922d36d18a04ddad57dee7dd6366f21151bd91cb7586fdf9076f22",
+    "projectiles-menu.png": "3da9346634cda8f71fe732a7df6c8cc7deb638741c9d33bb77451173cde9b64e"
+  }
+}

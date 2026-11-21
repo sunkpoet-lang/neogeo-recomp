@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set(ROOT "${CMAKE_SOURCE_DIR}")
+add_executable(kof98_hitboxes_test kof98_hitboxes_test.cpp)
+add_test(NAME kof98_hitboxes COMMAND kof98_hitboxes_test)
 add_executable(neogeo_input_display_test neogeo_input_display_test.cpp ${ROOT}/port/neogeo_input_display.cpp)
 target_include_directories(neogeo_input_display_test PRIVATE ${ROOT}/port)
 target_link_libraries(neogeo_input_display_test PRIVATE ZLIB::ZLIB)

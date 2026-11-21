@@ -1,0 +1,56 @@
+{
+  "native_reference": {
+    "passed": true,
+    "snapshots": 120,
+    "rectangles_equal_to_original_lua": 730,
+    "source_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+    "exe_sha256": "6bdcbbf5be04c6764c9c1f98b3bdf2749ee007d576656cd553da1bb6bc088a8e",
+    "scope": "player boxes only; actual original Lua executed read-only against native RAM snapshots, original write callbacks not invoked; no projectile/throw acceptance",
+    "kind_counts": {
+      "push": 240,
+      "vulnerability": 426,
+      "attack": 32,
+      "guard": 32
+    },
+    "camera_positions": 22,
+    "player_facings": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "p1_y_range": [
+      131,
+      220
+    ],
+    "paused_load_and_reset_fresh": true
+  },
+  "executable_acceptance": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "6bdcbbf5be04c6764c9c1f98b3bdf2749ee007d576656cd553da1bb6bc088a8e",
+    "scope": "offline native player boxes; loopback/Internet and projectile/throw coverage not claimed"
+  },
+  "kof97_regression": {
+    "passed": true,
+    "frames": 1200,
+    "state_hashes_equal": true,
+    "audio_equal": true,
+    "exe_sha256": "415623392d39444fc19c98b27b82ebd282c91baa3aee3038d7f39cacda2ebb13"
+  },
+  "ctest_passed": 11,
+  "images": {
+    "exe_sha256": "6bdcbbf5be04c6764c9c1f98b3bdf2749ee007d576656cd553da1bb6bc088a8e",
+    "capture": "actual native player-box inspector, GPU game capture and exact production-object menu capture",
+    "images": {
+      "hitboxes.png": "8e3383afeffe4a077ad05b15d0e47876eaa15a58267d0cd464582044713cc148",
+      "hitboxes-menu.png": "9dbd8d05c8769cf8abbbe063ef7a98f88f44caa52a718c39547f5c8f09e2ad69"
+    }
+  }
+}

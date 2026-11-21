@@ -25,6 +25,24 @@ This project stands on other people's work:
 
 ## What works
 
+### KOF '95 candidate
+
+The original MVS `kof95` set now has an offline bring-up candidate. Its continued
+program and sparse graphics/audio regions have their own loader path. This is
+not yet a complete launcher/online release; the shared baseline is tracked in
+[`neo-kof95`](openspec/changes/neo-kof95/tasks.md).
+
+![KOF '95 title captured from the actual candidate](games/kof95/images/title.png)
+
+![KOF '95 scripted fight](games/kof95/images/gameplay.png)
+
+Local two-human automatic replays, confirmed online session recordings and a format-2 viewer are available in this candidate. Online recordings are validated with forced rollback and local peers; Internet and launcher acceptance remain pending.
+
+![KOF95 local replay viewer](games/kof95/images/viewer.png)
+
+See [the game's build, cartridge and replay instructions](games/kof95/README.md).
+The image is a real headless capture; it does not demonstrate Internet play.
+
 | Game | Status |
 |---|---|
 | The King of Fighters '97 (`kof97`, NGM-2320) | Plays from the launcher: picture, sound, controls, in-game menu, save states, cheats |
@@ -93,7 +111,7 @@ records discovery checks and Windows icon verification. Actual game checks requi
 ## Next
 
 - The custom soundtrack (your own music in place of the board's, as CPS-2 Recomp's Super Turbo has it)
-- Training mode for the fighting games (frame data, inputs, hitboxes, a dummy that records and replays)
+- Expand the verified KOF98 training candidate to other fighting games; throw boxes, frame data and advanced drills remain pending
 - Further validation of online rollback ([GekkoNet](https://github.com/HeatXD/GekkoNet)) over direct and relayed connections; see [KOF97's online instructions](games/kof97/README.md)
 - Translation to C++
 - More games: Garou, the Fatal Fury and Real Bout series, other KOFs, Samurai Shodown, Last Blade, Metal Slug
@@ -124,3 +142,22 @@ On screen, online, the names and streaks share one see-through strip at the top,
 above the life bars and the timer ("Name1  N  VS  M  Name2", player 1 blue,
 player 2 red), and ping, delay and rollback sit one a row in small yellow letters
 over player 2's portrait. Tab shows or hides both; the match's messages stay.
+
+
+### KOF98 offline training candidate
+
+The original KOF98 set now has a first native offline training session: normal
+coin/start entry, both team selections on P1, health/time aids, four basic dummy
+behaviours, reset checkpoint, three bounded dummy recording slots and a current-input
+panel. Online and replay mutation guards are verified. The shared visual panel
+also builds for KOF95/97/2002/Magic Plus II; their training adapters remain pending.
+See [the controls, actual screenshots and limits](games/kof98/README.md#native-offline-training--first-slice).
+
+Read-only player and projectile collision views are available for the original
+KOF98 set. Throw coverage and full roster/move acceptance remain pending.
+
+![KOF98 native offline training and projectile inspection](games/kof98/images/projectiles.png)
+
+For a clean source build, dependencies and verification commands, see
+[building and checking the source](docs/BUILDING.md). The native executables
+currently interpret the guest 68000; full static translation remains a roadmap item.

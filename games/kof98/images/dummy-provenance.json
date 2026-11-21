@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "75d937f5f4eb260be56b703e7f2d08029e17c9d5c2e7964070aec8f2e616bb87",
+  "capture": "actual executable offscreen GPU; arcade caps, diagonal+AB at frame3623",
+  "images": {
+    "dummy-playback.png": "29bbae5b75caf2d482545103e7c2756653f4d9a9e9aa1d0120bb2054cf7c6642",
+    "dummy-menu.png": "2091caa26c91f22c83fbb99bff09b968ec92b65922d80e088f5174f4acff4d95"
+  }
+}

@@ -4,6 +4,14 @@
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
 
+## [2026-11-20] - Native replays and KOF98 practice
+
+- docs: document bring-your-own-ROM builds, actual demonstration captures, source provenance and the limits of local validation; retain original credits and exclude private test payloads
+- test: compare KOF98 player and projectile rectangles with the original Lua viewer on native RAM snapshots, exercise bounded object traversal and preserve state/audio with the inspector enabled
+- feat: add native KOF98 offline practice, bounded dummy recording slots, deterministic playback, read-only collision inspection and recorder-style current-input panels above the super meters
+- feat: add automatic local and confirmed online replay recording, source compatibility checks and a native replay viewer, with rollback and local-peer validation kept distinct from Internet acceptance
+- feat: add original KOF95 MVS cartridge assembly, its own title-screen icon, build notes and native local-play candidate
+
 ## [2026-11-10] - Online strip
 
 - fix: a stranger's garbage hello no longer ends the host's match (taken as the peer only if it is this game's; refusals once a second per address; pending hellos capped); checked with 455 000-515 800 hostile packets per KOF '97 match, both sides equal

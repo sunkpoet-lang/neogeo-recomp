@@ -1,0 +1,12 @@
+{
+  "set": "kof98",
+  "date": "2026-11-20",
+  "method": "actual native offscreen GPU renders, no desktop automation",
+  "exe_sha256": "6dd08137357ce9a4a6b0a090f6af1bc1135896fba976b216612c720b91523259",
+  "training_frame": 8000,
+  "menu_frame": 5060,
+  "files": {
+    "training.png": "0ebd3dcefeb0be50932cecd5028cbec2754a5c234fb9e1806202cec8996a225f",
+    "training-menu.png": "8bdbe4affdd2c6b51744e31c01102210840454b5de5366735cd113226952e77a"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "reference": {
+    "passed": true,
+    "snapshots": 37,
+    "rectangles_equal_to_original_lua": 291,
+    "kind_counts": {
+      "proj. attack": 36,
+      "proj. vulnerability": 37,
+      "push": 74,
+      "vulnerability": 144
+    },
+    "unknown_projectile_ownership": true,
+    "scope": "native Iori projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+  },
+  "reference_source_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "executable_acceptance": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "be00d5b8524e81a2d56826ecc99cbc5749769a4381284e03bce2c7e773d22497",
+    "scope": "original KOF98 offline projectile scene; 900-frame old/off/on hashes/audio and 300-frame rollback stress; no new Internet or throw acceptance"
+  },
+  "native_inspection": {
+    "frames": 160,
+    "visible_projectile_frames": 6,
+    "read_only_hash_unchanged": true,
+    "paused_load_fresh": true,
+    "projectile_toggle_independent": true,
+    "online_replay_session_guards": true
+  },
+  "ctest_passed": 11,
+  "images": {
+    "exe_sha256": "be00d5b8524e81a2d56826ecc99cbc5749769a4381284e03bce2c7e773d22497",
+    "capture": "actual native GPU game capture; menu capture links exact production objects",
+    "images": {
+      "projectiles.png": "7574fb70e7922d36d18a04ddad57dee7dd6366f21151bd91cb7586fdf9076f22",
+      "projectiles-menu.png": "3da9346634cda8f71fe732a7df6c8cc7deb638741c9d33bb77451173cde9b64e"
+    }
+  },
+  "limitations": [
+    "Iori scene, not full roster acceptance",
+    "no projectile owner inferred",
+    "throws pending",
+    "no Lua or reference compiler shipped"
+  ]
+}

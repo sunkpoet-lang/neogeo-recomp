@@ -1,0 +1,38 @@
+{
+  "set": "kof95",
+  "mame_reference": "8c285468743535fbbde018fef23b3cfb8c9a3ec8",
+  "title_frame": 3300,
+  "capture": "unmodified headless screenshot",
+  "exe_sha256": "85c23091344ccdaece1711b9c0b2b3a324bd20ac5aacda1590f23813347540e7",
+  "title_sha256": "9a60890c8c01094f7ef06f522d56de028a8641e00f0d07fdf981a59b8cda8cd6",
+  "icon_crop": [
+    5,
+    38,
+    302,
+    181
+  ],
+  "icon_sizes": [
+    16,
+    24,
+    32,
+    48,
+    64,
+    128,
+    256
+  ],
+  "embedded_verification": "PASS: all seven ICO payload hashes match final PE resources",
+  "final_exe_sha256": "29576d286744174b9926a895d3f5508dd39d3afe1e140c7d4331ea59952db646",
+  "gameplay_frame": 6000,
+  "gameplay_sha256": "b6e6ac8bfd2d05dd6fc56c97f88820c32035fbf8cd352c77d23aef57c6dd7c90",
+  "menu_capture": "offscreen executable present-test with Game menu open",
+  "menu_sha256": "e83aa246b864955458850ae29cb3fb7fe64dbec8cbc7257c638652c6eb22c367",
+  "menu_capture_exe_sha256": "29576d286744174b9926a895d3f5508dd39d3afe1e140c7d4331ea59952db646",
+  "replay_capture": {
+    "method": "actual offscreen GPU render, local automatic two-human replay at viewer frame 2000, paused after 60 viewer ticks",
+    "exe_sha256": "6adee7edaee6c7cba36aa11d2323af7bb5598e1fd7d49f3378696dd3451531fb",
+    "files": {
+      "viewer.png": "ef81d4c7aba6bd7b17663f08be77e851d422ca8bbf16b963df6e218d86aa0d2c",
+      "replay-menu.png": "0da97bd8de692b4fe0e5994886a03feefce5db3d94ef194ddb0d6d6796b6a3d6"
+    }
+  }
+}

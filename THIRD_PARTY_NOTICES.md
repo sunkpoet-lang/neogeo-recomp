@@ -160,3 +160,15 @@ are embedded RGBA; Python/Pillow are not runtime dependencies.
 The lettering was rendered using Barlow Condensed SemiBold, copyright2017 The
 Barlow Project Authors, under SIL Open Font License1.1; the notice is retained
 in assets/recorder-inputs/BarlowCondensed-OFL.txt. No font binary is bundled.
+
+## KOF98 collision-viewer research
+
+The independent native player/projectile-box reader was researched against peon2's
+[fbneo-training-mode KOF viewer](https://github.com/peon2/fbneo-training-mode/blob/master/hitboxes/kof-hitboxes.lua),
+whose file also references the historical MAME-rr hitbox viewers. Credit remains
+with the original viewer authors and contributors. The inspected installed copy
+has SHA256 `91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531`;
+it is not assumed identical to today's upstream. No Lua source is shipped in the
+native implementation. The original Lua was executed privately against copies
+of native RAM to check geometry, with attempted memory writes rejected. Public
+source metadata contains no RAM, ROMs, BIOS files or save-state payloads.
