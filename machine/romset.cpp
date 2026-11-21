@@ -3,6 +3,7 @@
 
 #include "romset.h"
 #include "neogeo_decrypt.h"
+#include "kof95_layout.h"
 
 #include "kabuki.h"
 
@@ -650,6 +651,7 @@ bool LoadNeoGeoSet(const std::string &path, const NeoGeoList &list, NeoGeoRoms &
         }
         *system[n] = data;
     }
+    if (list.set == "kof95" && !AssembleKof95(roms, error)) return false;
     if (list.set == "kof2002" && !DecryptKof2002(roms, error)) return false;
     if (list.set == "kf2k2mp2" && !DecryptKf2k2mp2(roms, error)) return false;
     if (list.set == "kof98" && !DecryptKof98(roms, error)) return false;

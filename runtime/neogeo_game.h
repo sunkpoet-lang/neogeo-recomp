@@ -30,6 +30,8 @@ struct NeoGeoHooks {
     void (*frame)(NeoGeo &board) = nullptr;
     // Read-only completed team-match counters; presentation owns their history.
     NeoGeoMatchScore (*onlineMatchScore)(NeoGeo &board) = nullptr;
+    bool (*replayVersus)(NeoGeo &board) = nullptr;
+    uint16_t (*replayClock)(NeoGeo &board) = nullptr;
     std::vector<void (*)(NeoGeo &board)> commands;
 };
 

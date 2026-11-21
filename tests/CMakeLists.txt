@@ -15,3 +15,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME neogeo_startup COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/neogeo_startup_test.py"
     --exe "$<TARGET_FILE:${GAME}>" --game "${GAME}" --scratch "${CMAKE_CURRENT_BINARY_DIR}/startup")
+
+add_executable(kof95_layout_test kof95_layout_test.cpp)
+target_include_directories(kof95_layout_test PRIVATE ${ROOT}/machine)
+add_test(NAME kof95_layout COMMAND kof95_layout_test)
