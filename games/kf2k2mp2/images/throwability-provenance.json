@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "44138e3c7b2673e90a02aa2363923c634c844348e02564371171e77ca038c00e",
+  "capture": "actual native GPU defender-area overlay and menu; not simulated UI",
+  "images": {
+    "throwability.png": "51da01039235f3ae5a4eb5f19389e99b1f7644dcc5dd91d2b9cdf9fde0596d8e",
+    "throwability-menu.png": "aee68a41c1c427e2a91419abbe7de6145d64fed60838d5f97607092b67d6c439"
+  }
+}

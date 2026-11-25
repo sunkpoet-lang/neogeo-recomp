@@ -1,0 +1,881 @@
+{
+  "scope": "single-scene Iori/Brian recovery and input-duration experiments, not a production reversal adapter",
+  "columns": [
+    "request_tick",
+    "attack_within30",
+    "first_attack_tick",
+    "proxy_before_request",
+    "p1_damage"
+  ],
+  "four_frame_and_single_frame_results_equal_in_all_32_paired_requests": true,
+  "duration_trials": [
+    {
+      "scenario": 0,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          44,
+          1,
+          53,
+          0,
+          7
+        ],
+        [
+          46,
+          1,
+          55,
+          0,
+          7
+        ],
+        [
+          47,
+          1,
+          56,
+          0,
+          7
+        ],
+        [
+          48,
+          1,
+          57,
+          0,
+          8
+        ],
+        [
+          49,
+          1,
+          58,
+          0,
+          8
+        ],
+        [
+          50,
+          1,
+          59,
+          0,
+          8
+        ],
+        [
+          52,
+          1,
+          61,
+          0,
+          8
+        ],
+        [
+          54,
+          1,
+          63,
+          0,
+          7
+        ]
+      ]
+    },
+    {
+      "scenario": 0,
+      "duration": 4,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          44,
+          1,
+          53,
+          0,
+          7
+        ],
+        [
+          46,
+          1,
+          55,
+          0,
+          7
+        ],
+        [
+          47,
+          1,
+          56,
+          0,
+          7
+        ],
+        [
+          48,
+          1,
+          57,
+          0,
+          8
+        ],
+        [
+          49,
+          1,
+          58,
+          0,
+          8
+        ],
+        [
+          50,
+          1,
+          59,
+          0,
+          8
+        ],
+        [
+          52,
+          1,
+          61,
+          0,
+          8
+        ],
+        [
+          54,
+          1,
+          63,
+          0,
+          7
+        ]
+      ]
+    },
+    {
+      "scenario": 1,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          44,
+          1,
+          54,
+          1,
+          8
+        ],
+        [
+          46,
+          1,
+          56,
+          1,
+          8
+        ],
+        [
+          47,
+          1,
+          57,
+          1,
+          8
+        ],
+        [
+          48,
+          1,
+          58,
+          1,
+          8
+        ],
+        [
+          49,
+          1,
+          59,
+          0,
+          8
+        ],
+        [
+          50,
+          1,
+          60,
+          0,
+          8
+        ],
+        [
+          52,
+          1,
+          62,
+          0,
+          8
+        ],
+        [
+          54,
+          1,
+          64,
+          0,
+          8
+        ]
+      ]
+    },
+    {
+      "scenario": 1,
+      "duration": 4,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          44,
+          1,
+          54,
+          1,
+          8
+        ],
+        [
+          46,
+          1,
+          56,
+          1,
+          8
+        ],
+        [
+          47,
+          1,
+          57,
+          1,
+          8
+        ],
+        [
+          48,
+          1,
+          58,
+          1,
+          8
+        ],
+        [
+          49,
+          1,
+          59,
+          0,
+          8
+        ],
+        [
+          50,
+          1,
+          60,
+          0,
+          8
+        ],
+        [
+          52,
+          1,
+          62,
+          0,
+          8
+        ],
+        [
+          54,
+          1,
+          64,
+          0,
+          8
+        ]
+      ]
+    },
+    {
+      "scenario": 2,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          100,
+          0,
+          -1,
+          1,
+          0
+        ],
+        [
+          102,
+          1,
+          111,
+          1,
+          7
+        ],
+        [
+          103,
+          1,
+          112,
+          1,
+          7
+        ],
+        [
+          104,
+          1,
+          113,
+          1,
+          7
+        ],
+        [
+          105,
+          1,
+          114,
+          1,
+          7
+        ],
+        [
+          106,
+          1,
+          115,
+          0,
+          8
+        ],
+        [
+          108,
+          1,
+          117,
+          0,
+          7
+        ],
+        [
+          110,
+          1,
+          119,
+          0,
+          7
+        ]
+      ]
+    },
+    {
+      "scenario": 2,
+      "duration": 4,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          100,
+          0,
+          -1,
+          1,
+          0
+        ],
+        [
+          102,
+          1,
+          111,
+          1,
+          7
+        ],
+        [
+          103,
+          1,
+          112,
+          1,
+          7
+        ],
+        [
+          104,
+          1,
+          113,
+          1,
+          7
+        ],
+        [
+          105,
+          1,
+          114,
+          1,
+          7
+        ],
+        [
+          106,
+          1,
+          115,
+          0,
+          8
+        ],
+        [
+          108,
+          1,
+          117,
+          0,
+          7
+        ],
+        [
+          110,
+          1,
+          119,
+          0,
+          7
+        ]
+      ]
+    },
+    {
+      "scenario": 3,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          44,
+          1,
+          54,
+          0,
+          0
+        ],
+        [
+          46,
+          1,
+          56,
+          0,
+          0
+        ],
+        [
+          47,
+          1,
+          57,
+          0,
+          0
+        ],
+        [
+          48,
+          1,
+          58,
+          0,
+          0
+        ],
+        [
+          49,
+          1,
+          59,
+          0,
+          0
+        ],
+        [
+          50,
+          1,
+          60,
+          0,
+          0
+        ],
+        [
+          52,
+          1,
+          62,
+          0,
+          0
+        ],
+        [
+          54,
+          1,
+          64,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "scenario": 3,
+      "duration": 4,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          44,
+          1,
+          54,
+          0,
+          0
+        ],
+        [
+          46,
+          1,
+          56,
+          0,
+          0
+        ],
+        [
+          47,
+          1,
+          57,
+          0,
+          0
+        ],
+        [
+          48,
+          1,
+          58,
+          0,
+          0
+        ],
+        [
+          49,
+          1,
+          59,
+          0,
+          0
+        ],
+        [
+          50,
+          1,
+          60,
+          0,
+          0
+        ],
+        [
+          52,
+          1,
+          62,
+          0,
+          0
+        ],
+        [
+          54,
+          1,
+          64,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "single_frame_boundary_trials": [
+    {
+      "scenario": 0,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          40,
+          1,
+          49,
+          0,
+          8
+        ],
+        [
+          41,
+          1,
+          50,
+          0,
+          7
+        ],
+        [
+          42,
+          1,
+          51,
+          0,
+          7
+        ],
+        [
+          43,
+          1,
+          52,
+          0,
+          7
+        ],
+        [
+          44,
+          1,
+          53,
+          0,
+          7
+        ]
+      ]
+    },
+    {
+      "scenario": 1,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          40,
+          0,
+          -1,
+          1,
+          0
+        ],
+        [
+          41,
+          0,
+          -1,
+          1,
+          0
+        ],
+        [
+          42,
+          0,
+          -1,
+          1,
+          0
+        ],
+        [
+          43,
+          1,
+          53,
+          1,
+          8
+        ],
+        [
+          44,
+          1,
+          54,
+          1,
+          8
+        ]
+      ]
+    },
+    {
+      "scenario": 2,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          100,
+          0,
+          -1,
+          1,
+          0
+        ],
+        [
+          101,
+          1,
+          110,
+          1,
+          7
+        ],
+        [
+          102,
+          1,
+          111,
+          1,
+          7
+        ]
+      ]
+    },
+    {
+      "scenario": 3,
+      "duration": 1,
+      "rows": [
+        [
+          999,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          40,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          41,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          42,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          43,
+          0,
+          -1,
+          0,
+          0
+        ],
+        [
+          44,
+          1,
+          54,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "object_divergence_from_matched_no_request_control": [
+    {
+      "scenario": 0,
+      "request_tick": 40,
+      "response_observed": true,
+      "first_object_divergence_tick": 45,
+      "first_attack_tick": 49
+    },
+    {
+      "scenario": 0,
+      "request_tick": 41,
+      "response_observed": true,
+      "first_object_divergence_tick": 46,
+      "first_attack_tick": 50
+    },
+    {
+      "scenario": 0,
+      "request_tick": 42,
+      "response_observed": true,
+      "first_object_divergence_tick": 47,
+      "first_attack_tick": 51
+    },
+    {
+      "scenario": 0,
+      "request_tick": 43,
+      "response_observed": true,
+      "first_object_divergence_tick": 48,
+      "first_attack_tick": 52
+    },
+    {
+      "scenario": 0,
+      "request_tick": 44,
+      "response_observed": true,
+      "first_object_divergence_tick": 49,
+      "first_attack_tick": 53
+    },
+    {
+      "scenario": 1,
+      "request_tick": 40,
+      "response_observed": false,
+      "first_object_divergence_tick": null,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 1,
+      "request_tick": 41,
+      "response_observed": false,
+      "first_object_divergence_tick": null,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 1,
+      "request_tick": 42,
+      "response_observed": false,
+      "first_object_divergence_tick": null,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 1,
+      "request_tick": 43,
+      "response_observed": true,
+      "first_object_divergence_tick": 48,
+      "first_attack_tick": 53
+    },
+    {
+      "scenario": 1,
+      "request_tick": 44,
+      "response_observed": true,
+      "first_object_divergence_tick": 49,
+      "first_attack_tick": 54
+    },
+    {
+      "scenario": 2,
+      "request_tick": 100,
+      "response_observed": false,
+      "first_object_divergence_tick": null,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 2,
+      "request_tick": 101,
+      "response_observed": true,
+      "first_object_divergence_tick": 106,
+      "first_attack_tick": 110
+    },
+    {
+      "scenario": 2,
+      "request_tick": 102,
+      "response_observed": true,
+      "first_object_divergence_tick": 107,
+      "first_attack_tick": 111
+    },
+    {
+      "scenario": 3,
+      "request_tick": 40,
+      "response_observed": false,
+      "first_object_divergence_tick": 49,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 3,
+      "request_tick": 41,
+      "response_observed": false,
+      "first_object_divergence_tick": 49,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 3,
+      "request_tick": 42,
+      "response_observed": false,
+      "first_object_divergence_tick": 49,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 3,
+      "request_tick": 43,
+      "response_observed": false,
+      "first_object_divergence_tick": 49,
+      "first_attack_tick": null
+    },
+    {
+      "scenario": 3,
+      "request_tick": 44,
+      "response_observed": true,
+      "first_object_divergence_tick": 49,
+      "first_attack_tick": 54
+    }
+  ],
+  "limits": [
+    "relative probe ticks, not universal recovery or frame-advantage values",
+    "first RAM-object divergence is not independently identified animation or input acceptance",
+    "attack-box onset includes startup and cannot identify exact input acceptance",
+    "held A1 versus A4 equivalence does not establish command-motion or other-duration buffering",
+    "one character matchup, no opposite-side/airborne/multi-hit/roster qualification",
+    "production source, candidate, installed beta and user F5 unchanged"
+  ]
+}

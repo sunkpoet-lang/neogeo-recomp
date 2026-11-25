@@ -1,0 +1,86 @@
+{
+  "date": "2026-11-24",
+  "game": "kof2002",
+  "accepted_exe_sha256_unchanged": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+  "selection": "normal menus independently reach Kyo P1 versus Athena or Terry P2; confirmed in selection/native combat captures; no fighter-ID RAM patches",
+  "controls": {
+    "athena-A": {
+      "actor": "P2, initially right side facing left",
+      "route": "existing bounded dummy recording, driving P2 with P1 neutral",
+      "frames_each_visibility": 900,
+      "P2_nonzero_input_frames_each": 100,
+      "projectile_visible_frames_each": 359,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 118,
+        "rectangles_equal_to_original_lua": 943,
+        "kind_counts": {
+          "proj. attack": 117,
+          "proj. vulnerability": 118,
+          "push": 236,
+          "vulnerability": 472
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native P2 athena-A projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "athena-C": {
+      "actor": "P2, initially right side facing left",
+      "route": "existing bounded dummy recording, driving P2 with P1 neutral",
+      "frames_each_visibility": 900,
+      "P2_nonzero_input_frames_each": 100,
+      "projectile_visible_frames_each": 183,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 58,
+        "rectangles_equal_to_original_lua": 462,
+        "kind_counts": {
+          "proj. attack": 56,
+          "proj. vulnerability": 58,
+          "push": 116,
+          "vulnerability": 232
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native P2 athena-C projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "terry-A": {
+      "actor": "P2, initially right side facing left",
+      "route": "existing bounded dummy recording, driving P2 with P1 neutral",
+      "frames_each_visibility": 900,
+      "P2_nonzero_input_frames_each": 100,
+      "projectile_visible_frames_each": 182,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 65,
+        "rectangles_equal_to_original_lua": 512,
+        "kind_counts": {
+          "proj. attack": 57,
+          "proj. vulnerability": 65,
+          "push": 130,
+          "vulnerability": 260
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native P2 terry-A projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    }
+  },
+  "total_snapshots": 241,
+  "total_projectile_rectangles_equal": 471,
+  "presentation": "board hash and complete game serialisation unchanged around every Shown; expected overlay geometry checked",
+  "images": {
+    "projectile-p2-athena-A.png": "7fcc46f28327200d5d794295a892c62de26e1c89b6d466be61526d211eff71af",
+    "projectile-p2-athena-C.png": "bd4bcee674008f1ad4318147ec1722f50fe6029a936360095eb72fa5d925d109",
+    "projectile-p2-terry-A.png": "df1ec08868f86602fb855f48e23779a3eb06c729bc5f3ec0bd3bea0c47381b2f",
+    "projectile-p2-athena-selection.png": "664ee9a66dd75df1d534da27993f18e59e1b592742d7b01caa1fb4c0d7e5c51d",
+    "projectile-p2-terry-selection.png": "0a8297be008df869cc4e6457cc00f95e43bcfb095d312f6fcc084cb20ce644d2"
+  },
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "scope": "sampled P2 Athena A/C and Terry A from initial left-facing states; not reversed P2 facing, all moves, player hardware, Internet or collision outcomes",
+  "production_source_changed": false,
+  "new_binary_or_state_schema": false,
+  "privacy": "RAM/saves/PCM/Lua wrappers remain ignored local work"
+}

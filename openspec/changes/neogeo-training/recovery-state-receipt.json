@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-22",
+  "source_base": "1e41731143f892d55cd0ee98d92734ddf0780cb3",
+  "scope": "KOF98 dormant recovery detector state foundation; no automatic input/menu enabled",
+  "training_mark": "0x4b393857",
+  "imported_actual_marks": [
+    "0x4b393854",
+    "0x4b393855",
+    "0x4b393856"
+  ],
+  "pending_incident_roundtrips": 3,
+  "atomic_invalid_or_truncated_payloads_rejected": 8,
+  "pause_presentations": 60,
+  "clear_guards": [
+    "training reset",
+    "training exit",
+    "recording ownership",
+    "online",
+    "viewer",
+    "hard reset"
+  ],
+  "ctest_passed": 13,
+  "offline_old_new_and_boxes_hashes_audio_equal_frames": 900,
+  "random_standing_old_new_hashes_audio_equal_frames": 900,
+  "random_low_old_new_hashes_audio_equal_frames": 900,
+  "guarded_rollback_stress_hashes_audio_equal_frames": 300,
+  "new_build_exe_sha256": "23a06d9c1a3fb60ef9a427668f79602b8545b26e8df1da33fc6dc7a8e1770dac",
+  "accepted_candidate_exe_sha256_unchanged": "061e1d2bf03d6327a08e1ec7ca12c6d64c1260bc57c6995ce1f3bea283c4752c",
+  "limits": [
+    "Next is available as a component but not called by production beforeFrame",
+    "serialization tests arm detector via controlled read facts, not automatic gameplay response",
+    "no new Internet acceptance",
+    "production response playback/state ownership integration still pending",
+    "old executables cannot load mark57 saves; accepted package/user files untouched",
+    "initial CTest invocation lacked per-process toolchain PATH; corrected final run passes"
+  ]
+}

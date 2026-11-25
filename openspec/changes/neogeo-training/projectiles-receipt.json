@@ -10,7 +10,7 @@
       "vulnerability": 144
     },
     "unknown_projectile_ownership": true,
-    "scope": "native Iori projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+    "scope": "native Yuri projectile battle snapshots; character corrected from captured game HUD on 21 November 2026; original Lua runtime reference; throws and full roster not accepted"
   },
   "reference_source_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
   "executable_acceptance": {
@@ -39,7 +39,7 @@
     }
   },
   "limitations": [
-    "Iori scene, not full roster acceptance",
+    "Yuri scene (previous Iori label corrected), not full roster acceptance",
     "no projectile owner inferred",
     "throws pending",
     "no Lua or reference compiler shipped"

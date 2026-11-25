@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "51af47c1a60a5f71e4993395d80b2fc3486ecb3f57ae4a8f050b0aaef37a0d9f",
+  "capture": "native production player-only overlay, offscreen GPU, independently compared with original Lua; no simulated UI",
+  "images": {
+    "hitboxes.png": "9961a5023088e2829a830b42a7a24a1d7b18584e0a14e5c5a149132f01c2d686",
+    "hitboxes-menu.png": "13ed4b9e9b95d52073d9ee34d2ffa00ab3e8ce728563251ed98e75fe42bebba2"
+  }
+}

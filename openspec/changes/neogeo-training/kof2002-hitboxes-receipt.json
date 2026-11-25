@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-22",
+  "game": "kof2002",
+  "scope": "read-only player hurt/attack/guard/push boxes and axes only",
+  "profile": {
+    "phase": "0x10b056",
+    "camera": "0x10b08e",
+    "additional_hurt_id": 23
+  },
+  "original_lua_agreement": {
+    "passed": true,
+    "snapshots": 600,
+    "rectangles_equal_to_original_lua": 3282,
+    "kind_counts": {
+      "push": 1200,
+      "vulnerability": 1890,
+      "guard": 176,
+      "attack": 16
+    },
+    "camera_positions": 62,
+    "player_facings": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        1
+      ]
+    ],
+    "p1_y_range": [
+      141,
+      220
+    ],
+    "paused_load_and_reset_fresh": true,
+    "source_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+    "exe_sha256": "a7c0f3e2970383e23c18a7eaf9c2e31d20bbee43212929908a32dfa5d8199a24",
+    "scope": "player boxes only; actual original Lua executed read-only against native RAM snapshots, original write callbacks not invoked; no projectile/throw acceptance"
+  },
+  "regression": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "a7c0f3e2970383e23c18a7eaf9c2e31d20bbee43212929908a32dfa5d8199a24",
+    "scope": "offline native player boxes; loopback/Internet and projectile/throw coverage not claimed"
+  },
+  "ctest_passed": 14,
+  "schema_unchanged": true,
+  "native_lifecycle": [
+    "paused load fresh geometry",
+    "reset fresh geometry",
+    "ended training clears",
+    "online clears",
+    "viewer clears",
+    "read-only board hash"
+  ],
+  "images": {
+    "exe_sha256": "a7c0f3e2970383e23c18a7eaf9c2e31d20bbee43212929908a32dfa5d8199a24",
+    "capture": "native production player-only overlay, offscreen GPU, independently compared with original Lua; no simulated UI",
+    "images": {
+      "hitboxes.png": "b035da294dff24276649dfb7bc68d20501054ecda6d66792694c1a07a71a6bfb",
+      "hitboxes-menu.png": "c978704bece4d65eadb07370e3a5ad08a371199faf24902ec93cea2fd2a2e7c8"
+    }
+  },
+  "accepted_candidate_sha256_unchanged": "7998280fa7f7213203cb85335861ea15f5000b8d1a73c6e0da73a63c0b982e4a",
+  "package_smoke": "direct2-frame headless without toolchain PATH passed",
+  "limits": [
+    "sampled Kyo/Iori scenes, not full roster or collision correctness certification",
+    "no projectile/throw/throwability/frame-advantage qualification",
+    "initial camera mismatch against reference corrected before acceptance; first side-cross recipe adjusted using normal recorded P2 jump",
+    "no new Internet acceptance or installed beta replacement"
+  ]
+}

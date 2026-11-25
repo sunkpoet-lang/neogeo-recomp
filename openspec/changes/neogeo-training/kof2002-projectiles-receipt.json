@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-22",
+  "game": "kof2002",
+  "exe_sha256": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "geometry": {
+    "passed": true,
+    "snapshots": 136,
+    "rectangles_equal_to_original_lua": 1077,
+    "kind_counts": {
+      "proj. attack": 130,
+      "proj. vulnerability": 136,
+      "push": 272,
+      "vulnerability": 539
+    },
+    "unknown_projectile_ownership": true,
+    "scope": "native Iori projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+  },
+  "native_lifecycle": "projectile lifetime, read-only presentation, toggle, paused load and online/viewer/session guards PASS; visible frames 5",
+  "native_board_and_full_game_state_read_only": true,
+  "pause_presentations": 60,
+  "ctest_passed": 14,
+  "regression": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+    "scope": "offline native player boxes; loopback/Internet and projectile/throw coverage not claimed"
+  },
+  "package_smoke": "direct two-frame startup without toolchain PATH passed",
+  "previous_candidate_sha256_unchanged": "c42619ece2dbbd3fa229742c4fcd9b5039a04797a30704357d6ed103d320a7c7",
+  "state_schema_unchanged": true,
+  "images": {
+    "exe_sha256": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+    "capture": "actual native GPU overlay and menu, not simulated UI",
+    "images": {
+      "projectiles.png": "98612f54ec24c7692ef206859a9e0bcb91c2f796a2a8567be7c2baa2c5f90672",
+      "projectiles-menu.png": "4bd5b44eb6964b9b59e9b5de4d40de164d2921a9515c8a9aa631bd36d1601c47"
+    }
+  },
+  "limits": [
+    "sampled Iori projectiles, not full roster",
+    "no ownership inferred from list order",
+    "not collision-engine or frame-advantage certification",
+    "no new Internet acceptance or installed launcher update"
+  ]
+}

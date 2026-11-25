@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+  "capture": "actual native GPU overlay and menu, not simulated UI",
+  "images": {
+    "projectiles.png": "98612f54ec24c7692ef206859a9e0bcb91c2f796a2a8567be7c2baa2c5f90672",
+    "projectiles-menu.png": "4bd5b44eb6964b9b59e9b5de4d40de164d2921a9515c8a9aa631bd36d1601c47"
+  }
+}

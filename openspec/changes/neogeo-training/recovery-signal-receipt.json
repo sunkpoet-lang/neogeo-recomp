@@ -1,0 +1,641 @@
+{
+  "date": "2026-11-22",
+  "scope": "private native recovery-signal research, no production reversal option",
+  "primary_reference": {
+    "url": "https://github.com/willococa/fightcade-kof-training-mode-extension/blob/main/kof_training.lua",
+    "consulted": "2026-11-22",
+    "revision_pinned": false,
+    "use": "RAM-field hypotheses contrasted with native observations; no source copied into production",
+    "limits": "main URL is mutable; pin source revision before a source-derived production implementation"
+  },
+  "input_bus_controls": {
+    "runs": [
+      {
+        "scenario": 0,
+        "request_tick": 60,
+        "p2_A_bus_read_ticks": [
+          60
+        ],
+        "scope": "68000 samples P2 A in requested tick; not proof of move acceptance"
+      },
+      {
+        "scenario": 1,
+        "request_tick": 43,
+        "p2_A_bus_read_ticks": [
+          43
+        ],
+        "scope": "68000 samples P2 A in requested tick; not proof of move acceptance"
+      },
+      {
+        "scenario": 2,
+        "request_tick": 101,
+        "p2_A_bus_read_ticks": [
+          101
+        ],
+        "scope": "68000 samples P2 A in requested tick; not proof of move acceptance"
+      },
+      {
+        "scenario": 3,
+        "request_tick": 44,
+        "p2_A_bus_read_ticks": [
+          44
+        ],
+        "scope": "68000 samples P2 A in requested tick; not proof of move acceptance"
+      }
+    ],
+    "private_board_instrumentation_only": true
+  },
+  "field_observations": [
+    {
+      "scene": "idle",
+      "frames": 240,
+      "p2_object_field_transitions": {
+        "0x21": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x72": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x73": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0xe3": [
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "scene": "standing hit",
+      "frames": 240,
+      "p2_object_field_transitions": {
+        "0x21": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x72": [
+          [
+            0,
+            0
+          ],
+          [
+            19,
+            1
+          ],
+          [
+            48,
+            0
+          ]
+        ],
+        "0x73": [
+          [
+            0,
+            0
+          ],
+          [
+            19,
+            2
+          ],
+          [
+            48,
+            0
+          ]
+        ],
+        "0xe3": [
+          [
+            0,
+            0
+          ],
+          [
+            18,
+            96
+          ],
+          [
+            19,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "scene": "sweep",
+      "frames": 240,
+      "p2_object_field_transitions": {
+        "0x21": [
+          [
+            0,
+            0
+          ],
+          [
+            34,
+            12
+          ],
+          [
+            35,
+            22
+          ],
+          [
+            36,
+            31
+          ],
+          [
+            37,
+            37
+          ],
+          [
+            38,
+            43
+          ],
+          [
+            39,
+            47
+          ],
+          [
+            40,
+            51
+          ],
+          [
+            41,
+            54
+          ],
+          [
+            42,
+            56
+          ],
+          [
+            43,
+            57
+          ],
+          [
+            44,
+            58
+          ],
+          [
+            45,
+            59
+          ],
+          [
+            49,
+            57
+          ],
+          [
+            50,
+            55
+          ],
+          [
+            51,
+            53
+          ],
+          [
+            52,
+            50
+          ],
+          [
+            53,
+            46
+          ],
+          [
+            54,
+            41
+          ],
+          [
+            55,
+            36
+          ],
+          [
+            56,
+            31
+          ],
+          [
+            57,
+            24
+          ],
+          [
+            58,
+            17
+          ],
+          [
+            59,
+            10
+          ],
+          [
+            60,
+            1
+          ],
+          [
+            61,
+            0
+          ],
+          [
+            65,
+            2
+          ],
+          [
+            66,
+            3
+          ],
+          [
+            67,
+            4
+          ],
+          [
+            69,
+            3
+          ],
+          [
+            70,
+            2
+          ],
+          [
+            71,
+            0
+          ]
+        ],
+        "0x72": [
+          [
+            0,
+            0
+          ],
+          [
+            22,
+            1
+          ],
+          [
+            81,
+            0
+          ]
+        ],
+        "0x73": [
+          [
+            0,
+            0
+          ],
+          [
+            22,
+            51
+          ],
+          [
+            61,
+            53
+          ],
+          [
+            65,
+            57
+          ],
+          [
+            72,
+            72
+          ],
+          [
+            106,
+            0
+          ]
+        ],
+        "0xe3": [
+          [
+            0,
+            0
+          ],
+          [
+            21,
+            96
+          ],
+          [
+            105,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "scene": "blocked sweep",
+      "frames": 240,
+      "p2_object_field_transitions": {
+        "0x21": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x72": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x73": [
+          [
+            0,
+            23
+          ],
+          [
+            15,
+            35
+          ],
+          [
+            21,
+            36
+          ],
+          [
+            68,
+            37
+          ],
+          [
+            78,
+            23
+          ]
+        ],
+        "0xe3": [
+          [
+            0,
+            0
+          ],
+          [
+            21,
+            32
+          ],
+          [
+            49,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "scene": "jump",
+      "frames": 160,
+      "p2_object_field_transitions": {
+        "0x21": [
+          [
+            0,
+            0
+          ],
+          [
+            67,
+            6
+          ],
+          [
+            68,
+            11
+          ],
+          [
+            69,
+            16
+          ],
+          [
+            70,
+            21
+          ],
+          [
+            71,
+            25
+          ],
+          [
+            72,
+            29
+          ],
+          [
+            73,
+            33
+          ],
+          [
+            74,
+            36
+          ],
+          [
+            75,
+            38
+          ],
+          [
+            76,
+            40
+          ],
+          [
+            77,
+            42
+          ],
+          [
+            78,
+            43
+          ],
+          [
+            82,
+            41
+          ],
+          [
+            83,
+            40
+          ],
+          [
+            84,
+            38
+          ],
+          [
+            85,
+            35
+          ],
+          [
+            86,
+            32
+          ],
+          [
+            87,
+            29
+          ],
+          [
+            88,
+            25
+          ],
+          [
+            89,
+            21
+          ],
+          [
+            90,
+            16
+          ],
+          [
+            91,
+            11
+          ],
+          [
+            92,
+            5
+          ],
+          [
+            93,
+            0
+          ]
+        ],
+        "0x72": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x73": [
+          [
+            0,
+            0
+          ],
+          [
+            62,
+            3
+          ],
+          [
+            67,
+            15
+          ],
+          [
+            80,
+            16
+          ],
+          [
+            93,
+            6
+          ],
+          [
+            98,
+            0
+          ]
+        ],
+        "0xe3": [
+          [
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "scene": "A",
+      "frames": 160,
+      "p2_object_field_transitions": {
+        "0x21": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x72": [
+          [
+            0,
+            0
+          ]
+        ],
+        "0x73": [
+          [
+            0,
+            0
+          ],
+          [
+            65,
+            80
+          ],
+          [
+            91,
+            0
+          ]
+        ],
+        "0xe3": [
+          [
+            0,
+            0
+          ],
+          [
+            70,
+            128
+          ]
+        ]
+      }
+    }
+  ],
+  "conservative_response_trials": {
+    "runs": [
+      {
+        "scenario": 0,
+        "negative_control": [
+          999,
+          0,
+          -1,
+          0
+        ],
+        "automatic_signal_trial": [
+          998,
+          0,
+          -1,
+          0
+        ]
+      },
+      {
+        "scenario": 1,
+        "negative_control": [
+          999,
+          0,
+          -1,
+          0
+        ],
+        "automatic_signal_trial": [
+          49,
+          1,
+          59,
+          0
+        ]
+      },
+      {
+        "scenario": 2,
+        "negative_control": [
+          999,
+          0,
+          -1,
+          0
+        ],
+        "automatic_signal_trial": [
+          107,
+          1,
+          116,
+          0
+        ]
+      },
+      {
+        "scenario": 3,
+        "negative_control": [
+          999,
+          0,
+          -1,
+          0
+        ],
+        "automatic_signal_trial": [
+          50,
+          1,
+          60,
+          0
+        ]
+      }
+    ],
+    "scope": "conservative read-only signal followed by ordinary A input in private harness; not frame-perfect reversal or production capability"
+  },
+  "predicate_scope": "arm on observed hit status (and nonzero height for sweep), then wait for hit/move/height and bits0x60 clear; blocked trial arms on flags0x20/0xa0 and fires when clear; separate private scenario-specific trials",
+  "limits": [
+    "bus read proves CPU sampling, not game-level input acceptance",
+    "height zero is not sufficient for recovery: ordinary jump also raises height and sweep has intermediate ground contacts",
+    "hit-status clear alone precedes end of the swept animation in this scene",
+    "conservative response is later than earliest successful host request and is not frame-perfect reversal",
+    "scenario-specific private gate is not a general roster classifier",
+    "private bus build adds read logging only; no instrumented executable distributed",
+    "production source and accepted candidate unchanged"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "acceptance": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "2a0ab84714329027915a4652798c8d4e2220dfafcd1c22e8248a7bb1455b3665",
+    "scope": "navigation-only changes; 900-frame old/off/on state/audio and 300-frame rollback stress; no new Internet acceptance"
+  },
+  "ctest_passed": 11,
+  "native_menu_captures": 7,
+  "stable_command_ids_and_pairing": true,
+  "stable_feature_ids": true,
+  "images": {
+    "exe_sha256": "2a0ab84714329027915a4652798c8d4e2220dfafcd1c22e8248a7bb1455b3665",
+    "capture": "native menu harness linked to exact production objects; actual owned-game scene",
+    "images": {
+      "training-sections.png": "2e265bd03c9fba07309870cdb18ba5d2f628558a53dd4843951ed5e81285b352",
+      "recordings-section.png": "3bdda8137aeaa886f6bcec92c7a5a98369fb02d1888bbff0c4ec9192022e721d",
+      "session-section.png": "5c0299b37656140431b268779c6b8a46a82a711f3840c391aabcb9041f91db16"
+    }
+  },
+  "scope": "six-section native navigation; no new gameplay algorithms or draggable HUD"
+}

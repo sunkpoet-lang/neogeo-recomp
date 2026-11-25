@@ -1,0 +1,67 @@
+{
+  "reference_events": 20,
+  "players": [
+    0,
+    1
+  ],
+  "production_geometry_matches_actual_original_lua": true,
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "native_presentation_result": "P1 8 P2 9 throw frames; expiry/pause/load/reset/byte/word/detach/guards PASS",
+  "executable_acceptance": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "804f0954bf1a04dc0eb5c3c280b5cbc2e8770fba3088ee9f8e259515246bca7e",
+    "scope": "900 offline old/off/on frames with identical hashes and WAV; 300-frame rollback stress with training guarded; no new Internet acceptance"
+  },
+  "other_game_regression": [
+    {
+      "game": "kof95",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "847a0973ec6db6e742f0c03ebc4204e42cacab8bd84a5b262e1fd759727dc12a"
+    },
+    {
+      "game": "kof97",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "406b5cef450b023f75873bc5ed003cd7d5b8099980d7d05c318b170e2e9911ed"
+    },
+    {
+      "game": "kof2002",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "977b41ee31ac47aea38727bf50771aa108610532e01eafb1d9d93c5e4d4bfd9a"
+    },
+    {
+      "game": "kf2k2mp2",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "1ea7336f07f80865feb78a8f91369c954d207465d82ccce6dd6a1e1d37862fa4"
+    }
+  ],
+  "ctest_passed": 11,
+  "images": {
+    "exe_sha256": "804f0954bf1a04dc0eb5c3c280b5cbc2e8770fba3088ee9f8e259515246bca7e",
+    "capture": "offscreen GPU presentation in native test harness linked to exact production game/board/port objects; actual event frame, no RAM edits",
+    "images": {
+      "throws.png": "c4c5399873afd989425df2c930c458f36b7958c32c4eea6815783268ea2b3f38",
+      "throws-menu.png": "f015153f8aceddbaa37387cff08ac4465fa84ac27a56b2e1d1dd4f19a2a24a73",
+      "throws-p2.png": "d9a521f9f03f35bfa1cf047e4d12dcda260fe570f72e55e1d41dca9710faa6bd"
+    }
+  },
+  "source_sha256": {
+    "machine/neogeo.h": "10c77d83bc323e3ac897591270c3cf25a46f5b640fe407147bcd16088112bf7d",
+    "machine/neogeo.cpp": "5582c27c990d379191c4c940f101477f5b68bc5f6b0c1b644a7ecb07c0a525c1",
+    "games/kof98/src/hitboxes.h": "61db307a0859965d075fb31b1a4019c16f02ddaa114b0dc5b0015cffa86a4c86",
+    "games/kof98/src/training.h": "5058ac09471ef3fdb9ef9df8d8901076ac44708328f43168e32d12f10727a9ae"
+  },
+  "limits": [
+    "sampled ordinary attempts, not all characters/moves",
+    "side-switch and aerial/command throw coverage pending",
+    "throwability areas not implemented",
+    "transient events are diagnostic and not saved",
+    "no new Internet/player acceptance"
+  ]
+}

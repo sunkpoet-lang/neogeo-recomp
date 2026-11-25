@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "096a7d019dcf197022dfec5bd8d69305de241a54b4b986557fd92307c521f140",
+  "capture": "actual offscreen native game/board/port production objects; verified Iori/Brian fixture derived from a preserved user F5 state",
+  "images": {
+    "iori-command.png": "20c990c92fa2a560dab474ad94154f8c451abcd115351dbaffe40474c74bf2b7",
+    "iori-command-menu.png": "99bf297d3e0b15cb56038b6a0d5240f1f846feda9e4819ba9079ca07e9bda96b"
+  }
+}

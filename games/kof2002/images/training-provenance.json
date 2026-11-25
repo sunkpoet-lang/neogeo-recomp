@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "7998280fa7f7213203cb85335861ea15f5000b8d1a73c6e0da73a63c0b982e4a",
+  "capture": "native production adapter objects, offscreen GPU Kyo/Iori fixture; actual RESP playback and Dummy menu",
+  "images": {
+    "training-response.png": "eed5d7148517d5b1d9f92e78a3ad29eff770dfa7b264668dd1625addcf3a337d",
+    "training-response-menu.png": "556cab152aadbea831e58cbf1fcfae610ddaff7641a2b8ec7753d6ec5cb17cfc"
+  }
+}

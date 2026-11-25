@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-24",
+  "game": "kof2002",
+  "accepted_exe_sha256_unchanged": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+  "fighter": "Athena P1 versus Iori P2, identified in normal selection and native combat captures",
+  "selection": "normal menu/cursor/team/order inputs; no character-ID RAM patch",
+  "controls": {
+    "athena-A": {
+      "input": "quarter-circle-back + A",
+      "frames_each": 900,
+      "projectile_visible_frames_each": 351,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 117,
+        "rectangles_equal_to_original_lua": 929,
+        "kind_counts": {
+          "proj. attack": 110,
+          "proj. vulnerability": 117,
+          "push": 234,
+          "vulnerability": 468
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native Athena athena-A projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "athena-C": {
+      "input": "quarter-circle-back + C",
+      "frames_each": 900,
+      "projectile_visible_frames_each": 183,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 58,
+        "rectangles_equal_to_original_lua": 462,
+        "kind_counts": {
+          "proj. attack": 56,
+          "proj. vulnerability": 58,
+          "push": 116,
+          "vulnerability": 232
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native Athena athena-C projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    }
+  },
+  "presentation": "overlay geometry plus unchanged board hash and complete game serialisation around each presentation",
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "images": {
+    "projectile-athena-A.png": "f278bf569cb8700dc6331b5396a3792ff8c04a9a124e7a18d2b6eb1ea7737a74",
+    "projectile-athena-C.png": "159ec3784f1ea9bc324656ee8378d65bd15a77f5446e41bb590d68ab5192d880",
+    "projectile-athena-selection.png": "2d291cc52c5fb0a6b4dabc6482a1968f9460406f16f86a13741103b74f53d2aa"
+  },
+  "initial_attempt": "quarter-circle-forward + A produced no projectile in both sets; retained privately as failed motion recipe, not positive coverage",
+  "scope": "sampled ground quarter-circle-back + A/C; not all moves, facings, roster, collision outcomes or frame advantage",
+  "production_source_changed": false,
+  "new_executable_required": false,
+  "privacy": "raw RAM snapshots, savestates, PCM and reference Lua wrappers remain ignored work data"
+}

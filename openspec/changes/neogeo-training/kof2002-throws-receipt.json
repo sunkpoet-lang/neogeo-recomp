@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-22",
+  "game": "kof2002",
+  "scope": "bounded event-time player throw attempts, not opponent throwability",
+  "exe_sha256": "08425ecc665c258a32938d4da2e8faacc10da7379fa24b4a07beed6818430a0a",
+  "reference": {
+    "events": 31,
+    "both_players": true,
+    "both_facings_per_player": true,
+    "geometry_matches_actual_original_Lua_callback": true,
+    "production_native_geometry_compared": true,
+    "watchpoint": "0x10e7b5",
+    "camera": "0x10b08e",
+    "observer_on_off_equal_frames_per_trial": 600,
+    "trials": 4,
+    "hashes_and_audio_equal": true,
+    "scope": "ordinary C/D attempt samples, not throwability/command throws/full roster"
+  },
+  "native_overlay_result": "P1 7 P2 8 throw frames; expiry/pause/load/reset/byte/word/detach/guards PASS",
+  "ctest_passed": 14,
+  "regression": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "08425ecc665c258a32938d4da2e8faacc10da7379fa24b4a07beed6818430a0a",
+    "scope": "offline native player boxes; loopback/Internet and projectile/throw coverage not claimed"
+  },
+  "state_schema_unchanged": true,
+  "max_live_events": 2,
+  "epoch_and_owner_guarded": true,
+  "images": {
+    "exe_sha256": "08425ecc665c258a32938d4da2e8faacc10da7379fa24b4a07beed6818430a0a",
+    "capture": "native GPU production event-time attempt overlay; actual gameplay and menu, no simulated UI",
+    "images": {
+      "throws.png": "1f3d472a0e820447d7cb483e5d627d2330e078ed24f35b5e71b79c84c1eece81",
+      "throws-p2.png": "9c9b900487e890b22f1817b7f827768416887687496b09ffcdc8bf1e369cab72",
+      "throws-menu.png": "6294e7e4bb0b6628be53b6a3a1ac8c3b2147e6cb2861fa500753fb9e98860a36"
+    }
+  },
+  "accepted_hitbox_candidate_sha256_unchanged": "a7c0f3e2970383e23c18a7eaf9c2e31d20bbee43212929908a32dfa5d8199a24",
+  "package_smoke": "direct2-frame headless without toolchain PATH passed",
+  "limits": [
+    "ordinary C/D samples, not command/air throws or complete roster",
+    "no projectile or throwability capability",
+    "no new Internet acceptance or installed beta replacement"
+  ]
+}

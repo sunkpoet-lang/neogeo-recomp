@@ -1,0 +1,40 @@
+{
+  "acceptance": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "aff62d316c2025392e89199c6c3be7de81add9bb9b8163fb129abb86ccf7d223",
+    "scope": "default mode unchanged: 900 old/off/on hashes/WAV; random mode repeats 1200 hashes/WAV exactly; guarded 300-frame rollback stress"
+  },
+  "ctest_passed": 12,
+  "native_result": "guard trials 12 pass trials 12 guard damage 0 pass damage 96; migration/cold continuation/pause/reset/recording/atomic invalid states/online/viewer PASS",
+  "guard_trials": 12,
+  "pass_trials": 12,
+  "guard_damage_sum": 0,
+  "pass_damage_sum": 96,
+  "same_state_cold_continuation_frames": 200,
+  "legacy_marks_loaded": [
+    "0x4b393854",
+    "0x4b393855"
+  ],
+  "new_mark": "0x4b393856",
+  "malformed_guard_state_cases_atomically_rejected": 4,
+  "default_gpu_image_byte_identical": true,
+  "images": {
+    "exe_sha256": "aff62d316c2025392e89199c6c3be7de81add9bb9b8163fb129abb86ccf7d223",
+    "capture": "actual native production-object harness; guard/pass intent labels and menu; sampled damage measured separately",
+    "images": {
+      "random-guard.png": "8413664999086c7c8363fd50914cda5025d87c19134f9158d83034e73b5c8b89",
+      "random-pass.png": "33bff520d1a6c4ac1b26d3a12fd5b45b02142c90a202c732b7e2cc0513054f5e",
+      "random-guard-menu.png": "b063dff441acffb5d10da28f314e8adaca35586ad99b510ffeccebd0fc003834"
+    }
+  },
+  "limits": [
+    "standing relative-back input only",
+    "no automatic low/projectile/reversal qualification",
+    "fixed seeded sequence, not a guarantee of equal counts in every sample",
+    "same inputs and settings required for repetition",
+    "other KOF training adapters pending"
+  ]
+}

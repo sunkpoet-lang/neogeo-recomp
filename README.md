@@ -6,6 +6,12 @@ Native PC ports of Neo Geo MVS arcade games, built on the static recompilation t
 > **Not affiliated with SNK** or any rights holder. No game, BIOS or part of one is in this repository: you need
 > your own ROM sets, dumped from boards you own.
 
+**Development update, 24 November 2026:** the latest local KOF98/KOF2002/Magic Plus II
+training work, actual captures, sampled projectile coverage and publication limits
+are documented in the [training development report](docs/TRAINING-DEVELOPMENT.md).
+Its implementation changes are pending a separate reviewed source publication;
+the report distinguishes local candidates from the published checkout.
+
 ## Credits first
 
 This project stands on other people's work:
@@ -88,7 +94,7 @@ hashes.txt` (more in `games/kof97/README.md`).
 |---|---|
 | `machine/neogeo*`, `video/neogeo_video*` | The Neo Geo board: memory, interrupts, inputs, the YM2610, the LSPC |
 | `port/neogeo_*` | A Neo Geo game's port: its loop, its window, its options |
-| `runtime/neogeo_game.h` | What a game's own sources do with the board (cheats today; training mode next) |
+| `runtime/neogeo_game.h` | Per-game board hooks for cheats, practice, state and inspection |
 | `games/<id>/` | Each game: `game.cfg` (its set's files and checksums), its sources, its notes |
 | `machine/m68k*`, `sound/z80*`, `port/menu*`, `port/present*`, `recomp-common/`, `launcher/` | From cps2recomp |
 | `openspec/` | The specs and the plans of each change ([OpenSpec](https://github.com/Fission-AI/OpenSpec)) |
@@ -111,7 +117,7 @@ records discovery checks and Windows icon verification. Actual game checks requi
 ## Next
 
 - The custom soundtrack (your own music in place of the board's, as CPS-2 Recomp's Super Turbo has it)
-- Expand the verified KOF98 training candidate to other fighting games; throw boxes, frame data and advanced drills remain pending
+- Publish the reviewed local KOF2002/Magic Plus II training adapters and qualify further sets; full throw coverage, frame data and advanced drills remain pending
 - Further validation of online rollback ([GekkoNet](https://github.com/HeatXD/GekkoNet)) over direct and relayed connections; see [KOF97's online instructions](games/kof97/README.md)
 - Translation to C++
 - More games: Garou, the Fatal Fury and Real Bout series, other KOFs, Samurai Shodown, Last Blade, Metal Slug
@@ -146,15 +152,19 @@ over player 2's portrait. Tab shows or hides both; the match's messages stay.
 
 ### KOF98 offline training candidate
 
-The original KOF98 set now has a first native offline training session: normal
+The published KOF98 baseline has a first native offline training session: normal
 coin/start entry, both team selections on P1, health/time aids, four basic dummy
-behaviours, reset checkpoint, three bounded dummy recording slots and a current-input
+behaviours plus deterministic random standing guard, reset checkpoint, three bounded dummy recording slots and a current-input
 panel. Online and replay mutation guards are verified. The shared visual panel
-also builds for KOF95/97/2002/Magic Plus II; their training adapters remain pending.
+also builds for KOF95/97/2002/Magic Plus II. Independently qualified KOF2002 and
+Magic Plus II training adapters now exist locally; KOF95/97 adapters remain pending.
+See the [newer local development status](docs/TRAINING-DEVELOPMENT.md) before assuming
+those additions are available in a fresh clone of the published baseline.
 See [the controls, actual screenshots and limits](games/kof98/README.md#native-offline-training--first-slice).
 
 Read-only player and projectile collision views are available for the original
-KOF98 set. Throw coverage and full roster/move acceptance remain pending.
+KOF98 set. A separate throw-attempt view captures temporary event-time boxes;
+throwability areas and full roster/move acceptance remain pending.
 
 ![KOF98 native offline training and projectile inspection](games/kof98/images/projectiles.png)
 

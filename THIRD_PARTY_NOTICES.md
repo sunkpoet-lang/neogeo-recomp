@@ -163,7 +163,7 @@ in assets/recorder-inputs/BarlowCondensed-OFL.txt. No font binary is bundled.
 
 ## KOF98 collision-viewer research
 
-The independent native player/projectile-box reader was researched against peon2's
+The independent native player/projectile/throw-attempt reader was researched against peon2's
 [fbneo-training-mode KOF viewer](https://github.com/peon2/fbneo-training-mode/blob/master/hitboxes/kof-hitboxes.lua),
 whose file also references the historical MAME-rr hitbox viewers. Credit remains
 with the original viewer authors and contributors. The inspected installed copy
@@ -172,3 +172,27 @@ it is not assumed identical to today's upstream. No Lua source is shipped in the
 native implementation. The original Lua was executed privately against copies
 of native RAM to check geometry, with attempted memory writes rejected. Public
 source metadata contains no RAM, ROMs, BIOS files or save-state payloads.
+
+## KOF98 recovery-field research
+
+Credit to willococa's [KOF training extension](https://github.com/willococa/fightcade-kof-training-mode-extension/blob/4ecc81bb0e75522c8f5067641ec83f54c7d55530/kof_training.lua)
+for recovery-related RAM-field research used as hypotheses in independent native
+tests. The pinned file SHA256 is
+`d0d423c81d7c8a2538e7e36dd4edce73c5c46c5788adb68f2ded31a7a88d979c`.
+No Lua implementation is copied into the runtime. The conservative detector and
+bounded slot-response state are native implementations with separately recorded
+qualification limits; they do not certify first-frame reversal timing.
+
+The original KOF2002 adapter separately researches the installed FBNeo training
+`games/kof2002/kof2002.lua` resource/direction fields, with its exact inspected hash
+in the KOF2002 OpenSpec receipt. Its phase, clock, life limit and stock-based power
+display are qualified independently of KOF98. No Lua source is added to the runtime.
+Original KOF2002 and Magic Plus II now have independent player-only collision
+readers, checked separately against the actual original Lua profile, including
+hurt ID23 and the distinct camera address. Their native evidence and coverage
+limits remain separate from KOF98. Transient throw-attempt areas are also checked
+against the original Lua callback separately per set. Defender throw-vulnerability readers are independently checked against the same
+original Lua profile, including suppression conditions and nondegenerate rectangle
+filtering. These reference-derived areas do not predict throw success. Bounded projectile readers are also checked independently against that profile
+using native Iori samples for each set, without inferring ownership or full-roster
+coverage. No Lua runtime or reference source is shipped by these adapters.

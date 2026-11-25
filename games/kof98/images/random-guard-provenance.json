@@ -1,0 +1,9 @@
+{
+  "exe_sha256": "aff62d316c2025392e89199c6c3be7de81add9bb9b8163fb129abb86ccf7d223",
+  "capture": "actual native production-object harness; guard/pass intent labels and menu; sampled damage measured separately",
+  "images": {
+    "random-guard.png": "8413664999086c7c8363fd50914cda5025d87c19134f9158d83034e73b5c8b89",
+    "random-pass.png": "33bff520d1a6c4ac1b26d3a12fd5b45b02142c90a202c732b7e2cc0513054f5e",
+    "random-guard-menu.png": "b063dff441acffb5d10da28f314e8adaca35586ad99b510ffeccebd0fc003834"
+  }
+}

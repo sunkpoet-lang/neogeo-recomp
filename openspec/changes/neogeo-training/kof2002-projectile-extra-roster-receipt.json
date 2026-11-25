@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-24",
+  "game": "kof2002",
+  "accepted_exe_sha256_unchanged": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+  "selection": "normal cursor/team/order inputs independently select Kensou or Andy P1 versus Iori P2; actual selection/native combat captures identify fighter; no character-ID patches",
+  "controls": {
+    "kensou-A": {
+      "input": "quarter-circle-back + A",
+      "actor": "P1 initial left side, facing right",
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 344,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 115,
+        "rectangles_equal_to_original_lua": 913,
+        "kind_counts": {
+          "proj. attack": 108,
+          "proj. vulnerability": 115,
+          "push": 230,
+          "vulnerability": 460
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native extra-fighter kensou-A projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "kensou-C": {
+      "input": "quarter-circle-back + C",
+      "actor": "P1 initial left side, facing right",
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 204,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 69,
+        "rectangles_equal_to_original_lua": 547,
+        "kind_counts": {
+          "proj. attack": 64,
+          "proj. vulnerability": 69,
+          "push": 138,
+          "vulnerability": 276
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native extra-fighter kensou-C projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-A": {
+      "input": "quarter-circle-back + A",
+      "actor": "P1 initial left side, facing right",
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 32,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 16,
+        "rectangles_equal_to_original_lua": 128,
+        "kind_counts": {
+          "proj. attack": 16,
+          "proj. vulnerability": 16,
+          "push": 32,
+          "vulnerability": 64
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native extra-fighter andy-A projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-C": {
+      "input": "quarter-circle-back + C",
+      "actor": "P1 initial left side, facing right",
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 212,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 72,
+        "rectangles_equal_to_original_lua": 576,
+        "kind_counts": {
+          "proj. attack": 72,
+          "proj. vulnerability": 72,
+          "push": 144,
+          "vulnerability": 288
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native extra-fighter andy-C projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    }
+  },
+  "total_snapshots": 272,
+  "total_projectile_rectangles_equal": 532,
+  "presentation": "expected geometry checked; board hash and complete game state unchanged around each Shown",
+  "images": {
+    "projectile-kensou-A.png": "28654e871336088ef44a944928863654018c2e2fc2a3e807271adb0f5a84bc88",
+    "projectile-kensou-selection.png": "38e1240f726d3dc8ddb566cd07cf500a5561c1ce6fe9cb8f8a515615ab0d2379",
+    "projectile-andy-A.png": "7c6f9c385008f26b7382edf7fe8a6acd83e9d36da609cd3d458ecc6b56b829ec",
+    "projectile-andy-selection.png": "9869e0627f3d935b7009a6e85815296893d5fecb00d22d477a458645c96b1b76"
+  },
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "scope": "sampled P1 initial right-facing qcb+A/C only; no opposite-facing, P2 role, full moves/roster, collision outcome or frame advantage certification",
+  "production_source_changed": false,
+  "new_binary_or_state_schema": false,
+  "privacy": "raw RAM/saves/PCM/Lua wrappers remain ignored local work"
+}

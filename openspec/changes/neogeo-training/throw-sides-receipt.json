@@ -1,0 +1,69 @@
+{
+  "opposite_side_events": 19,
+  "production_reader_and_actual_original_lua_equal": true,
+  "both_facings_per_player_across_original_and_opposite_scenes": true,
+  "runs": [
+    {
+      "events": 9,
+      "geometry_matches_actual_original_lua_callback": true,
+      "instrumented_1200_state_hashes_equal": true,
+      "players_observed": [
+        0
+      ],
+      "reference_source_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+      "scope": "opposite-side ordinary attempts using production observer/reader; 1200-frame on/off hashes and audio samples equal; no full roster acceptance",
+      "facings_by_scene_opposite_then_original": [
+        [
+          0
+        ],
+        [
+          1
+        ]
+      ],
+      "production_reader_equal": true
+    },
+    {
+      "events": 10,
+      "geometry_matches_actual_original_lua_callback": true,
+      "instrumented_1200_state_hashes_equal": true,
+      "players_observed": [
+        1
+      ],
+      "reference_source_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+      "scope": "opposite-side ordinary attempts using production observer/reader; 1200-frame on/off hashes and audio samples equal; no full roster acceptance",
+      "facings_by_scene_opposite_then_original": [
+        [
+          1
+        ],
+        [
+          0
+        ]
+      ],
+      "production_reader_equal": true
+    }
+  ],
+  "observer_comparison": [
+    {
+      "player": 0,
+      "events": 9,
+      "frames": 1200,
+      "observer_on_off_hashes_and_audio_samples_equal": true
+    },
+    {
+      "player": 1,
+      "events": 10,
+      "frames": 1200,
+      "observer_on_off_hashes_and_audio_samples_equal": true
+    }
+  ],
+  "source_sha256": {
+    "games/kof98/src/hitboxes.h": "61db307a0859965d075fb31b1a4019c16f02ddaa114b0dc5b0015cffa86a4c86",
+    "machine/neogeo.cpp": "5582c27c990d379191c4c940f101477f5b68bc5f6b0c1b644a7ecb07c0a525c1"
+  },
+  "limits": [
+    "ordinary sampled attempts only",
+    "aerial/command throws and full roster pending",
+    "opposite state came from native crossing inputs; not a complete round-long side-switch movie",
+    "no new Internet acceptance"
+  ]
+}

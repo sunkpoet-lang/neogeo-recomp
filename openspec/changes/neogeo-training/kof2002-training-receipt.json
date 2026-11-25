@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-22",
+  "scope": "original kof2002 only; first practice/recorded-response adapter",
+  "exe_sha256": "7998280fa7f7213203cb85335861ea15f5000b8d1a73c6e0da73a63c0b982e4a",
+  "training_mark": "0x4b303201",
+  "legacy_import": "board-only original-set states",
+  "native_fixture": "Kyo/Iori, ordinary coin/start/select/movement; no character forcing",
+  "reference_file": "installed FBNeo training games/kof2002/kof2002.lua",
+  "reference_sha256": "c9033477865936c130276370715a93c857a1561337102ce9522e4478ad7941dd",
+  "reference_use": "RAM facts only; no Lua implementation copied",
+  "profile": {
+    "phase": "0x10b056",
+    "clock": "0x10a7d2",
+    "living_hp_ceiling_and_refill": 102,
+    "meter": "bar + 0x42 * stock; read-only"
+  },
+  "native_response_filter_cases": 20,
+  "active_response_full_state_audio_continuation_frames": 120,
+  "atomic_bad_or_truncated_cases": 11,
+  "resource_qualification_frames": 120,
+  "random_low_trials": {
+    "blocked": 11,
+    "pass": 13,
+    "low_damage_sum": 0,
+    "pass_damage_sum": 26,
+    "matched_standing_damage_sum": 22
+  },
+  "ctest_passed": 13,
+  "regression": {
+    "exe_sha256": "7998280fa7f7213203cb85335861ea15f5000b8d1a73c6e0da73a63c0b982e4a",
+    "off_baseline_equal_frames": 900,
+    "off_audio_equal": true,
+    "guarded_rollback_equal_frames": 300,
+    "scope": "original kof2002 only, not Magic Plus II or Internet acceptance"
+  },
+  "final_source_cleanup": "line endings/trailing spaces only; normalised source fingerprints retained privately",
+  "package_smoke": "2-frame direct headless run without toolchain PATH passed",
+  "images": {
+    "exe_sha256": "7998280fa7f7213203cb85335861ea15f5000b8d1a73c6e0da73a63c0b982e4a",
+    "capture": "native production adapter objects, offscreen GPU Kyo/Iori fixture; actual RESP playback and Dummy menu",
+    "images": {
+      "training-response.png": "eed5d7148517d5b1d9f92e78a3ad29eff770dfa7b264668dd1625addcf3a337d",
+      "training-response-menu.png": "556cab152aadbea831e58cbf1fcfae610ddaff7641a2b8ec7753d6ec5cb17cfc"
+    }
+  },
+  "limits": [
+    "first Kyo/Iori fixture, not complete roster",
+    "not first-frame reversal or universal knockdown classification",
+    "random episodes use P1 attack buttons, no unqualified collision reader",
+    "collision views and multi-hit/crossup/throw qualification pending",
+    "Magic Plus II and accepted KOF98 candidate untouched",
+    "no installed beta replacement, commit/push or new Internet acceptance"
+  ]
+}

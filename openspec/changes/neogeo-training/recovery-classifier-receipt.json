@@ -1,0 +1,292 @@
+{
+  "date": "2026-11-22",
+  "scope": "private classifier reads RAM/profile only, no scenario identifier; fixture driver alone chooses test actions",
+  "reference": {
+    "revision": "4ecc81bb0e75522c8f5067641ec83f54c7d55530",
+    "url": "https://github.com/willococa/fightcade-kof-training-mode-extension/blob/4ecc81bb0e75522c8f5067641ec83f54c7d55530/kof_training.lua",
+    "sha256": "d0d423c81d7c8a2538e7e36dd4edce73c5c46c5788adb68f2ded31a7a88d979c",
+    "use": "independent RAM-field interpretation; no Lua source copied to production"
+  },
+  "classifier_sha256": "4f1608a882e99296dfeba554f1cc90b46eb8c9086b08405720ca3b1586167575",
+  "first_matchup": {
+    "runs": [
+      {
+        "scenario": 0,
+        "rows": [
+          [
+            0,
+            0,
+            0,
+            -1,
+            -1
+          ],
+          [
+            1,
+            0,
+            0,
+            -1,
+            -1
+          ]
+        ]
+      },
+      {
+        "scenario": 1,
+        "rows": [
+          [
+            0,
+            1,
+            1,
+            -1,
+            -1
+          ],
+          [
+            1,
+            1,
+            1,
+            49,
+            59
+          ]
+        ]
+      },
+      {
+        "scenario": 2,
+        "rows": [
+          [
+            0,
+            1,
+            2,
+            -1,
+            -1
+          ],
+          [
+            1,
+            1,
+            2,
+            107,
+            116
+          ]
+        ]
+      },
+      {
+        "scenario": 3,
+        "rows": [
+          [
+            0,
+            1,
+            3,
+            -1,
+            -1
+          ],
+          [
+            1,
+            1,
+            3,
+            50,
+            60
+          ]
+        ]
+      },
+      {
+        "scenario": 4,
+        "rows": [
+          [
+            0,
+            0,
+            0,
+            -1,
+            -1
+          ],
+          [
+            1,
+            0,
+            0,
+            -1,
+            -1
+          ]
+        ]
+      },
+      {
+        "scenario": 5,
+        "rows": [
+          [
+            0,
+            0,
+            0,
+            -1,
+            -1
+          ],
+          [
+            1,
+            0,
+            0,
+            -1,
+            -1
+          ]
+        ]
+      },
+      {
+        "scenario": 6,
+        "rows": [
+          [
+            0,
+            0,
+            0,
+            -1,
+            -1
+          ],
+          [
+            1,
+            0,
+            0,
+            -1,
+            -1
+          ]
+        ]
+      },
+      {
+        "scenario": 7,
+        "rows": [
+          [
+            0,
+            0,
+            0,
+            -1,
+            -1
+          ],
+          [
+            1,
+            0,
+            0,
+            -1,
+            -1
+          ]
+        ]
+      },
+      {
+        "scenario": 8,
+        "rows": [
+          [
+            0,
+            0,
+            0,
+            -1,
+            -1
+          ],
+          [
+            1,
+            0,
+            0,
+            -1,
+            -1
+          ]
+        ]
+      }
+    ],
+    "scope": "single private classifier receives only memory fields, never scenario; scenario selects test inputs only",
+    "limitations": "one matchup, conservative timing, not production reversal"
+  },
+  "second_matchup": {
+    "runs": [
+      {
+        "scenario": 0,
+        "preparation": "scenario 0 damage 0 combo_nonzero_frames 0",
+        "rows": [
+          [
+            0,
+            0,
+            0,
+            -1,
+            -1
+          ],
+          [
+            1,
+            0,
+            0,
+            -1,
+            -1
+          ]
+        ]
+      },
+      {
+        "scenario": 1,
+        "preparation": "scenario 1 damage 9 combo_nonzero_frames 30",
+        "rows": [
+          [
+            0,
+            1,
+            1,
+            -1,
+            -1
+          ],
+          [
+            1,
+            1,
+            1,
+            49,
+            57
+          ]
+        ]
+      },
+      {
+        "scenario": 2,
+        "preparation": "scenario 2 damage 13 combo_nonzero_frames 75",
+        "rows": [
+          [
+            0,
+            1,
+            2,
+            -1,
+            -1
+          ],
+          [
+            1,
+            1,
+            2,
+            104,
+            112
+          ]
+        ]
+      },
+      {
+        "scenario": 3,
+        "preparation": "scenario 3 damage 0 combo_nonzero_frames 0",
+        "rows": [
+          [
+            0,
+            1,
+            3,
+            -1,
+            -1
+          ],
+          [
+            1,
+            1,
+            3,
+            56,
+            64
+          ]
+        ]
+      }
+    ],
+    "fixture": "existing manual Kyo/Yuri training state; ordinary movement preparation; no character writes",
+    "scope": "second matchup classifier qualification; inspect results before acceptance"
+  },
+  "positive_automatic_responses": 6,
+  "correct_incident_classifications_without_response_input": 6,
+  "negative_scenarios": [
+    "idle",
+    "jump",
+    "A attack",
+    "C attack",
+    "crouch",
+    "back movement"
+  ],
+  "negative_detector_enabled_disabled_hashes_equal": true,
+  "limits": [
+    "two sampled matchups only, not complete roster",
+    "conservative post-recovery timing, not frame-perfect reversal",
+    "air hits, multi-hit, cross-up, throws and repeated incidents not yet qualified",
+    "private pending detector state not integrated with production save/load/rollback",
+    "no menu, executable or installed package updated"
+  ]
+}

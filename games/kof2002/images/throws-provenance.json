@@ -1,0 +1,9 @@
+{
+  "exe_sha256": "08425ecc665c258a32938d4da2e8faacc10da7379fa24b4a07beed6818430a0a",
+  "capture": "native GPU production event-time attempt overlay; actual gameplay and menu, no simulated UI",
+  "images": {
+    "throws.png": "1f3d472a0e820447d7cb483e5d627d2330e078ed24f35b5e71b79c84c1eece81",
+    "throws-p2.png": "9c9b900487e890b22f1817b7f827768416887687496b09ffcdc8bf1e369cab72",
+    "throws-menu.png": "6294e7e4bb0b6628be53b6a3a1ac8c3b2147e6cb2861fa500753fb9e98860a36"
+  }
+}

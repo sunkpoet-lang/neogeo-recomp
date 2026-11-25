@@ -4,6 +4,11 @@
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
 
+## [2026-11-24] - Training development evidence and coverage
+
+- docs: consolidate the local KOF98, KOF2002 and Magic Plus II training work, native demonstration captures, save compatibility, independent validation and remaining publication gates; distinguish development candidates from the published source
+- docs: record sampled projectile geometry for Athena, Terry, Kensou and Andy across player roles and initial facings, with per-set evidence and unchanged accepted executable hashes
+
 ## [2026-11-20] - Native replays and KOF98 practice
 
 - docs: document bring-your-own-ROM builds, actual demonstration captures, source provenance and the limits of local validation; retain original credits and exclude private test payloads

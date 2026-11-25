@@ -1,0 +1,49 @@
+{
+  "acceptance": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "096a7d019dcf197022dfec5bd8d69305de241a54b4b986557fd92307c521f140",
+    "scope": "HUD default/custom presentation; 900-frame old/off/on state/audio, custom HUD state/audio and 300-frame guarded rollback stress; no new Internet acceptance"
+  },
+  "default_gpu_picture_byte_identical_to_previous_candidate": true,
+  "custom_hud_900_state_hashes_and_audio_equal": true,
+  "native_controls": "HUD paused visibility, precedence, anchor, restore, independent preferences, state and session guards PASS",
+  "ctest_passed": 11,
+  "other_game_regression": [
+    {
+      "game": "kof95",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "96dbb7078ffdfa638de148d00b010f7e49b3081e0f1519ab4a1c04fb25ec088c"
+    },
+    {
+      "game": "kof97",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "57ca47de5d2341fc19d7823234eefaa02e1da5c3895fbdfbdd4c7e9719a2d921"
+    },
+    {
+      "game": "kof2002",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "3be47facbccbe8702bd00d9ab2b620ac6d86824045a5b0473c2185f6e66050a9"
+    },
+    {
+      "game": "kf2k2mp2",
+      "frames": 1200,
+      "hashes_and_audio_equal": true,
+      "exe_sha256": "a5f00114a8658c998d7061bfc0445ce800ce41ce4af5f21685be3cc2694876e3"
+    }
+  ],
+  "images": {
+    "exe_sha256": "096a7d019dcf197022dfec5bd8d69305de241a54b4b986557fd92307c521f140",
+    "capture": "offscreen native harness linked to production objects; optional layout example, accepted default unchanged",
+    "images": {
+      "hud-controls.png": "e8e4631aabc1b3584cb9e3c5d290a352c9477471600be1ce0071c9a3f028ea80",
+      "hud-upper-example.png": "95ce0e9b2d2100e6e177bdc52e905a09a80380e1c0f34b2dac3353fd47180284"
+    }
+  },
+  "scope": "offline presentation choices only; existing defaults, game state and recordings preserved; no draggable HUD"
+}

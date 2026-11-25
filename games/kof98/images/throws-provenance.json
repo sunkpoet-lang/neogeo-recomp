@@ -1,0 +1,9 @@
+{
+  "exe_sha256": "804f0954bf1a04dc0eb5c3c280b5cbc2e8770fba3088ee9f8e259515246bca7e",
+  "capture": "offscreen GPU presentation in native test harness linked to exact production game/board/port objects; actual event frame, no RAM edits",
+  "images": {
+    "throws.png": "c4c5399873afd989425df2c930c458f36b7958c32c4eea6815783268ea2b3f38",
+    "throws-menu.png": "f015153f8aceddbaa37387cff08ac4465fa84ac27a56b2e1d1dd4f19a2a24a73",
+    "throws-p2.png": "d9a521f9f03f35bfa1cf047e4d12dcda260fe570f72e55e1d41dca9710faa6bd"
+  }
+}

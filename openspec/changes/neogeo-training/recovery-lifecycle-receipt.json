@@ -1,0 +1,85 @@
+{
+  "runs": [
+    {
+      "scenario": 1,
+      "checkpoint_tick": 30,
+      "private_detector_state": "1 0 -1 -1 0 0",
+      "cold_and_rewind_hash_suffix_equal": true,
+      "cold_and_rewind_audio_equal": true,
+      "event_suffix_and_final_summary_equal": true,
+      "paused_presentation_calls": 60,
+      "continuous_audio_suffix_equal": true
+    },
+    {
+      "scenario": 2,
+      "checkpoint_tick": 50,
+      "private_detector_state": "2 1 -1 -1 0 0",
+      "cold_and_rewind_hash_suffix_equal": true,
+      "cold_and_rewind_audio_equal": true,
+      "event_suffix_and_final_summary_equal": true,
+      "paused_presentation_calls": 60,
+      "continuous_audio_suffix_equal": true
+    },
+    {
+      "scenario": 2,
+      "checkpoint_tick": 90,
+      "private_detector_state": "2 1 -1 -1 0 0",
+      "cold_and_rewind_hash_suffix_equal": true,
+      "cold_and_rewind_audio_equal": true,
+      "event_suffix_and_final_summary_equal": true,
+      "paused_presentation_calls": 60,
+      "continuous_audio_suffix_equal": true
+    },
+    {
+      "scenario": 3,
+      "checkpoint_tick": 30,
+      "private_detector_state": "3 0 -1 -1 0 0",
+      "cold_and_rewind_hash_suffix_equal": true,
+      "cold_and_rewind_audio_equal": true,
+      "event_suffix_and_final_summary_equal": true,
+      "paused_presentation_calls": 60,
+      "continuous_audio_suffix_equal": true
+    },
+    {
+      "scenario": 1,
+      "checkpoint_tick": 130,
+      "private_detector_state": "0 0 49 59 1 1",
+      "cold_and_rewind_hash_suffix_equal": true,
+      "cold_and_rewind_audio_equal": true,
+      "event_suffix_and_final_summary_equal": true,
+      "paused_presentation_calls": 60,
+      "continuous_audio_suffix_equal": true
+    },
+    {
+      "scenario": 2,
+      "checkpoint_tick": 130,
+      "private_detector_state": "0 0 107 116 1 2",
+      "cold_and_rewind_hash_suffix_equal": true,
+      "cold_and_rewind_audio_equal": true,
+      "event_suffix_and_final_summary_equal": true,
+      "paused_presentation_calls": 60,
+      "continuous_audio_suffix_equal": true
+    },
+    {
+      "scenario": 3,
+      "checkpoint_tick": 130,
+      "private_detector_state": "0 0 50 60 1 3",
+      "cold_and_rewind_hash_suffix_equal": true,
+      "cold_and_rewind_audio_equal": true,
+      "event_suffix_and_final_summary_equal": true,
+      "paused_presentation_calls": 60,
+      "continuous_audio_suffix_equal": true
+    }
+  ],
+  "scope": "private sidecar plus actual port board/game state; cold-process restore and deliberate board rewind, not production netplay rollback",
+  "limits": "detector is not integrated into production state schema; atomic cross-file restore and malformed sidecars not qualified",
+  "date": "2026-11-22",
+  "presentation_pause_checks": 420,
+  "limitations": [
+    "private textual sidecar holds detector and response-harness bookkeeping, separate from actual board/game state",
+    "sidecar is not a production save-state format and cross-file restoration is not an atomic transaction",
+    "no production netplay rollback or online acceptance",
+    "no malformed-state/old-version migration acceptance yet",
+    "no production source, menu, candidate or installed package changed"
+  ]
+}

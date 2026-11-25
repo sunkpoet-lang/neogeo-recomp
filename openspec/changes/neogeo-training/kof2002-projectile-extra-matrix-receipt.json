@@ -1,0 +1,308 @@
+{
+  "date": "2026-11-24",
+  "game": "kof2002",
+  "accepted_exe_sha256_unchanged": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+  "scope": "remaining sampled initial role/facing cells for P1/P2 Kensou/Andy qcb+A/C; not full move/roster, repeated crossing, collision outcomes, hardware or Internet",
+  "preparation": "normal independent P2 selection; ordinary jump/walk crossings require facing reversal and X-order; bounded preparation640 frames, no RAM patches",
+  "crossing_observations": {
+    "kensou-P1": "ordinary crossing after 349 inputs; facing 1 -> 0 x 288/241",
+    "kensou-P2": "ordinary crossing after 347 inputs; facing 0 -> 1 x 561/496",
+    "andy-P1": "ordinary crossing after 270 inputs; facing 1 -> 0 x 273/227",
+    "andy-P2": "ordinary crossing after 267 inputs; facing 0 -> 1 x 571/507"
+  },
+  "controls": {
+    "kensou-A-p1-left": {
+      "input": "quarter-circle-back + A",
+      "role": 1,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 370,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 124,
+        "rectangles_equal_to_original_lua": 983,
+        "kind_counts": {
+          "proj. attack": 115,
+          "proj. vulnerability": 124,
+          "push": 248,
+          "vulnerability": 496
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native kensou-A-p1-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "kensou-C-p1-left": {
+      "input": "quarter-circle-back + C",
+      "role": 1,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 254,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 87,
+        "rectangles_equal_to_original_lua": 687,
+        "kind_counts": {
+          "proj. attack": 78,
+          "proj. vulnerability": 87,
+          "push": 174,
+          "vulnerability": 348
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native kensou-C-p1-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "kensou-A-p2-left": {
+      "input": "quarter-circle-back + A",
+      "role": 2,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 241,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 80,
+        "rectangles_equal_to_original_lua": 639,
+        "kind_counts": {
+          "proj. attack": 79,
+          "proj. vulnerability": 80,
+          "push": 160,
+          "vulnerability": 320
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native kensou-A-p2-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "kensou-C-p2-left": {
+      "input": "quarter-circle-back + C",
+      "role": 2,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 206,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 71,
+        "rectangles_equal_to_original_lua": 561,
+        "kind_counts": {
+          "proj. attack": 64,
+          "proj. vulnerability": 71,
+          "push": 142,
+          "vulnerability": 284
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native kensou-C-p2-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "kensou-A-p2-right": {
+      "input": "quarter-circle-back + A",
+      "role": 2,
+      "initial_facing": "right",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 278,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 92,
+        "rectangles_equal_to_original_lua": 733,
+        "kind_counts": {
+          "proj. attack": 89,
+          "proj. vulnerability": 92,
+          "push": 184,
+          "vulnerability": 368
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native kensou-A-p2-right projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "kensou-C-p2-right": {
+      "input": "quarter-circle-back + C",
+      "role": 2,
+      "initial_facing": "right",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 251,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 84,
+        "rectangles_equal_to_original_lua": 669,
+        "kind_counts": {
+          "proj. attack": 81,
+          "proj. vulnerability": 84,
+          "push": 168,
+          "vulnerability": 336
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native kensou-C-p2-right projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-A-p1-left": {
+      "input": "quarter-circle-back + A",
+      "role": 1,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 41,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 20,
+        "rectangles_equal_to_original_lua": 153,
+        "kind_counts": {
+          "proj. attack": 18,
+          "proj. vulnerability": 20,
+          "push": 40,
+          "vulnerability": 75
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native andy-A-p1-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-C-p1-left": {
+      "input": "quarter-circle-back + C",
+      "role": 1,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 270,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 91,
+        "rectangles_equal_to_original_lua": 709,
+        "kind_counts": {
+          "proj. vulnerability": 91,
+          "push": 182,
+          "vulnerability": 364,
+          "proj. attack": 72
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native andy-C-p1-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-A-p2-left": {
+      "input": "quarter-circle-back + A",
+      "role": 2,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 32,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 16,
+        "rectangles_equal_to_original_lua": 128,
+        "kind_counts": {
+          "proj. attack": 16,
+          "proj. vulnerability": 16,
+          "push": 32,
+          "vulnerability": 64
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native andy-A-p2-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-C-p2-left": {
+      "input": "quarter-circle-back + C",
+      "role": 2,
+      "initial_facing": "left",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 212,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 72,
+        "rectangles_equal_to_original_lua": 576,
+        "kind_counts": {
+          "proj. attack": 72,
+          "proj. vulnerability": 72,
+          "push": 144,
+          "vulnerability": 288
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native andy-C-p2-left projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-A-p2-right": {
+      "input": "quarter-circle-back + A",
+      "role": 2,
+      "initial_facing": "right",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 41,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 20,
+        "rectangles_equal_to_original_lua": 153,
+        "kind_counts": {
+          "proj. attack": 18,
+          "proj. vulnerability": 20,
+          "push": 40,
+          "vulnerability": 75
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native andy-A-p2-right projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    },
+    "andy-C-p2-right": {
+      "input": "quarter-circle-back + C",
+      "role": 2,
+      "initial_facing": "right",
+      "inactive_player_input_checked_neutral": true,
+      "routed_input_frames_each": 100,
+      "frames_each_visibility": 900,
+      "projectile_visible_frames_each": 270,
+      "hashes_and_PCM_equal": true,
+      "geometry_vs_actual_original_Lua": {
+        "passed": true,
+        "snapshots": 91,
+        "rectangles_equal_to_original_lua": 709,
+        "kind_counts": {
+          "proj. vulnerability": 91,
+          "push": 182,
+          "vulnerability": 364,
+          "proj. attack": 72
+        },
+        "unknown_projectile_ownership": true,
+        "scope": "native andy-C-p2-right projectile snapshots; original Lua runtime reference; throws and full roster not accepted"
+      }
+    }
+  },
+  "total_additional_snapshots": 848,
+  "total_additional_projectile_rectangles_equal": 1622,
+  "presentation": "board hash and complete game serialisation unchanged around every Shown with expected geometry checks",
+  "images": {
+    "projectile-matrix-kensou-p1-left.png": "492074d84a9ba9a2972951e8afee9be9d8d87e2d638cb7c2e00a6f0316cac3e7",
+    "projectile-matrix-kensou-p2-left.png": "8699f93710e472d3b8113708bd5cc4cff4c702a13b76f5db568e341ac58de79b",
+    "projectile-matrix-kensou-p2-right.png": "d8e42e783110e3d1c54de1184e24ece086899fb957aa6e6ac211c3321938e964",
+    "projectile-matrix-kensou-p2-selection.png": "420bff5fdf15884f75164932a34c52b1eadb7ee97dc956751909440936af1e9f",
+    "projectile-matrix-andy-p1-left.png": "3131ad79ebd49283bd2cd0e392ddd2886d747734757976518665c1214b2f0736",
+    "projectile-matrix-andy-p2-left.png": "0a4ebe4448e03811bcb6f346ecc42839a39f4d5f5092e26d626c5c3402c453c2",
+    "projectile-matrix-andy-p2-right.png": "8fe594fd37dc906719c610c712d0c7dd8ef55396ab301b2b8e0f48f576320d35",
+    "projectile-matrix-andy-p2-selection.png": "43bde0c82140ba81372bda0fb918945cd1cb68f185649eefa8ccb7b50d571196"
+  },
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "production_source_changed": false,
+  "new_binary_or_state_schema": false,
+  "privacy": "raw RAM/saves/PCM/Lua wrappers stay ignored local work"
+}

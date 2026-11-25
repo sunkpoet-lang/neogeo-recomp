@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-22",
+  "game": "kf2k2mp2",
+  "scope": "reference-derived nondegenerate defender throw-vulnerability rectangles, not success prediction",
+  "exe_sha256": "44138e3c7b2673e90a02aa2363923c634c844348e02564371171e77ca038c00e",
+  "reference": {
+    "real_snapshots": 600,
+    "real_rectangles_equal": 1012,
+    "rectangles_by_player": {
+      "0": 588,
+      "1": 424
+    },
+    "synthetic_snapshot_controls": 16,
+    "synthetic_conditions": [
+      "status_bit5",
+      "invulnerability_timer",
+      "signed_ineligible",
+      "proximity_guard",
+      "zero_radius_x",
+      "zero_radius_y",
+      "other_proximity_bits",
+      "other_status_bit"
+    ],
+    "presence_and_geometry_equal_actual_original_Lua": true,
+    "scope": "reference-derived throw vulnerability, not a guaranteed throw outcome",
+    "synthetic_controls_are_snapshot_copies_not_guest_RAM_writes": true
+  },
+  "comparison_filters_degenerate_reference_rectangles": true,
+  "native_lifecycle_result": "read-only board+game;60 paused presentations;load/reset/toggle/online/viewer/session/hide-all/board-reset PASS",
+  "ctest_passed": 14,
+  "regression": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "44138e3c7b2673e90a02aa2363923c634c844348e02564371171e77ca038c00e",
+    "scope": "offline native player boxes; loopback/Internet and projectile/throw coverage not claimed"
+  },
+  "state_schema_unchanged": true,
+  "accepted_attempt_candidate_sha256_unchanged": "766f15d024ce28ef6e2e80fd02671f96166aa38eb6f936cf370843780f2ae80d",
+  "images": {
+    "exe_sha256": "44138e3c7b2673e90a02aa2363923c634c844348e02564371171e77ca038c00e",
+    "capture": "actual native GPU defender-area overlay and menu; not simulated UI",
+    "images": {
+      "throwability.png": "51da01039235f3ae5a4eb5f19389e99b1f7644dcc5dd91d2b9cdf9fde0596d8e",
+      "throwability-menu.png": "aee68a41c1c427e2a91419abbe7de6145d64fed60838d5f97607092b67d6c439"
+    }
+  },
+  "package_smoke": "direct2-frame headless without toolchain PATH passed",
+  "limits": [
+    "sampled Kyo/Iori states, not every move or character",
+    "synthetic controls alter copied RAM snapshots only, not guest memory",
+    "not a guarantee for any particular ground/air/command throw",
+    "no projectile/frame-advantage or new Internet acceptance",
+    "installed beta and original user saves untouched"
+  ]
+}

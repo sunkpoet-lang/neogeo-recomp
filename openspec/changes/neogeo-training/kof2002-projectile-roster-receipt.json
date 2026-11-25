@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-24",
+  "game": "kof2002",
+  "accepted_exe_sha256_unchanged": "ab85e14888d2845ea3bae16073a0195d3155488e3e558599b046e7fee2826893",
+  "previous_Iori_projectile_candidate_human_accepted": true,
+  "selection": "ordinary coins/start, mode selection, cursor navigation and team/order confirmation; no character RAM patch",
+  "identified_fighters": "Terry P1 versus Leona P2, confirmed by selection and native battle captures",
+  "geometry": {
+    "passed": true,
+    "snapshots": 65,
+    "rectangles_equal_to_original_lua": 512,
+    "kind_counts": {
+      "proj. attack": 57,
+      "proj. vulnerability": 65,
+      "push": 130,
+      "vulnerability": 260
+    },
+    "unknown_projectile_ownership": true,
+    "scope": "native Terry terry-A projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+  },
+  "controls": {
+    "terry-A": {
+      "frames_each": 900,
+      "hashes_and_PCM_equal": true,
+      "projectile_frames_each": 182,
+      "meaning": "ordinary qcf+A projectile sample"
+    },
+    "terry-C": {
+      "frames_each": 900,
+      "hashes_and_PCM_equal": true,
+      "projectile_frames_each": 0,
+      "meaning": "this qcf+C sequence produced no projectile; not positive move coverage"
+    }
+  },
+  "presentation": "every sampled frame verifies overlay geometry and unchanged complete game serialisation and board hash before/after Shown",
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "images": {
+    "projectile-terry.png": "bee4b7f30fd32504f1c04f6fdfc3341b384b8b3069c9580d3fd8bfe8306789e9",
+    "projectile-terry-selection.png": "c3c68d23f7c8a055c6cf96517d28202e5833ca97d79d316233523776fcca26bd"
+  },
+  "scope": "additional Terry qcf+A projectile evidence; not full roster, move list, facing matrix, collision outcomes or frame advantage",
+  "production_source_changed": false,
+  "new_executable_required": false,
+  "privacy": "RAM snapshots, savestates, raw PCM and Lua wrappers remain ignored local work only"
+}

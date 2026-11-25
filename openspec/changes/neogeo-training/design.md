@@ -166,3 +166,202 @@ projectile attack/vulnerability classifications. On malformed/capped traversal,
 discard incomplete projectile rectangles while preserving valid player boxes.
 Validate against the actual original Lua using native projectile snapshots;
 effects without collision entries do not count as projectile-box evidence.
+
+## Throw-capture investigation
+
+Before exposing throws, observe the original KOF98 write at `0x10EBDF`, including
+the low byte of a word write to `0x10EBDE`. Capture after the real bus write,
+using the contemporaneous A4 player pointer, not an inferred last attacker.
+The private probe may copy RAM and CPU context, but MUST NOT alter registers,
+RAM, inputs or timing. Compare an instrumented run with an uninstrumented run
+using identical state and inputs. No temporary throw-field clearing is allowed.
+Probe output remains private; end-of-frame data alone is insufficient evidence.
+Only the two verified player bases are accepted initially. Future production
+events need explicit lifetime, pause/load/reset/rollback clearing and offline
+guards before any menu capability is advertised. This investigation does not
+enable a production hook or claim throw coverage.
+
+Production slice: a board-local optional const observer watches one byte address,
+including the low byte of a word store, after the real RAM store. It receives A4
+without modifying CPU registers. Pointer/address and an invalidation epoch are
+host-only diagnostics, excluded from state bytes/hashes. Reset and state reads
+invalidate captures. KOF98 attaches it only for offline training with throw
+display enabled, clears two last-event slots before each frame, and shows them
+only on the immediately completed frame with matching epoch. Paused presentation
+may retain that frame; load/reset cannot resurrect an event. Online/viewer/session
+checks also apply inside the callback. No throwability or full-roster claim.
+
+## Native training navigation
+
+Keep Training as the entry page and group existing capabilities under Session,
+Resources, Dummy, Recordings, Hitboxes and HUD, in that order. Session contains
+start/reset/end and the session toggle; Resources contains health/time; Dummy
+contains the verified stance/guard choices; Recordings contains the three-slot
+controls; Hitboxes retains its independently qualified views; HUD contains its
+display switch. Preserve feature/command IDs, command registration order, input
+bindings, saved preferences and all runtime algorithms. Do not show unsupported
+MAX refill, reversals, frame data or other-game adapters. This navigation change
+does not add draggable HUD placement or a Lua GUI host.
+
+## Optional HUD controls
+
+Within verified offline KOF98 practice, add persistent presentation-only choices:
+input visibility (follow global/show/hide), input position (above supers/higher/
+upper sides), status text (full/session only/hidden) and portrait resources
+(show/hide). Zero values preserve the accepted defaults. Apply visibility and
+position consistently in native and high-resolution presentation; clamp panel
+bounds and preserve size/alpha. Restore HUD defaults resets only these choices
+and enables the existing HUD switch, leaving global input preferences, recordings,
+resources, dummy behaviour and hitbox toggles untouched. Recompute display on
+paused presentation without running gameplay. Outside offline training, the
+global input preference and normal panel anchor remain authoritative. No mouse
+dragging or arbitrary coordinates are introduced.
+
+## Throw side-switch qualification
+
+Use the existing native state reached by ordinary jump/crossing inputs (no RAM
+pokes) to test the opposite player facings. Run each player separately from the
+same state with forward-relative C/D attempts. Compare production-observer on/off
+frame hashes and captured audio samples. Capture event RAM privately and compare
+production `ReadThrow` with the actual original Lua callback, recording player,
+facing, camera and rectangle coverage. Require real events in both runs; a run
+with no event is inconclusive. This extends sampled ordinary-throw coverage only,
+not aerial/command throws, throwability or a full roster acceptance claim.
+
+## Command-throw investigation
+
+For a concrete Iori case, compare candidate directional command sequences ending
+in A with a forward-plus-A control; exclude C/D so an ordinary throw fallback
+cannot qualify the test. Treat published move lists as input hypotheses, not
+native acceptance. Record actual pads, event RAM, HP and positions privately.
+Require real event geometry, production/original-Lua agreement, on/off hash/audio
+equality and behavioural evidence distinguishing the move from the A control.
+Do not label an event as a named move or general command-throw support solely
+because the watched address was written. Retain every failed/inconclusive run.
+
+## Deterministic random standing guard
+
+Append a Random guard choice to KOF98's existing dummy modes, preserving values
+0-3. An episode begins on a P1 attack-button press (before the CPU runs), or an
+already verified P1 body attack. Choose stand/pass or hold relative back once
+using a nonzero xorshift32 seed. Hold that decision through presses/active boxes
+until30 quiet frames, avoiding per-frame random flicker. This is a standing-guard
+input exercise, not automatic low/projectile/reversal coverage or a success
+prediction. Input-slot recording/playback has priority and resets the episode.
+
+Serialise seed, episode, decision and bounded quiet counter in training mark
+0x4B393856; migrate 0x4B393854/55 with the initial guard state. Paused inspection
+never advances the seed. Round reset stops an episode but retains the seed;
+session start/end creates a fresh initial seed. Invalid state reads must use the
+existing atomic game/board rollback path. Offline/session/battle gates remain.
+
+## Random low-guard option
+
+Append dummy value5 for Random low guard, preserving values0-4. Reuse the saved
+episode/seed without changing state mark56. A guard decision holds relative back
+plus down; a pass decision stays neutral. Switching between random standing and
+low guard changes the posture without rerolling the current episode. Recorded
+slots still have priority. Verify a real crouching attack with positive damage
+under pass and standing-guard controls, and no damage under low guard in matched
+reset trials. This is an explicit low-guard exercise, not automatic high/low,
+overhead, projectile or reversal detection. Preserve existing standing-mode
+hashes/audio and qualify low-mode continuation with identical settings.
+
+## Hit/knockdown/recovery research
+
+Treat the installed reference's combo-byte-as-hitstun functions as hypotheses,
+not an authoritative wake-up clock. Capture native idle, standing-hit, sweep and
+blocked-sweep cases with real inputs. Record HP, combo bytes, positions and player
+object data privately, comparing read-only logging on/off hashes/audio. Distinguish
+hit response, knockdown, guard recovery and first accepted input through separate
+measurements. Do not expose automatic reversal or frame-advantage values from a
+nonzero counter alone. No new RAM writes, character forcing or production adapter
+is permitted by this research step.
+
+Use matched no-request controls when varying a requested input. Separate host
+request tick, first player-object divergence and transient attack onset: none is
+automatically a game-level input-acceptance or wake-up signal. Compare short and
+held requests before inferring buffering. Preserve raw private traces, publish
+aggregate observations only, and retain the production reversal gate until an
+independent semantic recovery signal is qualified.
+
+## Recovery-response state integration gate
+
+The private research sidecar is not a deployable state format. A future production
+response adapter must include pending incident, elevated-hit flag and response
+playback state inside the game's atomic serialization path, with explicit range
+and boolean validation. Older state versions must start with no pending response;
+malformed reads must preserve both board and game state. Offline/session/battle
+guards, reset/session exit and input-slot ownership must clear or transfer pending
+work explicitly. Presentation must not advance or consume a recovery event.
+Cold restore, deliberate rewind and actual rollback stress need separate evidence;
+private sidecar equality does not satisfy the production migration/rollback gate.
+
+## Magic Plus II qualification
+
+After user acceptance of original KOF2002, test the kf2k2mp2 bootleg independently.
+Use its existing checksum-validated variant loader and parent assets unchanged.
+Collect ordinary-input battle/resource/recovery controls before adapting the
+workflow. If qualified, use a distinct variant-owned state mark, preserve legacy
+board-only imports and repeat response/guard/state/regression checks. Do not
+enable collision views or assume every parent mechanic applies to the hack.
+Accepted KOF98/KOF2002 candidates and installed packages remain untouched.
+
+## Original KOF2002 qualification
+
+The user requests applying the accepted recorded-response workflow to original
+KOF2002. Treat KOF98 as a behavioural reference only. Verify phase0x10b056,
+health bounds, clock0x10a7d2 and distinct power-stock fields against the installed
+KOF2002 reference and native ordinary-input traces. Do not transfer KOF98's
+phase0x10b094, clock0x10a83a, HP ceiling or collision-ID table. Recovery-field
+and response hypotheses require idle/hit/sweep/block controls and negative jump
+controls before an adapter is exposed. Do not enable Magic Plus II by parent
+association. Existing KOF98 candidate and installed packages stay untouched.
+
+## Conservative selected-slot response
+
+Append `training_response` on the Dummy page:0 Off,1 block,2 hit,3 airborne hit,
+4 any observed incident. Observe only during ready offline practice when no
+recording/playback owns the dummy. On a matching conservative event, start the
+selected populated slot in Once mode and consume its first input that frame.
+Explicit record/play commands preempt automatic playback. Do not reset recorded
+data or its random seed when skipping an empty response slot.
+
+Training mark58 appends an explicit response-owned byte to mark57's detector
+fields. Validate it as0/1 and require active Once playback when owned. Import
+marks54–57 without ownership; preserve mark57 detector fields. Stop response-owned
+playback when switching the response off or leaving a ready offline session;
+manual playback retains its existing lifecycle. Paused HUD inspection only reads
+state. Show RESP rather than PLAY for owned playback. No first-frame reversal,
+general knockdown classifier or unqualified roster coverage is implied.
+
+
+KOF2002/Magic projectile qualification: independently inspect each set's object
+pointer list at phase base + 0xe90 (0x10bee6), with camera 0x10b08e and hurt ID23.
+Reuse only bounded traversal policy (64 objects, RAM bounds, duplicate termination,
+fail closed on malformed/capped lists); do not infer object ownership from order.
+First compare private native ordinary-input snapshots against the actual original
+Lua. Production exposure requires per-set geometry, lifecycle and state/audio
+regression evidence. Preserve accepted grey/yellow candidates throughout.
+
+
+Roster expansion uses normal character-selection and motion inputs only. Capture
+selection and combat evidence to identify each fighter independently for each set;
+no character-ID RAM patching. Compare production geometry with the original Lua
+and visibility on/off trajectories, keeping private snapshots/states out of source.
+An unchanged accepted executable needs additional evidence, not a replacement build.
+
+
+Opposite-facing projectile qualification reaches crossed positions using normal
+recorded dummy jump/walk inputs, then stops and clears that private input slot.
+Require both changed facing and reversed X ordering before saving the fixture.
+Compare native ordinary-motion samples to original Lua and visibility on/off
+hashes/PCM, retaining existing approved executables. This qualifies sampled
+initial opposite-facing cases, not an entire player-role or dynamic-crossing matrix.
+
+
+P2 projectile qualification uses normal independent fighter selection, verifies
+identity in selection/combat, then drives P2 through the existing bounded dummy
+recording input route while keeping P1 neutral. This is a native training-input
+exercise, not physical controller or online acceptance. Compare original Lua and
+visibility-on/off hashes/PCM without changing accepted game binaries or user saves.

@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-22",
+  "exe_sha256": "f8d76ee1e31bd4c49e5a4ef18508377f189614e2fffbcaa8590e118e1b01e3b8",
+  "scope": "opt-in conservative recorded-slot recovery response; not first-frame reversal",
+  "training_state_mark": "0x4b393858",
+  "imports": [
+    "54",
+    "55",
+    "56",
+    "57"
+  ],
+  "ctest_passed": 13,
+  "native_filter_cases": 40,
+  "native_matchups": [
+    "Iori/Brian",
+    "Kyo/Yuri"
+  ],
+  "native_checks": [
+    "forced Once",
+    "first input on trigger frame",
+    "120-frame full game/board/audio continuation per matchup",
+    "manual play and record preempt active response",
+    "response off preserves manual loop",
+    "empty slot",
+    "online/viewer preserve provided input"
+  ],
+  "atomic_invalid_state_cases": 11,
+  "regression_old_new_hash_audio_frames": 900,
+  "existing_random_modes4_5_old_new_frames_each": 900,
+  "response_empty_slot_unchanged_frames": 900,
+  "guarded_rollback_stress_frames": 300,
+  "package_dependencies_without_toolchain_path": "2-frame direct headless smoke passed",
+  "images": {
+    "exe_sha256": "f8d76ee1e31bd4c49e5a4ef18508377f189614e2fffbcaa8590e118e1b01e3b8",
+    "capture": "offscreen native production game/port objects, Iori/Brian response playback and actual Dummy menu",
+    "images": {
+      "response.png": "ed1c1549a1cd9c3b6c107da6d962240fce30eec9a60bf284369e0246f7277d05",
+      "response-menu.png": "b5e5c602ecc12e888e88eeb5e2d59e41acb6ff90652c689c86970c22fdafe95e"
+    }
+  },
+  "limits": [
+    "no new Internet acceptance",
+    "not complete roster/multihit/crossup/throw qualification",
+    "accepted older candidate and original user state untouched",
+    "new local candidate only; no beta replacement or publication"
+  ]
+}

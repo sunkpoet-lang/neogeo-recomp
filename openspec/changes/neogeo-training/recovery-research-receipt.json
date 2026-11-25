@@ -1,0 +1,410 @@
+{
+  "scope": "native read-only recovery-signal research, not an automatic reversal adapter",
+  "cases": [
+    {
+      "case": "idle",
+      "frames": 240,
+      "damage": 0,
+      "reference_hitstun_proxy_nonzero_frames": 0,
+      "proxy_tick_range": null,
+      "p2_y_range": [
+        213,
+        220
+      ],
+      "logging_on_off_hashes_and_audio_equal": true
+    },
+    {
+      "case": "standing hit",
+      "frames": 240,
+      "damage": 9,
+      "reference_hitstun_proxy_nonzero_frames": 30,
+      "proxy_tick_range": [
+        18,
+        47
+      ],
+      "p2_y_range": [
+        213,
+        220
+      ],
+      "logging_on_off_hashes_and_audio_equal": true
+    },
+    {
+      "case": "sweep",
+      "frames": 240,
+      "damage": 12,
+      "reference_hitstun_proxy_nonzero_frames": 84,
+      "proxy_tick_range": [
+        21,
+        104
+      ],
+      "p2_y_range": [
+        162,
+        220
+      ],
+      "logging_on_off_hashes_and_audio_equal": true
+    },
+    {
+      "case": "blocked sweep",
+      "frames": 240,
+      "damage": 0,
+      "reference_hitstun_proxy_nonzero_frames": 0,
+      "proxy_tick_range": null,
+      "p2_y_range": [
+        213,
+        220
+      ],
+      "logging_on_off_hashes_and_audio_equal": true
+    }
+  ],
+  "reference_file_sha256": "a4e1463baeb086b0bc7f760f4958a5aaca7758cd15c7dfa16676bd9b5472ef2c",
+  "response_window_qualified": false,
+  "response_positive_controls": [
+    {
+      "qualified": false,
+      "reason": "idle positive control did not register a qualifying body attack; response absence cannot be interpreted as inability to act",
+      "do_not_use_as": "reversal/first-actionable/frame-advantage timing",
+      "raw_results_retained": true
+    },
+    {
+      "qualified": false,
+      "reason": "idle positive control did not register a qualifying body attack; response absence cannot be interpreted as inability to act",
+      "do_not_use_as": "reversal/first-actionable/frame-advantage timing",
+      "raw_results_retained": true
+    }
+  ],
+  "runtime_or_candidate_changed": false,
+  "limits": [
+    "single Iori/Brian scene with ordinary inputs",
+    "counter values are a reference proxy, not proven actionable/reversal timing",
+    "P2 attack-response detector needs independent calibration before automation",
+    "no new Internet or roster acceptance"
+  ],
+  "independent_input_controls": [
+    {
+      "scope": "player bodies",
+      "frames_per_trial": 160,
+      "input_ticks_inclusive": [
+        60,
+        63
+      ],
+      "trials": [
+        {
+          "p2_input": 0,
+          "minimum_p2_y": 213,
+          "p1_damage": 0,
+          "observed_attack_boxes": 0
+        },
+        {
+          "p2_input": 1,
+          "minimum_p2_y": 179,
+          "p1_damage": 0,
+          "observed_attack_boxes": 0
+        },
+        {
+          "p2_input": 16,
+          "minimum_p2_y": 213,
+          "p1_damage": 8,
+          "observed_attack_boxes": 0
+        },
+        {
+          "p2_input": 64,
+          "minimum_p2_y": 213,
+          "p1_damage": 12,
+          "observed_attack_boxes": 0
+        }
+      ]
+    },
+    {
+      "scope": "full scene, no ownership inferred",
+      "frames_per_trial": 160,
+      "input_ticks_inclusive": [
+        60,
+        63
+      ],
+      "trials": [
+        {
+          "p2_input": 0,
+          "minimum_p2_y": 213,
+          "p1_damage": 0,
+          "observed_attack_boxes": 0
+        },
+        {
+          "p2_input": 1,
+          "minimum_p2_y": 179,
+          "p1_damage": 0,
+          "observed_attack_boxes": 0
+        },
+        {
+          "p2_input": 16,
+          "minimum_p2_y": 213,
+          "p1_damage": 8,
+          "observed_attack_boxes": 0
+        },
+        {
+          "p2_input": 64,
+          "minimum_p2_y": 213,
+          "p1_damage": 12,
+          "observed_attack_boxes": 0
+        }
+      ]
+    }
+  ],
+  "event_time_followup": {
+    "watched_p2_status_address": "0x10837c",
+    "install_order": "private diagnostic after game beforeFrame; production observer unchanged",
+    "frames_per_control": 160,
+    "attack_event_counts_neutral_jump_A_C": [
+      0,
+      0,
+      1,
+      2
+    ],
+    "observer_on_off_hashes_audio_and_object_bytes_equal": true,
+    "idle_requested_responses_passed": 8,
+    "idle_no_request_negative_passed": true,
+    "response_trials": {
+      "runs": [
+        {
+          "scenario": 0,
+          "rows": [
+            [
+              999,
+              0,
+              -1,
+              0
+            ],
+            [
+              24,
+              1,
+              33,
+              0
+            ],
+            [
+              40,
+              1,
+              49,
+              0
+            ],
+            [
+              48,
+              1,
+              57,
+              0
+            ],
+            [
+              60,
+              1,
+              69,
+              0
+            ],
+            [
+              80,
+              1,
+              89,
+              0
+            ],
+            [
+              100,
+              1,
+              109,
+              0
+            ],
+            [
+              108,
+              1,
+              117,
+              0
+            ],
+            [
+              120,
+              1,
+              129,
+              0
+            ]
+          ]
+        },
+        {
+          "scenario": 1,
+          "rows": [
+            [
+              999,
+              0,
+              -1,
+              0
+            ],
+            [
+              24,
+              0,
+              -1,
+              1
+            ],
+            [
+              40,
+              0,
+              -1,
+              1
+            ],
+            [
+              48,
+              1,
+              58,
+              1
+            ],
+            [
+              60,
+              1,
+              70,
+              0
+            ],
+            [
+              80,
+              1,
+              90,
+              0
+            ],
+            [
+              100,
+              1,
+              110,
+              0
+            ],
+            [
+              108,
+              1,
+              118,
+              0
+            ],
+            [
+              120,
+              1,
+              130,
+              0
+            ]
+          ]
+        },
+        {
+          "scenario": 2,
+          "rows": [
+            [
+              999,
+              0,
+              -1,
+              0
+            ],
+            [
+              24,
+              0,
+              -1,
+              1
+            ],
+            [
+              40,
+              0,
+              -1,
+              1
+            ],
+            [
+              48,
+              0,
+              -1,
+              1
+            ],
+            [
+              60,
+              0,
+              -1,
+              1
+            ],
+            [
+              80,
+              0,
+              -1,
+              1
+            ],
+            [
+              100,
+              0,
+              -1,
+              1
+            ],
+            [
+              108,
+              1,
+              117,
+              0
+            ],
+            [
+              120,
+              1,
+              129,
+              0
+            ]
+          ]
+        },
+        {
+          "scenario": 3,
+          "rows": [
+            [
+              999,
+              0,
+              -1,
+              0
+            ],
+            [
+              24,
+              0,
+              -1,
+              0
+            ],
+            [
+              40,
+              0,
+              -1,
+              0
+            ],
+            [
+              48,
+              1,
+              58,
+              0
+            ],
+            [
+              60,
+              1,
+              70,
+              0
+            ],
+            [
+              80,
+              1,
+              90,
+              0
+            ],
+            [
+              100,
+              1,
+              110,
+              0
+            ],
+            [
+              108,
+              1,
+              118,
+              0
+            ],
+            [
+              120,
+              1,
+              130,
+              0
+            ]
+          ]
+        }
+      ],
+      "scope": "four-frame A requests, transient event detector; sampled response evidence only, not exact actionability or reversal timing"
+    },
+    "qualification": "sampled transient witness passes idle controls; exact actionability, input buffering, full roster and automatic reversal remain unqualified",
+    "prior_failed_calibrations_retained": true
+  },
+  "detector_limitation": "P2 jump and damaging A/C responses are proven by motion and damage, despite zero qualifying attack boxes in both end-of-frame readers. Absence of these boxes cannot establish inability to act; the cause is not yet qualified against an independent event-time reference."
+}

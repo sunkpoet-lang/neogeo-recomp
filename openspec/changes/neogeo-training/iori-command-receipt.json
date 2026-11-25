@@ -1,0 +1,40 @@
+{
+  "character": "Iori, P1",
+  "character_evidence": "native game HUD and VS intro from copied user F5 state; Iori versus Brian",
+  "source_state_preserved": true,
+  "ordinary_forward_A_control_events": 0,
+  "runs": [
+    {
+      "input_variant": 1,
+      "events_equal_to_actual_lua": 10,
+      "only_A_attack_button": true,
+      "both_actor_facings": true,
+      "opponent_hp_constant": 103,
+      "observer_on_off_hashes_audio_motion_equal": true,
+      "frames": 1200
+    },
+    {
+      "input_variant": 2,
+      "events_equal_to_actual_lua": 10,
+      "only_A_attack_button": true,
+      "both_actor_facings": true,
+      "opponent_hp_constant": 103,
+      "observer_on_off_hashes_audio_motion_equal": true,
+      "frames": 1200
+    }
+  ],
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "limits": [
+    "sampled A-only command-throw behaviour, not every character/move",
+    "aerial throws and throwability pending",
+    "no new Internet acceptance"
+  ],
+  "production_runtime_changed": false,
+  "presentation": "Iori A-only command-throw presentation: 10 event frames, read-only PASS",
+  "exe_sha256": "096a7d019dcf197022dfec5bd8d69305de241a54b4b986557fd92307c521f140",
+  "images": {
+    "iori-command.png": "20c990c92fa2a560dab474ad94154f8c451abcd115351dbaffe40474c74bf2b7",
+    "iori-command-menu.png": "99bf297d3e0b15cb56038b6a0d5240f1f846feda9e4819ba9079ca07e9bda96b"
+  },
+  "capture": "actual offscreen native game/board/port production objects; verified Iori/Brian fixture derived from a preserved user F5 state"
+}

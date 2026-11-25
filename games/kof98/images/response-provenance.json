@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "f8d76ee1e31bd4c49e5a4ef18508377f189614e2fffbcaa8590e118e1b01e3b8",
+  "capture": "offscreen native production game/port objects, Iori/Brian response playback and actual Dummy menu",
+  "images": {
+    "response.png": "ed1c1549a1cd9c3b6c107da6d962240fce30eec9a60bf284369e0246f7277d05",
+    "response-menu.png": "b5e5c602ecc12e888e88eeb5e2d59e41acb6ff90652c689c86970c22fdafe95e"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-22",
+  "game": "kf2k2mp2",
+  "exe_sha256": "752c0220018852d2d4e0b797115969a96cef106d625a1626cec9b18bb6254ded",
+  "reference_sha256": "91db43f2ce34065afed445662afcfe5001c4bbd94b271f63105dc0e238942531",
+  "geometry": {
+    "passed": true,
+    "snapshots": 127,
+    "rectangles_equal_to_original_lua": 1008,
+    "kind_counts": {
+      "proj. attack": 123,
+      "proj. vulnerability": 127,
+      "push": 254,
+      "vulnerability": 504
+    },
+    "unknown_projectile_ownership": true,
+    "scope": "native Iori projectile battle snapshots; original Lua runtime reference; throws and full roster not accepted"
+  },
+  "native_lifecycle": "projectile lifetime, read-only presentation, toggle, paused load and online/viewer/session guards PASS; visible frames 4",
+  "native_board_and_full_game_state_read_only": true,
+  "pause_presentations": 60,
+  "ctest_passed": 14,
+  "regression": {
+    "passed": true,
+    "training_before_off_on_equal_frames": 900,
+    "audio_equal": true,
+    "online_stress_equal_frames": 300,
+    "exe_sha256": "752c0220018852d2d4e0b797115969a96cef106d625a1626cec9b18bb6254ded",
+    "scope": "offline native player boxes; loopback/Internet and projectile/throw coverage not claimed"
+  },
+  "package_smoke": "direct two-frame startup without toolchain PATH passed",
+  "previous_candidate_sha256_unchanged": "44138e3c7b2673e90a02aa2363923c634c844348e02564371171e77ca038c00e",
+  "state_schema_unchanged": true,
+  "images": {
+    "exe_sha256": "752c0220018852d2d4e0b797115969a96cef106d625a1626cec9b18bb6254ded",
+    "capture": "actual native GPU overlay and menu, not simulated UI",
+    "images": {
+      "projectiles.png": "ff03fa563670fdd339e128fec362b17407784c9a54fdaa505deb2cc64d72b6d9",
+      "projectiles-menu.png": "1afc4a18b1443e6cc3b2b4d19a9b1ec600399203a8a76f5223a7eed059d661ea"
+    }
+  },
+  "limits": [
+    "sampled Iori projectiles, not full roster",
+    "no ownership inferred from list order",
+    "not collision-engine or frame-advantage certification",
+    "no new Internet acceptance or installed launcher update"
+  ]
+}

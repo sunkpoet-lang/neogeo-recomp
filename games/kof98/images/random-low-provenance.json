@@ -1,0 +1,8 @@
+{
+  "exe_sha256": "061e1d2bf03d6327a08e1ec7ca12c6d64c1260bc57c6995ce1f3bea283c4752c",
+  "capture": "native production objects; explicit random low-guard input intent, measured matched low-attack trials",
+  "images": {
+    "random-low.png": "d425faed5986365a5e048a5adc253121bb58f00ebe8870a83159a2b607d9c317",
+    "random-low-menu.png": "2cf212e3515beb4502767b73abfdafe5add069ce44f1f1006badf858c1dc408c"
+  }
+}
