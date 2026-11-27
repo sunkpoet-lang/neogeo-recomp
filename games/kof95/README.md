@@ -54,6 +54,14 @@ build/kof95/kof95.exe --rom /path/to/kof95.zip --replay /output/example.fareplay
 
 ![Replay menu from the executable](images/replay-menu.png)
 
+## Every character open
+
+Saisyu Kusanagi and Omega Rugal are always selectable: in Team Edit (answer YES to "TEAM EDIT?") they are in the bottom row's middle, Saisyu on the left and Omega Rugal on the right ([images/bosses.png](images/bosses.png)). The arcade program keeps them locked and has no code to open them (the Start code from the home versions is not in it); the port sets the game's own flag before every frame, the same offline, online and in replays.
+
+## ForkAde online
+
+In ForkAde's session (`--forkade-online`, the launcher's online pages) the names strip counts streaks of two-human versus matches: KOF95 keeps no win counter, so a match is won when the other side leaves play (its continue countdown). Spectators can join a match in progress, directly or through the tunnel's relay.
+
 ## Cartridge assembly
 
 MAME revision `8c285468743535fbbde018fef23b3cfb8c9a3ec8`, `src/mame/snk/neogeo.cpp`, defines the MVS set. After the ordinary 16-bit word swap, P1's two 1 MiB halves change places. Samples retain a 2 MiB gap at `0x600000`; sprite data retain a 4 MiB gap at `0x1400000`. `machine/kof95_layout.h` assembles these regions in memory after exact region-size validation. This is layout handling, not KOF2002 decryption.

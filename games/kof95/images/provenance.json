@@ -34,5 +34,10 @@
       "viewer.png": "ef81d4c7aba6bd7b17663f08be77e851d422ca8bbf16b963df6e218d86aa0d2c",
       "replay-menu.png": "0da97bd8de692b4fe0e5994886a03feefce5db3d94ef194ddb0d6d6796b6a3d6"
     }
+  },
+  "bosses_capture": {
+    "method": "unmodified headless screenshot at frame 4270: Team Edit with the bosses open (0x10e79a), cursor on Iori Yagami; Saisyu Kusanagi and Omega Rugal in the bottom row's middle",
+    "exe_sha256": "db950afbeaae4a718d22c0c2a1ebc3f63a50e35167c1fbfca3348f6f40086607",
+    "file_sha256": "89f615200c3d3a9d596cd4c4d865cffb1302d0d56ab8a49a9bd6206593e3f96b"
   }
 }
