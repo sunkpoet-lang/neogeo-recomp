@@ -6,6 +6,7 @@
 
 ## [2026-11-27] - KOF98 training combo counter and Neo Geo training adapters
 
+- docs: record the KOF2002 Orochi versions code (hold Start, then choose Yashiro, Shermie or Chris) in the README as checked with scripted input, with images/orochi.png comparing the screen with and without Start
 - docs: add a hidden characters section to the KOF2002 README with the Kusanagi code, checked with scripted input and shown in images/kusanagi.png, plus the unchecked Orochi versions and the Omega Rugal note
 - docs: record the KOF family's ForkAde base in neo-kof-family-match-flow: automatic replays, rebuilt acceptance, relay spectators and the hidden-character findings
 - feat: record two-human versus matches automatically with round markers in KOF97, KOF98, KOF2002 and Magic Plus II (their bout clocks observed natively), and keep training sessions out of automatic replays

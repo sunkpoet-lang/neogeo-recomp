@@ -82,7 +82,7 @@ roster coverage remain separate work. See [attempt evidence](../../openspec/chan
 The arcade set keeps its hidden characters behind codes on the select screen, and they work in this port as on the board:
 
 - Kusanagi: with the cursor on Kyo, press Up, Down, Right, Left, Down, Up, Left, Right; Kyo's portrait and name change to Kusanagi ([images/kusanagi.png](images/kusanagi.png), checked with scripted input).
-- The Orochi versions of Yashiro, Shermie and Chris: hold Start and choose them with any attack button (not yet checked in this port).
+- The Orochi versions of Yashiro, Shermie and Chris: hold Start and choose them with any attack button; with Start held the team comes out in its Orochi versions, without it in the normal ones ([images/orochi.png](images/orochi.png): left with Start, right without, checked with scripted input).
 - Omega Rugal cannot be chosen on the MVS; he is a secret opponent for a player who finishes the game without a continue.
 
 ## Build and run
