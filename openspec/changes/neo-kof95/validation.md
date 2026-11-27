@@ -123,3 +123,97 @@ Training references requested by the user were investigated separately in
 runtime, copied Lua or installed dependencies. Its documented plan validates
 KOF98 first as the reference, then each other set independently; it does not
 reuse one game's RAM map across the KOF family.
+
+## ForkAde match flow, spectators and catalogue — 26 November 2026 (Claude)
+
+Worktree `D:/CPS2/neogeo-kof95-base`, branch `claude/kof95-base` from `codex/neo-kof95` 3c032cb (Codex's
+uncommitted training work in `D:/CPS2/neogeo-recomp` untouched). Program: `build/kof95/kof95.exe`, Release with
+`FORKADE_BROKER_DIR=D:/CPS2/ForkAde`, SHA-256 2b8fadbe39dde16c…; baseline: the accepted candidate
+`work/kof95-ready/kof95.exe` c51fbc77ddb497be….
+
+Changes: `games/kof95/src/match_score.h` (the result reader, `native-results.md`), registered in `kof95.cpp`;
+KOF95 admitted to the ForkAde match flow (`port/neogeo_online.h`) and the native room build (`CMakeLists.txt`);
+`tools/check_neogeo_flow.py --game kof95` with a KOF95 trace (two human versus matches won by player 1, the second
+after player 2 challenges again) and the menu test linked with `recomp-common/menubar.cpp` (it no longer linked
+since the menu bar); `tests/kof95_match_score_test.cpp`; `tools/check_kof95_spectators.py`;
+`tools/check_kof95_tunnel.py`.
+
+| Check | Result |
+|---|---|
+| `check_neogeo_flow.py --game kof95` (`build/kof95-flow-acceptance/report.json`) | PASS, 42 cases: embedded icons equal to the baseline; menu, score and recovery units; offline 6000 scripted frames, state and sound byte for byte as the baseline; stress 6000 with the human fight armed; two real team matches, streak 2 (34000 frames); 20 host/guest pairs, 363-365 matching checkpoints each; outages both ways and one way (3689 recovered checkpoints each), forever (60 s timeout), the native owner (809); the legacy wire both ways against the baseline |
+| Spectators on loopback, 1800 frames (`build/kof95-spectators`) | players 1800/1800 agreed; spectator at 4 s 1663/1663 equal from frame 122, at 12 s 1404/1404 from frame 379; players' frames the same with and without spectators; chat with accents once each way, spectators get the players' lines, the host names both |
+| Through `cps-tunel`, direct, 3600 frames, spectator after 20 s (`build/kof95-tunnel/kof95-direct`) | players 3590/3590, spectator 2937/2937 equal from frame 650, chat ("suerte, ñandú") both ways, spectator admitted |
+| Through `cps-tunel`, relay only (two runs) | players 3590/3590 and chat both ways; **the spectator gets no frame**: admitted at frame ~631, then "connection to the match was lost". KOF97's product build fails the same way (`build/kof97-tunnel-relay`): a shared Neo Geo defect, not KOF95's |
+| Names strip, a hidden online pair (`build/claude-probe/strip`) | "Daniel 0 VS 0 Iñaki" at the top; the ñ shows as the font's fallback glyph (the shared Neo Geo font) |
+| Volume | `--volume 50` kept in settings.ini; the level is outside the game state (generic, already checked on KOF97/98) |
+| ForkAde catalogue | `kof95` entered as a candidate (no profile); `tests/test_catalogue.py` has the same 6 failures before and after (pre-existing, Git Bash paths and older counts) |
+
+Cause of the relay defect: neogeo-recomp builds GekkoNet v20261024222910-9da2363 unpatched, which resends the whole
+spectator state (some 280 KB, ~300 datagrams of 900 bytes) every 200 ms until it is acknowledged; through n0's relay
+the burst is lost and the host drops the spectator. sf3comp and MvC2 pace the chunks (patch_gekkonet_sf3/mvc2.cmake).
+
+Unlock: the arcade boss code (hold Start on team select: Up+B, Right+C, Left+A, Down+D, and the order Up+B, Right+C,
+Down+D, Left+A once and twice, on team select and on Team Edit) was tried with scripted inputs; none showed Saisyu or
+Omega Rugal, and the A press selected a team. Sources disagree on the code; open (2.7b).
+
+Not covered: Internet between two PCs, a real window (menu bar, strip, viewer with a pad), the launcher and the
+package. Private: `neogeo-recomp/work/claude-kof95-base` (probes, captures). No commit, push or installed change.
+
+### Spectators through the relay fixed for every Neo Geo game — 26 November 2026
+
+`tools/patch_gekkonet_neogeo.cmake`, run by `CMakeLists.txt` after GekkoNet is fetched (idempotent; it says so when
+the source is already patched): the host sends the spectator's state 10 chunks every 16 ms (about 560 KB/s), going
+round the chunks until the spectator acknowledges, in place of every chunk at once every 200 ms; the spectators'
+inputs are kept a minute (3600 frames, 600 before). Only the host's sending changes: the packets and the spectator's
+side are GekkoNet's own. Built against a patched copy (`build/gekkonet-src`), not the shared one under
+`neogeo-recomp/build/kof97/_deps`.
+
+| Check (`cps-tunel`, relay only, 3600 frames, spectator after 22 s) | Before | After |
+|---|---|---|
+| KOF95 (`build/kof95-paced-tunnel`, program `build/kof95-paced/kof95.exe`) | spectator 0 frames (two runs) | players 3590/3590; spectator 2848/2848 equal from frame 657; chat both ways |
+| KOF97 (`build/kof97-paced-tunnel`, `build/kof97/kof97.exe` from this branch) | spectator 0 frames | players 3590/3590; spectator 2854/2854 equal from frame 659; chat both ways |
+| KOF95 spectators on loopback (`build/kof95-paced-spectators`) | passed | passed: 1643/1643 and 1384/1384, players the same with and without spectators |
+
+KOF98, KOF2002 and Magic Plus II get the same patch when built from this branch; they were not run through the relay
+here. An unpatched spectator receives the paced chunks the same way (the receiving code is unchanged), not run.
+
+Unlock, second round: the code as Daniel sent it from a 2005 forum post (Team Edit? on YES, hold Start, Up+B,
+Right+C, Left+A, Down+D, release Start), with YES chosen or confirmed first, and with three timings (the direction
+2 frames before the button, 8-frame presses, the code twice): the directions and A still drove the menu (cursor,
+YES/NO, team chosen) and the bosses' place stayed empty. Open (2.7b).
+
+### The bosses' code on the original MVS set — 26 November 2026
+
+- The inputs reach the game as they should: during the code the BIOS's player 1 current byte (0x10FD96) reads
+  0x21, 0x48, 0x14 and 0x82 in turn, with Start held (0x10FDAC bit 0) throughout.
+- With the BIOS's MVS flag (0x10FD82) at 0 during the select screens (a probe build, `build/kof95-probe`, never
+  shipped) the game shows the home version's credits and prompts, and the bosses still do not appear.
+- The program ROM (084-p1, word-swapped, halves swapped) holds no table of the code in any of the layouts searched
+  (the four combined bytes, active high or low, strides 1-8; direction and button apart; word tables) and no run of
+  compare-immediate instructions with those values.
+
+So the code Daniel found (Team Edit, hold Start, Up+B, Right+C, Left+A, Down+D) appears to belong to the home
+versions (AES NGH-084 and Neo Geo CD, as the post says), not to this original MVS set. Not proven by
+disassembly of the select screen. Open: leave the bosses locked as in the arcade, or find the select grid's flag.
+
+### Saisyu Kusanagi and Omega Rugal open — 26 November 2026
+
+Found with a probe build (`build/kof95-probe`, never shipped; `work/claude-kof95-base` holds its scripts): from a
+state saved before team select, groups of 512 work-RAM bytes that stay 0 through the select screens were written 1
+before every frame, and each capture's empty boss slot compared with an unwritten run. One of 108 groups showed both
+bosses; splitting it twice more left one byte, 0x10e79a. A normal 16000-frame versus never writes it (0 after the
+power-on RAM test). With it at 1 both appear in Team Edit's bottom row (Saisyu left, Omega Rugal right), Omega Rugal
+was picked into a team (Iori, Omega Rugal, King) and the fight ran. In the home mode (the probe's MVS flag at 0 from
+boot) the Start code did not open them either, so it belongs to the home cartridge's program.
+
+`games/kof95/src/kof95.cpp` writes it before every frame while the game has the board (not during the BIOS's RAM test),
+through the port's RunFrame, so offline, online and replay playback all see it. No option: both sides of a match
+always agree. Image `games/kof95/images/bosses.png` (provenance.json, exe db950afb…).
+
+This changes the state from the game's first frame (frame 239 in the checker's offline script) and, as the select
+screen gains the bosses' cells, the scripted run's later sound. So the final acceptance used the final program as its
+own baseline (`build/kof95-flow-acceptance-2`, `--baseline build/claude-probe/kof95-unlock-baseline.exe`): PASS, 41
+cases, streak 2, outages 3689/3688 recovered checkpoints, native owner 811. The offline equality with Codex's
+candidate stands for the build before the unlock (`build/kof95-flow-acceptance`). Through the relay with the final
+program: players 3590/3590, spectator 2864/2864 from frame 653 (`build/kof95-final-tunnel`). Replays recorded with
+earlier builds carry another source identity (kof95.cpp changed), so they are refused as another build; not run.

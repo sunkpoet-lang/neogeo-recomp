@@ -4,6 +4,13 @@
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
 
+## [2026-11-26] - KOF95 match flow and boss unlock
+
+- docs: record KOF95's native result reader, ForkAde match flow, spectators, relay fix and boss unlock evidence in the neo-kof95 change (native-results, validation, tasks)
+- feat: open Saisyu Kusanagi and Omega Rugal in KOF95 (the game's own flag set before every frame; the arcade program has no code for it), with a Team Edit capture and README notes
+- feat: add KOF95 to ForkAde's online match flow: a native result reader (the loser leaving play), streaks, spectators, chat and names; acceptance tools for spectators and the tunnel
+- fix: let Neo Geo spectators watch through the tunnel's relay: GekkoNet sends a joining spectator's state at a paced rate instead of all at once every 200 ms (tools/patch_gekkonet_neogeo.cmake)
+
 ## [2026-11-24] - Training development evidence and coverage
 
 - docs: consolidate the local KOF98, KOF2002 and Magic Plus II training work, native demonstration captures, save compatibility, independent validation and remaining publication gates; distinguish development candidates from the published source

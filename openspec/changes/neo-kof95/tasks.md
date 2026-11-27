@@ -12,9 +12,12 @@
 - [ ] 2.4c Accept online replay capture with another PC over the Internet; plan rotation beyond the current 20-minute segment cap.
 - [x] 2.5a Integrate viewer controls and validate scripted navigation against linear playback.
 - [ ] 2.5b Accept native file/folder pickers and physical viewer controls with the user.
-- [ ] 2.6 Validate host/guest, direct/relay mid-game spectators, chat and names.
-- [ ] 2.7 Integrate name/score strip, volume and verified unlock options.
+- [x] 2.6a Validate host/guest, mid-game spectators (loopback and the tunnel, direct), chat with accents and names.
+- [x] 2.6b Spectators through the tunnel's relay: GekkoNet paced for every Neo Geo game (tools/patch_gekkonet_neogeo.cmake), KOF95 and KOF97 checked.
+- [x] 2.7a Native result reader (the loser leaving play), ForkAde match flow and streaks, names strip and volume.
+- [x] 2.7b Saisyu Kusanagi and Omega Rugal always open: the game's own flag (0x10e79a) set before every frame.
 ## 3. Delivery
-- [ ] 3.1 Add catalogue/profile and launcher diagnostics; verify direct and launcher discovery without ROM writes.
+- [x] 3.1a ForkAde catalogue entry as a candidate (no release profile); catalogue tests unchanged.
+- [ ] 3.1b Release profile, launcher table and package; verify direct and launcher discovery without ROM writes.
 - [ ] 3.2 Prepare demonstration images and honest public documentation; no claim of complete static translation.
 - [ ] 3.3 Record evidence and user acceptance; separate commit/push approval, no automatic deployment.
