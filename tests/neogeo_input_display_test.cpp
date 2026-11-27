@@ -37,5 +37,14 @@ int main(){
     check(training[174*width+2]==0xff66abcbu); // Gold border blended12% over known background.
     std::vector<uint32_t> fromPainted;port::BuildNeoGeoInputPresentation(training,width,height,pads,true,fromPainted,native.data());
     check(fromPainted==detailed); // No opaque native panel or doubled opacity underneath.
+    for(int top:{48,158,10000}){
+        const int expected=std::min(top,height-24);
+        std::vector<uint32_t> moved(n,guard),composed,restored;
+        port::DrawNeoGeoInputPanels(moved.data(),width,height,pads,true,top);
+        port::BuildNeoGeoInputPresentation(native,width,height,pads,true,composed,nullptr,top);
+        port::BuildNeoGeoInputPresentation(moved,width,height,pads,true,restored,native.data(),top);
+        check(composed==restored); // Moved panel still blends once, not twice.
+        for(int y=0;y<height;++y)for(int x=0;x<width;++x)if(y<expected||y>=expected+24)check(moved[size_t(y)*width+x]==guard);
+    }
     port::BuildNeoGeoInputPresentation(tiny,width,height,pads,true,detailed);check(detailed.empty());
 }

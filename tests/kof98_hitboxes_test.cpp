@@ -33,4 +33,7 @@ int main(){
     word(0x10bf26,0);word(0x100706,0x8000);check(ReadScene(read).projectilesComplete&&ReadScene(read).boxes.empty());
     for(unsigned i=0;i<kProjectileLimit;++i)word(0x10bf24+i*2,uint16_t(0x100+i*2));
     check(!ReadScene(read).projectilesComplete&&ReadScene(read).boxes.empty()); // strict list cap
+    check(!ReadThrow(read,0x108101)); // invalid actor must not read arbitrary RAM
+    byte(0x108292,0);check(!ReadThrow(read,0x108100));
+    byte(0x108292,1);byte(0x10828b,0);byte(0x10828c,8);check(!ReadThrow(read,0x108100)); // degenerate area
 }

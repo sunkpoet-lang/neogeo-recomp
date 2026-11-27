@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 set(ROOT "${CMAKE_SOURCE_DIR}")
+add_executable(kof2002_hitboxes_test kof2002_hitboxes_test.cpp)
+add_test(NAME kof2002_hitboxes COMMAND kof2002_hitboxes_test)
+add_executable(kof98_recovery_test kof98_recovery_test.cpp)
+add_test(NAME kof98_recovery COMMAND kof98_recovery_test)
+add_executable(kof98_random_guard_test kof98_random_guard_test.cpp)
+add_test(NAME kof98_random_guard COMMAND kof98_random_guard_test)
 add_executable(kof98_hitboxes_test kof98_hitboxes_test.cpp)
 add_test(NAME kof98_hitboxes COMMAND kof98_hitboxes_test)
 add_executable(neogeo_input_display_test neogeo_input_display_test.cpp ${ROOT}/port/neogeo_input_display.cpp)

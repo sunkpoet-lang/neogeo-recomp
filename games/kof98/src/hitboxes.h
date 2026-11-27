@@ -5,8 +5,9 @@
 #include <array>
 #include <cstdint>
 #include <vector>
+#include <optional>
 namespace cps2recomp::kof98::collision {
-enum class Kind {Hurt,Attack,Guard,Push,ProjectileHurt,ProjectileAttack};
+enum class Kind {Hurt,Attack,Guard,Push,ProjectileHurt,ProjectileAttack,Throw};
 // player=-1 for projectile objects: ownership is not inferred from list order.
 struct Box {int player;Kind kind;int left,top,right,bottom;bool operator==(const Box&)const=default;};
 struct Point {int x=0,y=0;};
@@ -35,6 +36,17 @@ template<class Read> void Object(Read read,uint32_t base,int player,int camera,F
         out.boxes.push_back({player,kind,cx-rx,cy-ry,cx+rx-1,cy+ry-1});
     }
 }
+}
+template<class Read> std::optional<Box> ReadThrow(Read read,uint32_t base){
+    if(base!=0x108100&&base!=0x108300)return {};
+    if(!read(base+0x192))return {};
+    const uint32_t at=base+0x188;
+    const int dx=int(int8_t(read(at+1))),dy=int(int8_t(read(at+2))),rx=read(at+3),ry=read(at+4);
+    if(!rx||!ry)return {}; // Do not invent an area for a degenerate reference box.
+    const int flip=read(base+0x31)&1?-1:1;
+    const int cx=detail::Word(read,base+0x18)-detail::Word(read,0x10b0cc)+dx*flip;
+    const int cy=detail::Word(read,base+0x26)-16+dy;
+    return Box{base==0x108100?0:1,Kind::Throw,cx-rx,cy-ry,cx+rx-1,cy+ry-1};
 }
 template<class Read> Frame ReadPlayers(Read read){
     Frame out;const auto phase=read(0x10b094);

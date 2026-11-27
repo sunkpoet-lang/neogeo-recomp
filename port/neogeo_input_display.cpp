@@ -31,10 +31,10 @@ void Sprite(uint32_t* pixels,int width,int height,int which,int cx,int cy,int si
         target=value;
     }
 }
-int PanelTop(int height){return std::max(0,height-50);}
-void Panels(uint32_t* pixels,int width,int height,const uint16_t pads[2],bool /*training*/,int scale){
+int PanelTop(int height,int requested){return std::clamp(requested<0?height-50:requested,0,std::max(0,height-24));}
+void Panels(uint32_t* pixels,int width,int height,const uint16_t pads[2],bool /*training*/,int scale,int requested){
     const recomp::text::Canvas c{pixels,width,height};
-    const int y=PanelTop(height/scale)*scale;
+    const int y=PanelTop(height/scale,requested)*scale;
     const auto reduced=[scale](int value){return (value*scale*3+2)/4;};
     const int panelWidth=reduced(90),panelHeight=reduced(32);
     constexpr int centresX[]={31,47,64,80},centresY[]={22,11,8,10};
@@ -53,22 +53,22 @@ void Panels(uint32_t* pixels,int width,int height,const uint16_t pads[2],bool /*
     }
 }
 }
-void DrawNeoGeoInputPanels(uint32_t* pixels,int width,int height,const uint16_t pads[2],bool training){
+void DrawNeoGeoInputPanels(uint32_t* pixels,int width,int height,const uint16_t pads[2],bool training,int panelTop){
     if(!pixels||!pads||width<240||height<80)return;
-    Panels(pixels,width,height,pads,training,1);
+    Panels(pixels,width,height,pads,training,1,panelTop);
 }
 bool RecorderInputArtValid(){return std::all_of(Art().begin(),Art().end(),[](const auto& image){return !image.empty();});}
-void BuildNeoGeoInputPresentation(const std::vector<uint32_t>& native,int width,int height,const uint16_t pads[2],bool training,std::vector<uint32_t>& out,const uint32_t* background){
+void BuildNeoGeoInputPresentation(const std::vector<uint32_t>& native,int width,int height,const uint16_t pads[2],bool training,std::vector<uint32_t>& out,const uint32_t* background,int panelTop){
     if(width<240||height<80||native.size()!=size_t(width)*height){out.clear();return;}
     out.resize(size_t(width)*height*9);
     for(int y=0;y<height*3;++y)for(int x=0;x<width*3;++x)out[size_t(y)*width*3+x]=native[size_t(y/3)*width+x/3];
     if(background){
-        const int top=PanelTop(height),panelWidth=(90*3+2)/4;
+        const int top=PanelTop(height,panelTop),panelWidth=(90*3+2)/4;
         for(int player=0;player<2;++player){const int left=player?width-2-panelWidth:2;
             for(int y=top*3;y<(top+24)*3;++y)for(int x=left*3;x<(left+panelWidth)*3;++x)
                 out[size_t(y)*width*3+x]=background[size_t(y/3)*width+x/3];
         }
     }
-    Panels(out.data(),width*3,height*3,pads,training,3);
+    Panels(out.data(),width*3,height*3,pads,training,3,panelTop);
 }
 }

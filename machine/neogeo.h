@@ -60,6 +60,12 @@ public:
     uint64_t Frames() const {
         return m_frames;
     }
+    // Host-only read-only diagnostics; excluded from serialised machine state.
+    using RamWriteObserver = void (*)(const NeoGeo&, uint32_t actor);
+    void ObserveRamWrite(uint32_t address, RamWriteObserver observer) {
+        m_observedRamAddress=address&0xffffff; m_ramWriteObserver=observer;
+    }
+    uint64_t InspectionEpoch() const { return m_inspectionEpoch; }
     const uint32_t *Picture() const {
         return m_video.Picture();
     }
@@ -161,6 +167,9 @@ private:
     uint64_t m_frames = 0;
     uint64_t m_lineStart = 0; // the 68000's cycles at the start of the current line
     uint64_t m_lastKick = 0;  // ... when the program last kicked the watchdog
+    RamWriteObserver m_ramWriteObserver=nullptr;
+    uint32_t m_observedRamAddress=0;
+    uint64_t m_inspectionEpoch=0;
 
     // The calendar (uPD4990A): its 52-bit shift register (the time, then a 4-bit command on top), the time it keeps
     // (stopped at a fixed date, so that runs repeat), the lines the program last wrote and its test pulse's half period

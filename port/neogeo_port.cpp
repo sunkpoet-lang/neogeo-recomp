@@ -342,12 +342,22 @@ void NeoGeoPort::RunCommand(size_t index) {
     }
 }
 
+namespace {
+int InputDisplayMode(bool training){
+    const int local=training?FeatureValue("training_hud_inputs"):0;
+    return local==1||local==2?local:FeatureValue("input_display");
+}
+int InputDisplayTop(bool training){
+    const int position=training?FeatureValue("training_hud_position"):0;
+    return position==1?NeoGeoVideo::kHeight-66:position==2?48:-1;
+}
+}
 bool NeoGeoPort::InputPresentation(const std::vector<uint32_t>& native,std::vector<uint32_t>& out) const {
     if(menu.IsOpen())return false;
     const bool training=TheGame().inTraining&&TheGame().inTraining();
-    const int mode=FeatureValue("input_display");
+    const int mode=InputDisplayMode(training);
     if(mode==2||(mode==0&&!(training&&FeatureOn("training_hud"))))return false;
-    BuildNeoGeoInputPresentation(native,NeoGeoVideo::kWidth,NeoGeoVideo::kHeight,board->players,training,out,board->Picture());
+    BuildNeoGeoInputPresentation(native,NeoGeoVideo::kWidth,NeoGeoVideo::kHeight,board->players,training,out,board->Picture(),InputDisplayTop(training));
     return !out.empty();
 }
 void NeoGeoPort::Shown(std::vector<uint32_t> &pixels) const {
@@ -356,8 +366,8 @@ void NeoGeoPort::Shown(std::vector<uint32_t> &pixels) const {
     if(TheNeoGeoGame().inspect)TheNeoGeoGame().inspect(*board);
     const bool trainingActive=TheGame().inTraining&&TheGame().inTraining();
     const bool resourceHeaders=trainingActive&&FeatureOn("training_hud");
-    const int inputMode=FeatureValue("input_display");
-    if(inputMode==1||(inputMode==0&&resourceHeaders))DrawNeoGeoInputPanels(pixels.data(),kWidth,kHeight,board->players,trainingActive);
+    const int inputMode=InputDisplayMode(trainingActive);
+    if(inputMode==1||(inputMode==0&&resourceHeaders))DrawNeoGeoInputPanels(pixels.data(),kWidth,kHeight,board->players,trainingActive,InputDisplayTop(trainingActive));
     DrawHud(pixels.data(), kWidth, kHeight);
     // Stopped or slowed: said at the bottom, with the frame's number (for counting frames by stepping)
     if (paused || menu.SlowBy() > 1) {

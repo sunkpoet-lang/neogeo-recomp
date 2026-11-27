@@ -53,6 +53,7 @@ NeoGeo::NeoGeo(NeoGeoRoms roms)
 }
 
 void NeoGeo::Reset(bool hard) {
+    ++m_inspectionEpoch;
     if (hard) {
         std::fill(m_ram.begin(), m_ram.end(), 0);
         std::fill(m_z80Ram.begin(), m_z80Ram.end(), 0);
@@ -268,6 +269,7 @@ void NeoGeo::Write16(uint32_t address, uint16_t value) {
     if (a >= 0x100000 && a < 0x200000) {
         m_ram[a & 0xFFFF] = static_cast<uint8_t>(value >> 8);
         m_ram[(a & 0xFFFF) + 1] = static_cast<uint8_t>(value);
+        if(m_ramWriteObserver&&(m_observedRamAddress==a||m_observedRamAddress==a+1))m_ramWriteObserver(*this,m_cpu.a[4]);
     } else if (m_roms.kof98Protection && a == 0x20aaaa) {
         if (value == 0x0090) m_kof98Protection = 1;
         if (value == 0x00f0) m_kof98Protection = 2;
@@ -294,6 +296,7 @@ void NeoGeo::Write8(uint32_t address, uint8_t value) {
     const uint16_t onBus = odd ? value : static_cast<uint16_t>(value << 8);
     if (a >= 0x100000 && a < 0x200000) {
         m_ram[a & 0xFFFF] = value;
+        if(m_ramWriteObserver&&m_observedRamAddress==a)m_ramWriteObserver(*this,m_cpu.a[4]);
     } else if (m_roms.kof98Protection && (a & ~1u) == 0x20aaaa) {
         if (onBus == 0x0090) m_kof98Protection = 1;
         if (onBus == 0x00f0) m_kof98Protection = 2;
@@ -587,6 +590,7 @@ void NeoGeo::Out(uint16_t port, uint8_t value) {
 // --- state ---
 
 void NeoGeo::Serialize(Archive &ar) {
+    if(!ar.Saving())++m_inspectionEpoch;
     ar.Mark(0x4E454F47); // "NEOG"
     m_cpu.Serialize(ar);
     m_z80.Serialize(ar);
