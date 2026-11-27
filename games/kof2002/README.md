@@ -77,6 +77,14 @@ roster coverage remain separate work. See [attempt evidence](../../openspec/chan
 
 ![Yellow original-set throw attempt](images/throws.png)
 
+## Hidden characters
+
+The arcade set keeps its hidden characters behind codes on the select screen, and they work in this port as on the board:
+
+- Kusanagi: with the cursor on Kyo, press Up, Down, Right, Left, Down, Up, Left, Right; Kyo's portrait and name change to Kusanagi ([images/kusanagi.png](images/kusanagi.png), checked with scripted input).
+- The Orochi versions of Yashiro, Shermie and Chris: hold Start and choose them with any attack button (not yet checked in this port).
+- Omega Rugal cannot be chosen on the MVS; he is a secret opponent for a player who finishes the game without a continue.
+
 ## Build and run
 
 In the MSYS2 UCRT64 shell (the same dependencies as KOF97):
