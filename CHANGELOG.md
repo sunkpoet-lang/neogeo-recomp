@@ -4,6 +4,12 @@
 
 <!-- markdownlint-disable MD013 MD024 MD022 MD032 -->
 
+## [2026-11-27] - KOF98 training combo counter and Neo Geo training adapters
+
+- docs: record the KOF98 combo counter, refills, meter and input history in the neogeo-training change, with the evidence and what remains from fbneo-training-mode
+- feat: add a KOF98 training combo counter with last-hit and total damage, an after-combo health refill, a meter-always-full option and a facing-relative input history
+- feat: add Codex's KOF2002 and Magic Plus II training adapters (hitboxes, random guard, recovery response), KOF98 random guard and recovery response, read-only RAM observation and the input display changes
+
 ## [2026-11-26] - KOF95 match flow and boss unlock
 
 - docs: record KOF95's native result reader, ForkAde match flow, spectators, relay fix and boss unlock evidence in the neo-kof95 change (native-results, validation, tasks)

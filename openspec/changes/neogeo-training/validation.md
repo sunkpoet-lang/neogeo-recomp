@@ -987,3 +987,26 @@ use the projected published file set rather than accepting untracked source link
 No new executable, CTest, gameplay, peer or Internet validation is claimed by this
 documentation pass. Implementation publication and clean-clone qualification remain
 separate work.
+
+## KOF98: combo counter, refills, meter and input history — 27 November 2026 (Claude)
+
+Branch `claude/kof98-training` (worktree `D:/CPS2/neogeo-kof98-training`) from `claude/kof95-base` 3af7ab7, with
+Codex's uncommitted training work copied from `D:/CPS2/neogeo-recomp` unchanged: all 25 files equal to
+`work/documentation-excluded-source-hashes.json`; `port/input_art_data.h` left out as Codex asked.
+
+Added, compared with peon2's fbneo-training-mode kof98 script and its framework (address facts only, no Lua code):
+- `games/kof98/src/combo.h`: the dummy's combo, counted while the game's combo counter on it (0x1084b0) is not 0;
+  the last hit's damage and the combo's total from its health (0x108439); the last combo kept after it ends. Saved
+  with the training state (mark 0x4b393859; earlier marks still load, the combo then empty).
+- Resources: Refill health is Off / Always full / After combo (a side out of hitstun, its attacker's counter on it at
+  0, refills 4 points a frame); Meter always full (both gauges 0x1081e8/0x1083e8 at 0x80).
+- HUD: Combo counter (COMBO n, DAMAGE d TOTAL t, shown by default) and Input history (Hide / P1 / P2 / Both: the last
+  six inputs in fighting notation from each side's facing, 0x108131/0x108331, with frames held).
+
+Checks: CTest 15/15 (the new `kof98_combo` included); a training fight from Codex's `kof98-hitboxes/attack.state`
+showed COMBO 1 / DAMAGE 10 TOTAL 10, POW 128, the dummy back at HP 103 and both histories (`build/demo`,
+`build/demo2`: 3-20, 5A-2, 5-38, 4-30 for the scripted inputs); offline 6000 scripted frames with training off: state
+hashes and sound byte for byte the same as Codex's accepted `work/kof98-response-ready/kof98.exe`.
+
+Not done: recording P1 or both sides, the replay editor, refill speed and maximum settings, stun, input delay and
+missions; KOF2002 and Magic Plus II do not have these additions. No window or pad test yet.

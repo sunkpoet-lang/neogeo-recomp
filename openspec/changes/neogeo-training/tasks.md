@@ -58,7 +58,8 @@
 - [x] 5.5b1 Organise existing native controls under Session/Resources/Dummy/Recordings/Hitboxes/HUD; preserve option IDs, command pairing, saved state and gameplay/audio.
 - [x] 5.5b2 Add qualified offline HUD visibility, fixed anchors, text/resources choices and restore defaults; preserve accepted default appearance and independent gameplay preferences.
 - [x] 5.6a Qualify KOF98 random standing guard as a separate input exercise with deterministic state tests and measured guard/pass trials.
-- [ ] 5.6b Extend combo/stun, refill policies, additional guard/reversal/recovery and optional missions only with native evidence and deterministic state tests.
+- [x] 5.6c KOF98: combo counter with last-hit and total damage, after-combo health refill, meter always full and a facing-relative input history (Claude, 26 Nov).
+- [ ] 5.6b Extend stun, refill speed/maximum settings, recording P1 or both sides, additional guard/reversal/recovery and optional missions only with native evidence and deterministic state tests.
 - [ ] 5.7 Requalify KOF95/97/2002/Magic Plus II separately; keep CPS/SF integration a separate adapter task.
 - [x] 5.8a Automated player-box acceptance: old/off/on hashes/audio, paused load/reset freshness, online/replay inspection guards, screenshots/credits and isolated candidate.
 - [ ] 5.8b Human visual/controller/roster acceptance; full projectile/throw and product promotion gates remain open.
