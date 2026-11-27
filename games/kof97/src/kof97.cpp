@@ -9,6 +9,7 @@
 #include "../../../runtime/neogeo_game.h"
 #include "../../../machine/neogeo.h"
 #include "match_score.h"
+#include "../../../runtime/kof_replay.h"
 
 namespace cps2recomp {
 
@@ -41,6 +42,8 @@ void RegisterGame() {
                              kFeatureOwn});
     TheNeoGeoGame().frame = Frame;
     TheNeoGeoGame().onlineMatchScore = kof97::ReadMatchScore<NeoGeo>;
+    TheNeoGeoGame().replayVersus = kof::ReplayVersus<NeoGeo>;
+    TheNeoGeoGame().replayClock = kof::ReplayClock<0x10a83a, NeoGeo>;
 }
 
 } // namespace cps2recomp

@@ -130,7 +130,8 @@ bool NeoGeoReplay::Record(const std::string& path) {
 void NeoGeoReplay::Before(const uint16_t* pads) {
     if(m->playing)return;
     if(!m->autoFolder.empty()&&!m->port.online&&TheNeoGeoGame().replayVersus) {
-        const bool versus=TheNeoGeoGame().replayVersus(*m->port.board);
+        // (a training session is not a match: both players count as playing there)
+        const bool versus=TheNeoGeoGame().replayVersus(*m->port.board)&&!(TheGame().inTraining&&TheGame().inTraining());
         if(!versus)m->armed=true;
         if(m->recording&&m->automatic&&versus&&m->tail)StopRecord();
         if(!m->recording&&versus&&m->armed) {
