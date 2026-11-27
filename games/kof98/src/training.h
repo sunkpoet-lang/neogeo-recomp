@@ -11,6 +11,7 @@
 #include "hitboxes.h"
 #include "random_guard.h"
 #include "recovery.h"
+#include "combo.h"
 
 namespace cps2recomp::kof98::training {
 inline bool Active(){return !TheGame().online&&!TheGame().replayPlayback&&FeatureOn("training_session");}
@@ -26,6 +27,7 @@ struct State {
     RandomGuard guard;
     RecoveryDetector recovery;
     bool responseOwned=false;
+    Combo combo; // (the dummy's side of a combo: the HUD and the after-combo refill)
 };
 inline State state;
 struct ThrowCapture {const NeoGeo* owner=nullptr;uint64_t frame=0,epoch=0;std::array<std::optional<collision::Box>,2> boxes{};};
@@ -38,19 +40,20 @@ inline void CaptureThrow(const NeoGeo& b,uint32_t actor){
 }
 inline void Clear(){throws={};auto kept=std::move(state.recordings);state={};state.recordings=std::move(kept);state.recordings.ResetInteraction();SetHud({});}
 inline void Save(Archive& ar){
-    uint32_t mark=0x4b393858;
+    uint32_t mark=0x4b393859;
     if(ar.Saving())ar.Mark(mark);
-    else {ar.Pod(mark);ar.Require(mark>=0x4b393854&&mark<=0x4b393858);if(!ar.Ok())return;}
+    else {ar.Pod(mark);ar.Require(mark>=0x4b393854&&mark<=0x4b393859);if(!ar.Ok())return;}
     ar.Pod(state.seen);ar.Pod(state.entryTicks);ar.Pod(state.history);ar.BoundedVec(state.checkpoint,1024*1024);
     if(mark==0x4b393854)state.recordings={}; // first-slice save states contain no slots
     else state.recordings.Serialize(ar);
     if(mark>=0x4b393856)state.guard.Serialize(ar);else state.guard={};
     if(mark>=0x4b393857)state.recovery.Serialize(ar);else state.recovery={};
-    if(mark==0x4b393858){
+    if(mark>=0x4b393858){
         uint8_t owned=state.responseOwned;ar.Pod(owned);
         ar.Require(owned<=1&&(!owned||(state.recordings.Playing()&&!state.recordings.Recording()&&state.recordings.PlaybackMode()==0)));
         if(ar.Ok()&&!ar.Saving())state.responseOwned=owned!=0;
     }else state.responseOwned=false;
+    if(mark>=0x4b393859)state.combo.Serialize(ar);else state.combo={};
 }
 inline void Start(NeoGeo&){Clear();for(auto f:{"training_session","training_health","training_time","training_hud"})SetFeatureValue(f,1);}
 inline void Stop(NeoGeo&){SetFeatureValue("training_session",0);Clear();}
@@ -143,19 +146,42 @@ inline void RefreshHud(const NeoGeo& b){
         char line[64];snprintf(line,sizeof(line),"P%d HP %u POW %u",p+1,b.Peek8(p?0x108439:0x108239),b.Peek8(p?0x1083e8:0x1081e8));
         const float x=p?.98f:.02f;const int align=p?1:-1;hud.push_back({x,.70f,align,line});
     }
+    if(fight&&FeatureValue("training_hud_combo")==0){
+        char line[48];const auto& c=state.combo;
+        snprintf(line,sizeof(line),"COMBO %u",unsigned(c.hits?c.hits:c.shown));hud.push_back({.5f,.30f,0,line});
+        snprintf(line,sizeof(line),"DAMAGE %u  TOTAL %u",unsigned(c.lastDamage),unsigned(c.total));hud.push_back({.5f,.35f,0,line});
+    }
+    if(const int history=FeatureValue("training_hud_history"))for(int p=0;p<2;++p){
+        if(history!=3&&history!=p+1)continue;
+        for(int i=0;i<6;++i){
+            const auto& e=state.history[p][i];if(!e.count)break;
+            // (fighting notation: 6 is forward; the side's facing now, 0x108131/0x108331 at 0 when facing left)
+            const bool left=b.Peek8(p?0x108331:0x108131)==0;
+            const unsigned pad=e.pad;const int v=(pad&1)?0:(pad&2)?2:1,h=(pad&4)?(left?2:0):(pad&8)?(left?0:2):1; // up, down, left, right
+            const char dir="789456123"[v*3+h];
+            char line[32];snprintf(line,sizeof(line),"%c%s%s%s%s %u",dir,(pad&0x10)?"A":"",(pad&0x20)?"B":"",(pad&0x40)?"C":"",(pad&0x80)?"D":"",unsigned(e.count));
+            hud.push_back({p?.98f:.02f,.30f+.05f*float(i),p?1:-1,line});
+        }
+    }
     SetHud(std::move(hud));
 }
 inline void After(NeoGeo& b){
     if(!Active())return;
     if(Ready(b)){
-        if(FeatureOn("training_health"))for(auto at:{0x108239u,0x108439u}){const auto hp=b.Peek8(at);if(hp>0&&hp<=0x68)b.Poke8(at,0x67);}
+        state.combo.Next(b.Peek8(0x108439),b.Peek8(0x1084b0)!=0);
+        const int health=FeatureValue("training_health");
+        if(health==1)for(auto at:{0x108239u,0x108439u}){const auto hp=b.Peek8(at);if(hp>0&&hp<=0x68)b.Poke8(at,0x67);}
+        // (after combo: a side not in hitstun, its attacker's combo counter on it at 0, fills up a few points a frame)
+        if(health==2)for(int p=0;p<2;++p){const uint32_t at=p?0x108439u:0x108239u;const auto hp=b.Peek8(at);
+            if(hp>0&&hp<0x67&&b.Peek8(p?0x1084b0u:0x1082b0u)==0)b.Poke8(at,uint8_t(hp+4>0x67?0x67:hp+4));}
+        if(FeatureOn("training_meter"))for(auto at:{0x1081e8u,0x1083e8u})b.Poke8(at,0x80);
         if(FeatureOn("training_time"))b.Poke16(0x10a83a,0x6000);
     }
     RefreshHud(b);
 }
 inline void RestoreHud(NeoGeo& b){
     if(!Active())return;
-    for(auto name:{"training_hud_inputs","training_hud_position","training_hud_status","training_hud_resources"})SetFeatureValue(name,0);
+    for(auto name:{"training_hud_inputs","training_hud_position","training_hud_status","training_hud_resources","training_hud_combo","training_hud_history"})SetFeatureValue(name,0);
     SetFeatureValue("training_hud",1);RefreshHud(b);
 }
 inline void ShowBodyBoxes(NeoGeo&){if(Active())for(auto name:{"training_box_hurt","training_box_attack","training_box_guard","training_box_push"})SetFeatureValue(name,1);}
@@ -183,7 +209,8 @@ inline void Register(){
     constexpr unsigned own=kFeatureOwn,aid=kFeatureOwn|kFeatureTraining;
     g.features.insert(g.features.end(),{
         {"training_session","Session","Training session","Offline practice; P1 chooses both teams.",own|kFeatureSession},
-        {"training_health","Resources","Refill health","Refills living fighters during verified battle.",aid},
+        {"training_health","Resources","Refill health","Always full, or filled up again once a combo ends (the side is out of hitstun).",aid,{"Off","Always full","After combo"}},
+        {"training_meter","Resources","Meter always full","Keeps both power gauges full during battle.",aid},
         {"training_time","Resources","Infinite time","Holds the verified KOF98 clock.",aid},
         {"training_dummy","Dummy","Behaviour","Random modes choose one saved guard/pass intention; select standing or low explicitly.",aid,{"Stand","Crouch","Guard","Low guard","Random guard","Random low guard"}},
         {"training_response","Dummy","Recovery response","Play selected slot once after conservative recovery. Not first-frame reversal; airborne includes swept hits.",aid,{"Off","After block","After hit","After airborne hit","After any"}},
@@ -192,7 +219,7 @@ inline void Register(){
         {"training_playback","Recordings","Playback mode","Random uses populated slots and a saved seed.",aid,{"Once","Loop selected","Random slots"}}});
     g.pages.push_back({"Training","","Offline practice; advanced drills are not implemented.",true});
     g.pages.push_back({"Session","Training","Start, reset or end offline practice.",false});
-    g.pages.push_back({"Resources","Training","Verified health and time controls; meter is read-only.",false});
+    g.pages.push_back({"Resources","Training","Health, meter and time controls.",false});
     g.pages.push_back({"Dummy","Training","Verified basic stance and side-relative guard.",false});
     g.pages.push_back({"Recordings","Training","P1 controls P2 while recording. Limit 1800 frames per slot.",false});
     g.commands.insert(g.commands.end(),{{"training_start","Session","Start training","Select teams using P1.",nullptr},
@@ -219,8 +246,10 @@ inline void Register(){
         {"training_hud_inputs","HUD","Input panels","Override the global input display only in offline practice.",aid,{"Follow global","Show","Hide"}},
         {"training_hud_position","HUD","Panel position","Accepted size/opacity; fixed safe anchors.",aid,{"Above supers","Higher","Upper sides"}},
         {"training_hud_status","HUD","Status text","Reduce training/recording text without changing playback.",aid,{"Full","Session only","Hidden"}},
-        {"training_hud_resources","HUD","Portrait resources","Show or hide the verified HP/POW readouts.",aid,{"Show","Hide"}}});
+        {"training_hud_resources","HUD","Portrait resources","Show or hide the verified HP/POW readouts.",aid,{"Show","Hide"}},
+        {"training_hud_combo","HUD","Combo counter","The dummy's combo: hits, last hit's damage and the total.",aid,{"Show","Hide"}},
+        {"training_hud_history","HUD","Input history","The last six inputs in fighting notation (6 forward), buttons and frames held.",aid,{"Hide","P1","P2","Both"}}});
     g.commands.push_back({"training_hud_restore","HUD","Restore HUD defaults","Restore presentation only; leave drills and global inputs unchanged.",nullptr});h.commands.push_back(RestoreHud);
-    TrainingAids({"training_health","training_time","training_dummy","training_response","training_hud","training_slot","training_playback","training_box_hurt","training_box_attack","training_box_guard","training_box_push","training_box_axes","training_box_projectile","training_box_throw"});
+    TrainingAids({"training_health","training_meter","training_hud_combo","training_hud_history","training_time","training_dummy","training_response","training_hud","training_slot","training_playback","training_box_hurt","training_box_attack","training_box_guard","training_box_push","training_box_axes","training_box_projectile","training_box_throw"});
 }
 }

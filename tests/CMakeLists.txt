@@ -25,6 +25,8 @@ add_executable(fareplay_codec_test fareplay_codec_test.cpp ${ROOT}/port/fareplay
 target_include_directories(fareplay_codec_test PRIVATE ${ROOT}/port)
 target_link_libraries(fareplay_codec_test PRIVATE ZLIB::ZLIB)
 add_test(NAME fareplay_codec COMMAND fareplay_codec_test)
+add_executable(kof98_combo_test kof98_combo_test.cpp)
+add_test(NAME kof98_combo COMMAND kof98_combo_test)
 add_executable(kof95_replay_phase_test kof95_replay_phase_test.cpp)
 add_test(NAME kof95_replay_phase COMMAND kof95_replay_phase_test)
 add_executable(state_preflight_test state_preflight_test.cpp)
