@@ -6,6 +6,8 @@
 
 ## [2026-11-27] - KOF98 training combo counter and Neo Geo training adapters
 
+- docs: record the KOF family's ForkAde base in neo-kof-family-match-flow: automatic replays, rebuilt acceptance, relay spectators and the hidden-character findings
+- feat: record two-human versus matches automatically with round markers in KOF97, KOF98, KOF2002 and Magic Plus II (their bout clocks observed natively), and keep training sessions out of automatic replays
 - docs: record the KOF98 combo counter, refills, meter and input history in the neogeo-training change, with the evidence and what remains from fbneo-training-mode
 - feat: add a KOF98 training combo counter with last-hit and total damage, an after-combo health refill, a meter-always-full option and a facing-relative input history
 - feat: add Codex's KOF2002 and Magic Plus II training adapters (hitboxes, random guard, recovery response), KOF98 random guard and recovery response, read-only RAM observation and the input display changes
