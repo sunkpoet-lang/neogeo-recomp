@@ -53,6 +53,12 @@ FetchContent_Declare(gekkonet
     SOURCE_SUBDIR GekkoLib
     DOWNLOAD_EXTRACT_TIMESTAMP ON)
 FetchContent_MakeAvailable(gekkonet)
+# (ForkAde) the spectators' state at a pace a relay carries (tools/patch_gekkonet_neogeo.cmake); idempotent
+execute_process(COMMAND "${CMAKE_COMMAND}" -DSOURCE=${gekkonet_SOURCE_DIR} -P "${CMAKE_SOURCE_DIR}/tools/patch_gekkonet_neogeo.cmake"
+    RESULT_VARIABLE gekkonet_patched)
+if(NOT gekkonet_patched EQUAL 0)
+    message(FATAL_ERROR "GekkoNet: the Neo Geo spectator patch did not apply")
+endif()
 
 file(STRINGS "${GAME_DIR}/game.cfg" GAME_BOARD REGEX "^board[ \t]*=")
 if (NOT GAME_BOARD MATCHES "neogeo")
