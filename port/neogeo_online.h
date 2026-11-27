@@ -41,7 +41,7 @@ namespace port {
 struct NeoGeoPort;
 
 inline bool VerifiedMatchFlowGame(const std::string& game) {
-    return game=="kof97" || game=="kof2002" || game=="kf2k2mp2" || game=="kof98";
+    return game=="kof95" || game=="kof97" || game=="kof2002" || game=="kf2k2mp2" || game=="kof98";
 }
 
 struct OnlineOptions {

@@ -110,7 +110,7 @@ endif ()
 # ForkAde product integration is explicit and limited to verified KOF sets.
 set(FORKADE_BROKER_DIR "" CACHE PATH "Optional ForkAde native room owner sources")
 if(FORKADE_BROKER_DIR)
-    if(NOT WIN32 OR NOT GAME MATCHES "^(kof97|kof2002|kf2k2mp2|kof98)$")
+    if(NOT WIN32 OR NOT GAME MATCHES "^(kof95|kof97|kof2002|kf2k2mp2|kof98)$")
         message(FATAL_ERROR "This ForkAde native room slice requires a verified Windows KOF set")
     endif()
     target_compile_definitions(${GAME} PRIVATE FORKADE_GAME_BROKER)

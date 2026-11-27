@@ -6,7 +6,7 @@ import argparse,hashlib,json,os,shutil,subprocess,sys,time
 ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser(description=__doc__)
 for k in ['forkade-root','baseline','rom-dir','out']:p.add_argument('--'+k,type=Path,required=True)
-p.add_argument("--game",choices=["kof97","kof2002","kf2k2mp2","kof98"],required=True)
+p.add_argument("--game",choices=["kof95","kof97","kof2002","kf2k2mp2","kof98"],required=True)
 a=p.parse_args();game=a.game;out=a.out.resolve();product=a.forkade_root.resolve();runtime=Path('C:/msys64/ucrt64/bin')
 assert not out.exists() and out.is_relative_to((ROOT/'build').resolve());out.mkdir(parents=True)
 sys.path.insert(0,str(product));from tools.ki_setup.game_setup import OwnedJob
@@ -51,7 +51,7 @@ def compare(d,epoch=1,min_count=300):
  end=min(max(s) for s in states)-32;keys={f for f in states[0].keys()&states[1].keys() if f<=end};assert len(keys)>=min_count,(d,len(keys))
  assert all(states[0][f]==states[1][f] and flows[0][f]==flows[1][f] for f in keys),str(d)+' checkpoint mismatch'
  return len(keys)
-run('menu-unit-build',[runtime/'g++.exe','-std=c++20',ROOT/'tests/kof97_menu_test.cpp',ROOT/'port/menu.cpp',ROOT/'recomp-common/menu.cpp','-o',out/'menu.exe']);run('menu-unit',[out/'menu.exe'])
+run('menu-unit-build',[runtime/'g++.exe','-std=c++20',ROOT/'tests/kof97_menu_test.cpp',ROOT/'port/menu.cpp',ROOT/'recomp-common/menu.cpp',ROOT/'recomp-common/menubar.cpp','-o',out/'menu.exe']);run('menu-unit',[out/'menu.exe'])
 run('score-unit-build',[runtime/'g++.exe','-std=c++20','-Wall','-Wextra','-Werror',ROOT/('tests/'+game+'_match_score_test.cpp'),'-o',out/'score.exe']);run('score-unit',[out/'score.exe'])
 run('recovery-unit-build',[runtime/'g++.exe','-std=c++20','-Wall','-Wextra','-Werror','-I',ROOT/'port',product/'tests/recovery.cpp','-o',out/'recovery.exe']);run('recovery-unit',[out/'recovery.exe'])
 run('fake-build',[runtime/'g++.exe','-std=c++17','-Wall','-Wextra','-Werror','-I',product/'launcher','-I',ROOT/'recomp-common/launcher/src',product/'tests/broker_fake_tunnel.cpp','-lws2_32','-lbcrypt','-o',out/'cps-tunel.exe'])
@@ -62,6 +62,7 @@ for f in ['state.hash','audio.wav']:assert (out/'before'/f).read_bytes()==(out/'
 assert len((out/'after/state.hash').read_text(encoding='utf-8').splitlines())==6000
 records.append({'case':'offline6000-state-audio-identical','passed':True})
 trace='1600:coin1:8,1620:coin2:8,1800:start1:8,1820:start2:8,'+','.join(f'{n}:a{p}:3' for n in range(2300,4300,100) for p in [1,2])+',2400:right1:3,2400:right2:3,2600:right1:3,2600:right2:3,4500:right1:30000,16100:coin2:8,16200:start2:8,'+','.join(f'{n}:a{p}:3' for n in range(16700,18700,100) for p in [1,2])+',16800:right1:3,16800:right2:3,17000:right1:3,17000:right2:3,'+','.join(f'{n}:d1:3' for n in range(4600,34000,35))
+if game=='kof95':trace='3300:coin1:2,3400:start1:2,5000:coin2:2,5100:start2:2,'+','.join(f'{n}:a{p}:2' for n in range(3800,7000,200) for p in [1,2])+',6200:right1:16000,'+','.join(f'{n}:c1:3' for n in range(6300,22000,20))+',12000:coin2:2,12100:start2:2,'+','.join(f'{n}:a2:2' for n in range(12400,14000,200)) # (KOF95: two-human versus matches won by player 1, the second after player 2's challenge again)
 d=out/'stress';d.mkdir();run('stress6000',[exe,'--rom',rom,'--headless','--forkade-online','--stress','--frames','6000','--script',trace,*profile(d),'--gekko-checkpoint-log',d/'state.hash','--gekko-flow-log',d/'flow.txt'],timeout=600)
 flow=epochs(d/'flow.txt')[1];assert max(flow)>=5990 and any(v[-1]=='1' for v in flow.values())
 records.append({'case':'stress6000-human-fight-armed','passed':True})
